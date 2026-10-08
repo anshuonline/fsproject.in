@@ -411,6 +411,25 @@ export function PlayerProvider({ children }) {
     });
   }, [queueIndex, playSong]);
 
+  const playNextSongs = useCallback((songs) => {
+    if (!songs || !songs.length) return;
+    setQueue(prev => {
+      if (prev.length === 0) {
+        playSong(songs[0], songs);
+        return songs;
+      }
+      const newQueue = [...prev];
+      const insertAt = queueIndex >= 0 ? queueIndex + 1 : 0;
+      newQueue.splice(insertAt, 0, ...songs);
+      return newQueue;
+    });
+  }, [queueIndex, playSong]);
+
+  const addSongsToQueue = useCallback((songs) => {
+    if (!songs || !songs.length) return;
+    setQueue(prev => [...prev, ...songs]);
+  }, []);
+
   const startRadio = useCallback((song) => {
     if (!song || !song.videoId) return;
     setQueue([song]);
@@ -556,9 +575,11 @@ export function PlayerProvider({ children }) {
         toggleShuffle,
         toggleRepeat,
         addToQueue,
+        addSongsToQueue,
         removeFromQueue,
         clearQueue,
         playNext,
+        playNextSongs,
         startRadio,
         sleepTimer,
         setSleepTimer,

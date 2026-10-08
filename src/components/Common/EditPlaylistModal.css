@@ -1,0 +1,127 @@
+.fs-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fs-modal-fade 0.15s ease-out;
+}
+
+@keyframes fs-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fs-edit-playlist-card {
+  width: 100%;
+  max-width: 460px;
+  background-color: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  animation: fs-card-scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fs-card-scale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.fs-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border, #222222);
+}
+
+.fs-modal-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fs-modal-header-title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #ffffff);
+}
+
+.fs-modal-close-btn {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.fs-modal-close-btn:hover {
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.fs-modal-form {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fs-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fs-form-group label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.fs-input,
+.fs-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #1a1a1a;
+  border: 1px solid var(--color-border, #282828);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 14px;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary, #ffffff);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fs-input:focus,
+.fs-textarea:focus {
+  border-color: var(--color-primary, #00c853);
+  box-shadow: 0 0 0 2px rgba(0, 200, 83, 0.2);
+}
+
+.fs-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.fs-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 6px;
+}

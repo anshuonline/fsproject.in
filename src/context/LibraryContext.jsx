@@ -49,6 +49,39 @@ export function LibraryProvider({ children }) {
     setPlaylists(prev => prev.filter(p => p.id !== id));
   };
 
+  const updatePlaylist = (id, updates) => {
+    let updatedItem = null;
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === id) {
+        updatedItem = {
+          ...p,
+          name: updates.name !== undefined ? updates.name.trim() : p.name,
+          description: updates.description !== undefined ? updates.description.trim() : (p.description || ''),
+          coverImage: updates.coverImage !== undefined ? updates.coverImage : p.coverImage,
+          updatedAt: 'Just now'
+        };
+        return updatedItem;
+      }
+      return p;
+    }));
+    return updatedItem;
+  };
+
+  const saveExternalPlaylist = (ext) => {
+    if (!ext) return null;
+    const newPl = {
+      id: `pl-${Date.now()}`,
+      name: ext.title || ext.name || 'Saved Playlist',
+      description: ext.description || `Saved from ${ext.creator || 'Community'}`,
+      tracksCount: ext.songs?.length || 0,
+      songs: ext.songs || [],
+      coverImage: ext.coverImage || null,
+      updatedAt: 'Just now'
+    };
+    setPlaylists(prev => [newPl, ...prev]);
+    return newPl;
+  };
+
   const addSongToPlaylist = (playlistId, song) => {
     if (!playlistId || !song || !song.videoId) return false;
     let added = false;
@@ -110,6 +143,8 @@ export function LibraryProvider({ children }) {
         isLiked,
         createPlaylist,
         deletePlaylist,
+        updatePlaylist,
+        saveExternalPlaylist,
         addSongToPlaylist,
         removeSongFromPlaylist,
         isSongInPlaylist,

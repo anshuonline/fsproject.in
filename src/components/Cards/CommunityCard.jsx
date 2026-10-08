@@ -8,7 +8,7 @@ import './CommunityCard.css';
 
 export function CommunityCard({ item, queueContext = null }) {
   const { playSong } = usePlayer();
-  const { openMenu } = useContextMenu();
+  const { openMenu, openPlaylistMenu } = useContextMenu();
   const navigate = useNavigate();
 
   const targetSong = item.videoId
@@ -45,15 +45,23 @@ export function CommunityCard({ item, queueContext = null }) {
 
   const handleMoreClick = (e) => {
     e.stopPropagation();
-    if (targetSong) {
+    if (item.videoId || item.type === 'song') {
+      if (targetSong) openMenu(targetSong, e);
+    } else if (!isAlbum) {
+      openPlaylistMenu(item, e);
+    } else if (targetSong) {
       openMenu(targetSong, e);
     }
   };
 
   const handleContextMenu = (e) => {
-    if (targetSong) {
-      e.preventDefault();
-      e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
+    if (item.videoId || item.type === 'song') {
+      if (targetSong) openMenu(targetSong, e);
+    } else if (!isAlbum) {
+      openPlaylistMenu(item, e);
+    } else if (targetSong) {
       openMenu(targetSong, e);
     }
   };

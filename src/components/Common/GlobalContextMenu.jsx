@@ -12,7 +12,10 @@ import {
   ArrowLeft,
   Check,
   Plus,
-  X
+  X,
+  Pencil,
+  Trash2,
+  Bookmark
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -25,17 +28,22 @@ export function GlobalContextMenu() {
   const {
     isOpen,
     song,
+    playlist,
+    targetType,
     position,
     currentView,
     closeMenu,
     setView,
-    showToast
+    showToast,
+    openEditPlaylistModal
   } = useContextMenu();
 
   const {
     playNext,
+    playNextSongs,
     startRadio,
     addToQueue,
+    addSongsToQueue,
     sleepTimer,
     setSleepTimer,
     setIsFullScreen
@@ -46,6 +54,8 @@ export function GlobalContextMenu() {
     isLiked,
     toggleLike,
     createPlaylist,
+    deletePlaylist,
+    saveExternalPlaylist,
     addSongToPlaylist,
     removeSongFromPlaylist,
     isSongInPlaylist
@@ -103,9 +113,97 @@ export function GlobalContextMenu() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, closeMenu]);
 
-  if (!isOpen || !song) return null;
+  if (!isOpen || (!song && !playlist)) return null;
 
-  const liked = isLiked(song.videoId);
+  const liked = song ? isLiked(song.videoId) : false;
+  const isCustomPlaylist = playlist && (
+    (playlist.id && playlist.id.startsWith('pl-')) ||
+    playlists.some(p => p.id === playlist.id)
+  );
+
+  // Playlist action handlers
+  const handleEditPlaylist = () => {
+    closeMenu();
+    openEditPlaylistModal(playlist);
+  };
+
+  const handlePlayNextPlaylist = () => {
+    const tracks = playlist?.songs || [];
+    if (tracks.length > 0) {
+      if (typeof playNextSongs === 'function') {
+        playNextSongs(tracks);
+      } else {
+        tracks.slice().reverse().forEach(s => playNext(s));
+      }
+      showToast(`${tracks.length} songs from "${playlist.name || playlist.title}" will play next`);
+    } else {
+      showToast('Playlist has no tracks to play', 'info');
+    }
+    closeMenu();
+  };
+
+  const handleAddToQueuePlaylist = () => {
+    const tracks = playlist?.songs || [];
+    if (tracks.length > 0) {
+      if (typeof addSongsToQueue === 'function') {
+        addSongsToQueue(tracks);
+      } else {
+        tracks.forEach(s => addToQueue(s));
+      }
+      showToast(`Added ${tracks.length} songs to queue`);
+    } else {
+      showToast('Playlist has no tracks to add', 'info');
+    }
+    closeMenu();
+  };
+
+  const handleSavePlaylistToLibrary = () => {
+    if (!playlist) return;
+    const saved = saveExternalPlaylist(playlist);
+    if (saved) {
+      showToast(`Saved "${saved.name}" to your Library!`, 'success');
+    }
+    closeMenu();
+  };
+
+  const handleSharePlaylist = async () => {
+    if (!playlist) return;
+    const shareUrl = `${window.location.origin}/playlist/${playlist.id}`;
+    const title = playlist.name || playlist.title || 'Playlist';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title,
+          text: `Check out "${title}" on FreeSong.in`,
+          url: shareUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Playlist link copied to clipboard!');
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Playlist link copied to clipboard!');
+      } catch {
+        showToast('Failed to copy link', 'error');
+      }
+    }
+    closeMenu();
+  };
+
+  const handleDeletePlaylist = () => {
+    if (!playlist) return;
+    const name = playlist.name || playlist.title || 'Playlist';
+    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+      deletePlaylist(playlist.id);
+      showToast(`Deleted "${name}"`, 'info');
+      closeMenu();
+      if (window.location.pathname.includes(playlist.id)) {
+        navigate('/library');
+      }
+    }
+  };
 
   // Action handlers
   const handleStartRadio = () => {
@@ -236,8 +334,98 @@ export function GlobalContextMenu() {
           </div>
         )}
 
-        {/* View: Root Menu */}
-        {currentView === 'root' && (
+        {/* Playlist Context Menu View */}
+        {targetType === 'playlist' && playlist && (
+          <>
+            <div className="fs-context-header">
+              {playlist.coverImage ? (
+                <img
+                  src={playlist.coverImage}
+                  alt={playlist.name || playlist.title}
+                  className="fs-context-thumb"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="fs-context-thumb fs-pl-thumb-fallback">
+                  <ListMusic size={22} className="text-brand" />
+                </div>
+              )}
+              <div className="fs-context-meta">
+                <span className="fs-context-title truncate">
+                  {playlist.name || playlist.title || 'Playlist'}
+                </span>
+                <span className="fs-context-subtitle truncate">
+                  {playlist.creator || (isCustomPlaylist ? 'You' : 'Community')} • {playlist.songs?.length || playlist.tracksCount || 0} songs
+                </span>
+              </div>
+              <button
+                type="button"
+                className="fs-context-close-btn"
+                onClick={closeMenu}
+                aria-label="Close menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="fs-context-body">
+              {/* Edit Details */}
+              <button type="button" className="fs-context-item" onClick={handleEditPlaylist}>
+                <span className="fs-context-item-icon">
+                  <Pencil size={18} />
+                </span>
+                <span className="fs-context-item-label">
+                  {isCustomPlaylist ? 'Edit playlist details' : 'Save & edit copy'}
+                </span>
+              </button>
+
+              <button type="button" className="fs-context-item" onClick={handlePlayNextPlaylist}>
+                <span className="fs-context-item-icon">
+                  <CornerDownRight size={18} />
+                </span>
+                <span className="fs-context-item-label">Play next</span>
+              </button>
+
+              <button type="button" className="fs-context-item" onClick={handleAddToQueuePlaylist}>
+                <span className="fs-context-item-icon">
+                  <ListMusic size={18} />
+                </span>
+                <span className="fs-context-item-label">Add to queue</span>
+              </button>
+
+              {!isCustomPlaylist && (
+                <button type="button" className="fs-context-item" onClick={handleSavePlaylistToLibrary}>
+                  <span className="fs-context-item-icon">
+                    <Bookmark size={18} />
+                  </span>
+                  <span className="fs-context-item-label">Save to library</span>
+                </button>
+              )}
+
+              <button type="button" className="fs-context-item" onClick={handleSharePlaylist}>
+                <span className="fs-context-item-icon">
+                  <Share2 size={18} />
+                </span>
+                <span className="fs-context-item-label">Share playlist</span>
+              </button>
+
+              {isCustomPlaylist && (
+                <>
+                  <div className="fs-context-divider" />
+                  <button type="button" className="fs-context-item fs-context-item-danger" onClick={handleDeletePlaylist}>
+                    <span className="fs-context-item-icon text-danger">
+                      <Trash2 size={18} />
+                    </span>
+                    <span className="fs-context-item-label text-danger">Delete playlist</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Song Context Menu Views */}
+        {targetType === 'song' && song && currentView === 'root' && (
           <>
             {/* Header info */}
             <div className="fs-context-header">
@@ -362,7 +550,7 @@ export function GlobalContextMenu() {
         )}
 
         {/* View: Playlist Sub-menu */}
-        {currentView === 'playlist' && (
+        {targetType === 'song' && song && currentView === 'playlist' && (
           <>
             <div className="fs-context-sub-header">
               <button
@@ -435,7 +623,7 @@ export function GlobalContextMenu() {
         )}
 
         {/* View: Sleep Timer Sub-menu */}
-        {currentView === 'sleep_timer' && (
+        {targetType === 'song' && song && currentView === 'sleep_timer' && (
           <>
             <div className="fs-context-sub-header">
               <button

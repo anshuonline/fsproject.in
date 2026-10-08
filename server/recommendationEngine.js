@@ -125,6 +125,87 @@ export function isSpamOrJunkSong(s) {
   return false;
 }
 
+// ─── Artist Normalization & Strict Matcher ─────────────────────────────────
+export function normalizeArtist(name) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[.\-_,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const ARTIST_ALIASES = {
+  'kk': ['kk', 'k k', 'kay kay', 'krishnakumar kunnath'],
+  'k k': ['kk', 'k k', 'kay kay', 'krishnakumar kunnath'],
+  'kay kay': ['kk', 'k k', 'kay kay', 'krishnakumar kunnath'],
+  'ar rahman': ['ar rahman', 'a r rahman', 'rahman', 'a r raman'],
+  'a r rahman': ['ar rahman', 'a r rahman', 'rahman'],
+  'arijit singh': ['arijit singh', 'arijit'],
+  'sidhu moose wala': ['sidhu moose wala', 'sidhu moosewala', 'sidhu'],
+  'sidhu moosewala': ['sidhu moose wala', 'sidhu moosewala', 'sidhu'],
+  'diljit dosanjh': ['diljit dosanjh', 'diljit'],
+  'shreya ghoshal': ['shreya ghoshal', 'shreya'],
+  'atif aslam': ['atif aslam', 'atif'],
+  'honey singh': ['yo yo honey singh', 'honey singh'],
+  'yo yo honey singh': ['yo yo honey singh', 'honey singh'],
+  'badshah': ['badshah'],
+  'neha kakkar': ['neha kakkar'],
+  'anirudh ravichander': ['anirudh ravichander', 'anirudh'],
+  'sonu nigam': ['sonu nigam'],
+  'kumar sanu': ['kumar sanu'],
+  'udit narayan': ['udit narayan'],
+  'lata mangeshkar': ['lata mangeshkar'],
+  'kishore kumar': ['kishore kumar'],
+  'mohammed rafi': ['mohammed rafi', 'mohd rafi', 'rafi'],
+  'alka yagnik': ['alka yagnik'],
+  'sunidhi chauhan': ['sunidhi chauhan'],
+  'pritam': ['pritam', 'pritam chakraborty'],
+  'vishal mishra': ['vishal mishra'],
+  'jubin nautiyal': ['jubin nautiyal'],
+  'himesh reshammiya': ['himesh reshammiya', 'himesh'],
+  'arman malik': ['arman malik', 'armaan malik'],
+  'armaan malik': ['arman malik', 'armaan malik']
+};
+
+export function matchesArtist(songArtist, targetArtist, songTitle = '') {
+  if (!songArtist || !targetArtist) return false;
+
+  const normSong = normalizeArtist(songArtist);
+  const normTarget = normalizeArtist(targetArtist);
+
+  if (!normSong || !normTarget) return false;
+
+  // 1. Exact equality
+  if (normSong === normTarget) return true;
+
+  // 2. Known alias dictionary check
+  const targetAliases = ARTIST_ALIASES[normTarget] || [normTarget];
+  for (const alias of targetAliases) {
+    if (normSong === alias) return true;
+    const wordsPattern = new RegExp(`(^|[,/&|•-]\\s*|\\b)${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\b|\\s*[,/&|•-]|$)`, 'i');
+    if (wordsPattern.test(normSong)) return true;
+  }
+
+  // 3. Substring check: if target is at least 3 chars and is in song artist
+  if (normTarget.length >= 3 && normSong.includes(normTarget)) {
+    return true;
+  }
+
+  // 4. Feature in song title: "Song (feat. Artist)" or "Song ft. Artist"
+  if (songTitle) {
+    const normTitle = normalizeArtist(songTitle);
+    for (const alias of targetAliases) {
+      if (alias.length >= 2) {
+        const titlePattern = new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        if (titlePattern.test(normTitle)) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // ─── Model Formatters ───────────────────────────────────────────────────────
 function formatSong(s) {
   if (!s || !s.videoId) return null;
@@ -281,7 +362,8 @@ export function generateShelfPlan(preferences = {}, history = []) {
           eyebrow: `MORE FROM ${(recentItem.artist || '').toUpperCase()}`,
           title: `More from ${recentItem.artist}`,
           searchQuery: `${recentItem.artist} new songs`,
-          type: 'songs',
+          artistFilter: recentItem.artist,
+          type: 'artist_songs',
           category: 'history'
         });
       }
@@ -361,7 +443,8 @@ export function generateShelfPlan(preferences = {}, history = []) {
     eyebrow: 'SIGNATURE ARTIST',
     title: `Best of ${mainArtist}`,
     searchQuery: `${mainArtist} hit songs`,
-    type: 'songs',
+    artistFilter: mainArtist,
+    type: 'artist_songs',
     category: 'artist'
   });
 
@@ -371,7 +454,8 @@ export function generateShelfPlan(preferences = {}, history = []) {
     eyebrow: `NEW FROM ${mainArtist.toUpperCase()}`,
     title: `${mainArtist} New Releases & Singles`,
     searchQuery: `${mainArtist} new songs`,
-    type: 'songs',
+    artistFilter: mainArtist,
+    type: 'artist_songs',
     category: 'artist'
   });
 
@@ -383,7 +467,8 @@ export function generateShelfPlan(preferences = {}, history = []) {
         eyebrow: 'LATEST FROM ' + artist.toUpperCase(),
         title: `${artist} New Tracks & Hits`,
         searchQuery: `${artist} new songs`,
-        type: 'songs',
+        artistFilter: artist,
+        type: 'artist_songs',
         category: 'latest'
       });
 
@@ -392,7 +477,8 @@ export function generateShelfPlan(preferences = {}, history = []) {
         eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
         title: `Best of ${artist}`,
         searchQuery: `${artist} hit songs`,
-        type: 'songs',
+        artistFilter: artist,
+        type: 'artist_songs',
         category: 'artist'
       });
 
@@ -732,6 +818,73 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
           .map(formatSong)
           .filter(s => s && !isSpamOrJunkSong(s));
         return { ...plan, items: cleanFallback.slice(0, 14) };
+      }
+
+      // ── TYPE: artist_songs (Strict matching for artist-dedicated shelves) ──
+      if (plan.type === 'artist_songs' && plan.artistFilter) {
+        const targetArtist = plan.artistFilter;
+        const cacheKey = `shelf_artist_songs_v6_${targetArtist.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        const cached = cacheGet(cacheKey);
+        if (cached && cached.length > 0) {
+          return { ...plan, items: cached };
+        }
+
+        try {
+          let matchedSongs = [];
+
+          // 1. Fetch official top songs directly from artist's YouTube Music profile
+          try {
+            const artistSearchResults = await yt.searchArtists(targetArtist).catch(() => []);
+            const bestArtistMatch = (artistSearchResults || []).find(a => a && matchesArtist(a.name, targetArtist));
+            if (bestArtistMatch && bestArtistMatch.artistId) {
+              const fullArtist = await yt.getArtist(bestArtistMatch.artistId).catch(() => null);
+              if (fullArtist && Array.isArray(fullArtist.topSongs) && fullArtist.topSongs.length > 0) {
+                const directTop = fullArtist.topSongs
+                  .map(formatSong)
+                  .filter(s => s && !isSpamOrJunkSong(s));
+                matchedSongs.push(...directTop);
+              }
+            }
+          } catch (artErr) {
+            console.warn(`Direct artist fetch failed for ${targetArtist}:`, artErr.message);
+          }
+
+          // 2. Query searchSongs with strict matchesArtist filter
+          if (matchedSongs.length < 12) {
+            const searchRes = await yt.searchSongs(`${targetArtist} songs`).catch(() => []);
+            const searchHits = (searchRes || [])
+              .map(formatSong)
+              .filter(s => s && matchesArtist(s.artist, targetArtist, s.title) && !isSpamOrJunkSong(s));
+            matchedSongs.push(...searchHits);
+          }
+
+          // 3. Fallback: query "{targetArtist} hits" with strict matching
+          if (matchedSongs.length < 6) {
+            const fallbackRes = await yt.searchSongs(`${targetArtist} hits`).catch(() => []);
+            const fallbackHits = (fallbackRes || [])
+              .map(formatSong)
+              .filter(s => s && matchesArtist(s.artist, targetArtist, s.title) && !isSpamOrJunkSong(s));
+            matchedSongs.push(...fallbackHits);
+          }
+
+          // Deduplicate by videoId
+          const seen = new Set();
+          const uniqueArtistSongs = [];
+          for (const s of matchedSongs) {
+            if (!seen.has(s.videoId)) {
+              seen.add(s.videoId);
+              uniqueArtistSongs.push(s);
+              if (uniqueArtistSongs.length >= 16) break;
+            }
+          }
+
+          if (uniqueArtistSongs.length > 0) {
+            cacheSet(cacheKey, uniqueArtistSongs, 25 * 60 * 1000);
+            return { ...plan, items: uniqueArtistSongs };
+          }
+        } catch (err) {
+          console.warn(`Artist shelf fetch failed for ${targetArtist}:`, err.message);
+        }
       }
 
       // ── TYPE: radio_songs (Direct YouTube Music Radio Queue via yt.getUpNexts) ──

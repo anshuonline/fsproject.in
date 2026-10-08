@@ -366,3 +366,21 @@
   color: var(--color-text-secondary, #afafaf);
   font-size: 0.8125rem;
 }
+
+/* Playlist Context Menu Extras */
+.fs-pl-thumb-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-card, #111111);
+  border-radius: var(--radius-xs, 6px);
+}
+
+.fs-context-item-danger:hover {
+  background-color: rgba(255, 77, 77, 0.15) !important;
+}
+
+.text-danger {
+  color: #ff5252 !important;
+}
+

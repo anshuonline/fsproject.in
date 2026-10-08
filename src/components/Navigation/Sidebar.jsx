@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine } from 'lucide-react';
+import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine, MoreVertical, History } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePWA } from '../../context/PWAContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import './Sidebar.css';
 
 export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
   const { playlists, createPlaylist } = useLibrary();
   const { isInstalled, installApp } = usePWA();
+  const { openPlaylistMenu } = useContextMenu();
   const [showModal, setShowModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const navigate = useNavigate();
@@ -26,6 +28,13 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
 
   return (
     <>
+      {isOpen && (
+        <div
+          className="fs-sidebar-backdrop"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
       <aside className={`fs-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Mobile close button */}
         <div className="fs-sidebar-mobile-header">
@@ -66,6 +75,16 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
           >
             <Bookmark size={22} className="fs-nav-icon" />
             <span>Library</span>
+          </NavLink>
+
+          <NavLink
+            to="/history"
+            className={({ isActive }) => `fs-nav-item ${isActive ? 'active' : ''}`}
+            onClick={onClose}
+            title="Listen history"
+          >
+            <History size={22} className="fs-nav-icon" />
+            <span>{isCollapsed ? 'History' : 'Listen history'}</span>
           </NavLink>
 
           {!isInstalled && (
@@ -118,11 +137,31 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
                 to={`/playlist/${pl.id}`}
                 className={({ isActive }) => `fs-playlist-item ${isActive ? 'active' : ''}`}
                 onClick={onClose}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openPlaylistMenu(pl, e);
+                }}
               >
                 <div className="fs-playlist-info">
                   <span className="fs-playlist-title truncate">{pl.name}</span>
-                  <span className="fs-playlist-sub">FreeSong</span>
+                  <span className="fs-playlist-sub">
+                    {pl.tracksCount ? `${pl.tracksCount} tracks` : 'FreeSong'}
+                  </span>
                 </div>
+                <button
+                  type="button"
+                  className="fs-pl-item-more-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openPlaylistMenu(pl, e);
+                  }}
+                  title="Playlist options"
+                  aria-label="Playlist options"
+                >
+                  <MoreVertical size={14} />
+                </button>
               </NavLink>
             ))}
           </div>

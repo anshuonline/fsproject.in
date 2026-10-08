@@ -143,8 +143,8 @@ app.get('/api/search', async (req, res) => {
       const playlists = await yt.searchPlaylists(query);
       responseData.playlists = playlists.slice(0, limit).map(formatPlaylist);
     } else if (type === 'artist') {
-      const artists = await yt.searchArtists(query);
-      responseData.artists = artists.slice(0, limit).map(formatArtist);
+      const artists = await yt.searchArtists(query).catch(() => []);
+      responseData.artists = (artists || []).slice(0, limit).map(formatArtist);
     } else {
       // 'all': fetch songs, albums, playlists, artists concurrently
       const [songs, albums, playlists, artists] = await Promise.all([
@@ -652,12 +652,13 @@ function formatPlaylist(p) {
 
 function formatArtist(ar) {
   if (!ar) return null;
-  const thumbs = ar.thumbnails || [];
+  const thumbs = Array.isArray(ar.thumbnails) ? ar.thumbnails : [];
+  const rawThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || ar.thumbnail || ar.image || '';
   return {
-    id: ar.artistId || '',
+    id: ar.artistId || ar.id || '',
     name: ar.name || 'Artist',
     subscribers: ar.subscribers || '',
-    thumbnail: toHDUrl(thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || ''),
+    thumbnail: toHDUrl(rawThumb),
     type: 'artist'
   };
 }

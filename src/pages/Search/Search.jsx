@@ -6,6 +6,7 @@ import { SongCard } from '../../components/Cards/SongCard';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
+import { ArtistCard } from '../../components/Cards/ArtistCard';
 import './Search.css';
 
 const FILTERS = [
@@ -86,6 +87,21 @@ export function Search() {
       {/* Results */}
       {!loading && query && (
         <div className="fs-search-results">
+          {/* Artists section (Rendered prominently for artist queries) */}
+          {results.artists && results.artists.length > 0 && (
+            <section className="fs-search-section">
+              <h3 className="fs-section-title">Artists</h3>
+              <div className="fs-artists-grid">
+                {results.artists.map(artist => (
+                  <ArtistCard
+                    key={artist.id || artist.name}
+                    artist={artist}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Songs section */}
           {results.songs && results.songs.length > 0 && (
             <section className="fs-search-section">
@@ -142,7 +158,8 @@ export function Search() {
           {/* No results */}
           {results.songs?.length === 0 &&
            results.albums?.length === 0 &&
-           results.playlists?.length === 0 && (
+           results.playlists?.length === 0 &&
+           results.artists?.length === 0 && (
             <div className="fs-search-empty">
               <Music size={40} className="fs-search-empty-icon" />
               <h3>No results found</h3>

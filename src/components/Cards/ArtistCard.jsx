@@ -7,15 +7,23 @@ import './ArtistCard.css';
 export function ArtistCard({ artist }) {
   const navigate = useNavigate();
 
+  if (!artist) return null;
+
   const handleClick = () => {
-    navigate(`/search?q=${encodeURIComponent(artist.name)}`);
+    if (artist.id) {
+      navigate(`/artist/${artist.id}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(artist.name)}`);
+    }
   };
+
+  const avatarSrc = artist.thumbnail || artist.image || artist.thumbnails?.[0]?.url;
 
   return (
     <div className="fs-artist-card" onClick={handleClick}>
       <div className="fs-artist-avatar-wrap">
         <img
-          src={artist.image}
+          src={avatarSrc}
           alt={artist.name}
           className="fs-artist-avatar-img"
           loading="lazy"
@@ -29,9 +37,9 @@ export function ArtistCard({ artist }) {
           className="fs-artist-play-btn"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/search?q=${encodeURIComponent(artist.name)}`);
+            handleClick();
           }}
-          aria-label={`Play songs by ${artist.name}`}
+          aria-label={`Open profile of ${artist.name}`}
         >
           <Play size={18} fill="#000000" />
         </button>
@@ -42,7 +50,7 @@ export function ArtistCard({ artist }) {
           {artist.name}
         </h4>
         <p className="fs-artist-category truncate">
-          Artist • {artist.genre || artist.category}
+          {artist.subscribers ? `${artist.subscribers} • ` : ''}Artist
         </p>
       </div>
     </div>

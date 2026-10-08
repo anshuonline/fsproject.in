@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Play, Shuffle, ListMusic, Loader2, Clock } from 'lucide-react';
+import { Play, Shuffle, ListMusic, Loader2, Clock, MoreHorizontal } from 'lucide-react';
 import { api } from '../../services/api';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import { SongCard } from '../../components/Cards/SongCard';
 import './PlaylistDetail.css';
 
@@ -13,6 +14,7 @@ export function PlaylistDetail() {
   const queryName = searchParams.get('name');
   const { playlists } = useLibrary();
   const { playSong } = usePlayer();
+  const { openPlaylistMenu } = useContextMenu();
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +26,11 @@ export function PlaylistDetail() {
       setPlaylist({
         id: local.id,
         title: local.name,
+        name: local.name,
+        description: local.description || '',
         creator: 'You',
         songs: local.songs || [],
-        coverImage: null
+        coverImage: local.coverImage || null
       });
       setLoading(false);
       return;
@@ -83,7 +87,12 @@ export function PlaylistDetail() {
 
   return (
     <div className="fs-pl-page">
-      <div className="fs-pl-hero">
+      <div
+        className="fs-pl-hero"
+        onContextMenu={(e) => {
+          if (playlist) openPlaylistMenu(playlist, e);
+        }}
+      >
         <div className="fs-pl-cover">
           {playlist?.coverImage ? (
             <img src={playlist.coverImage} alt={playlist.title} className="fs-pl-cover-img" />
@@ -95,12 +104,16 @@ export function PlaylistDetail() {
         <div className="fs-pl-hero-meta">
           <span className="fs-pl-type">PLAYLIST</span>
           <h1 className="fs-pl-title">{playlist?.title}</h1>
+          {playlist?.description && (
+            <p className="fs-pl-desc">{playlist.description}</p>
+          )}
           <p className="fs-pl-sub">
             {playlist?.creator || 'FreeSong'} • {playlist?.songs?.length || 0} songs
           </p>
 
           <div className="fs-pl-actions">
             <button
+              type="button"
               className="btn btn-primary fs-pl-play-btn"
               onClick={handlePlayAll}
               disabled={!playlist?.songs?.length}
@@ -109,12 +122,24 @@ export function PlaylistDetail() {
               <span>Play All</span>
             </button>
             <button
+              type="button"
               className="btn btn-secondary fs-pl-shuffle-btn"
               onClick={handleShufflePlay}
               disabled={!playlist?.songs?.length}
             >
               <Shuffle size={18} />
               <span>Shuffle</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-icon fs-pl-more-btn"
+              onClick={(e) => {
+                if (playlist) openPlaylistMenu(playlist, e);
+              }}
+              title="Playlist options"
+              aria-label="Playlist options"
+            >
+              <MoreHorizontal size={20} />
             </button>
           </div>
         </div>

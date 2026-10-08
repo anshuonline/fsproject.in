@@ -5,9 +5,13 @@ const ContextMenuContext = createContext(null);
 export function ContextMenuProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
   const [song, setSong] = useState(null);
+  const [playlist, setPlaylist] = useState(null);
+  const [targetType, setTargetType] = useState('song'); // 'song' | 'playlist'
   const [position, setPosition] = useState(null); // { x, y } or null for bottom sheet
   const [currentView, setCurrentView] = useState('root'); // 'root' | 'playlist' | 'sleep_timer'
   const [toasts, setToasts] = useState([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingPlaylist, setEditingPlaylist] = useState(null);
 
   // Toast notification helper
   const showToast = useCallback((message, type = 'success', duration = 2800) => {
@@ -23,7 +27,7 @@ export function ContextMenuProvider({ children }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Open context menu (supports mouse event, touch event, button click, or custom coordinates)
+  // Open song context menu
   const openMenu = useCallback((targetSong, triggerEventOrPos = null) => {
     if (!targetSong) return;
 
@@ -51,9 +55,56 @@ export function ContextMenuProvider({ children }) {
     }
 
     setSong(targetSong);
+    setPlaylist(null);
+    setTargetType('song');
     setPosition(coords);
     setCurrentView('root');
     setIsOpen(true);
+  }, []);
+
+  // Open playlist context menu
+  const openPlaylistMenu = useCallback((targetPlaylist, triggerEventOrPos = null) => {
+    if (!targetPlaylist) return;
+
+    if (triggerEventOrPos) {
+      if (typeof triggerEventOrPos.preventDefault === 'function') {
+        triggerEventOrPos.preventDefault();
+      }
+      if (typeof triggerEventOrPos.stopPropagation === 'function') {
+        triggerEventOrPos.stopPropagation();
+      }
+    }
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
+    let coords = null;
+    if (!isMobile && triggerEventOrPos) {
+      if (typeof triggerEventOrPos.clientX === 'number') {
+        coords = { x: triggerEventOrPos.clientX, y: triggerEventOrPos.clientY };
+      } else if (triggerEventOrPos.currentTarget?.getBoundingClientRect) {
+        const rect = triggerEventOrPos.currentTarget.getBoundingClientRect();
+        coords = { x: rect.left, y: rect.bottom + 4 };
+      } else if (typeof triggerEventOrPos.x === 'number') {
+        coords = { x: triggerEventOrPos.x, y: triggerEventOrPos.y };
+      }
+    }
+
+    setPlaylist(targetPlaylist);
+    setSong(null);
+    setTargetType('playlist');
+    setPosition(coords);
+    setCurrentView('root');
+    setIsOpen(true);
+  }, []);
+
+  const openEditPlaylistModal = useCallback((targetPl) => {
+    setEditingPlaylist(targetPl);
+    setIsEditModalOpen(true);
+  }, []);
+
+  const closeEditPlaylistModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setEditingPlaylist(null);
   }, []);
 
   const closeMenu = useCallback(() => {
@@ -73,11 +124,18 @@ export function ContextMenuProvider({ children }) {
       value={{
         isOpen,
         song,
+        playlist,
+        targetType,
         position,
         currentView,
         openMenu,
+        openPlaylistMenu,
         closeMenu,
         setView,
+        isEditModalOpen,
+        editingPlaylist,
+        openEditPlaylistModal,
+        closeEditPlaylistModal,
         toasts,
         showToast,
         removeToast

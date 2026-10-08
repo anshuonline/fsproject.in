@@ -7,6 +7,7 @@ import { GlobalPlayer } from '../components/Player/GlobalPlayer';
 import { FullScreenPlayer } from '../components/Player/FullScreenPlayer';
 import { QueueDrawer } from '../components/Player/QueueDrawer';
 import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
+import { EditPlaylistModal } from '../components/Common/EditPlaylistModal';
 import { Toast } from '../components/Common/Toast';
 import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
@@ -15,6 +16,7 @@ import './MainLayout.css';
 export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 901 : true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('fs_sidebar_collapsed') === 'true';
@@ -24,13 +26,25 @@ export function MainLayout() {
   });
   const { currentSong } = usePlayer();
 
-  // Scroll to top on navigation so user lands at top of legal/feature pages
+  // Track desktop breakpoint to prevent mobile from ever getting stuck in collapsed rail
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 901);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Scroll to top on navigation & close mobile drawer if open
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+    setSidebarOpen(false);
   }, [location.pathname]);
 
+  const effectiveCollapsed = isDesktop && isSidebarCollapsed;
+
   const handleToggleSidebar = () => {
-    if (window.innerWidth >= 900) {
+    if (window.innerWidth >= 901) {
       setIsSidebarCollapsed(prev => {
         const next = !prev;
         try {
@@ -46,7 +60,7 @@ export function MainLayout() {
   return (
     <div
       className={`fs-app-layout ${currentSong ? 'has-player' : ''} ${
-        isSidebarCollapsed ? 'sidebar-collapsed' : ''
+        effectiveCollapsed ? 'sidebar-collapsed' : ''
       }`}
     >
       {/* Header */}
@@ -58,7 +72,7 @@ export function MainLayout() {
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          isCollapsed={isSidebarCollapsed}
+          isCollapsed={effectiveCollapsed}
         />
 
         {/* Page Content Outlet & Footer */}
@@ -74,6 +88,7 @@ export function MainLayout() {
       <QueueDrawer />
       <MobileNav />
       <GlobalContextMenu />
+      <EditPlaylistModal />
       <Toast />
     </div>
   );
