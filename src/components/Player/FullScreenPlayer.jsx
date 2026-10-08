@@ -11,15 +11,12 @@ import {
   Heart,
   Volume2,
   VolumeX,
-  ListMusic,
-  FileText,
   Loader2,
   Mic2,
   MoreVertical,
-  Radio,
-  FolderPlus,
+  BookmarkPlus,
   Moon,
-  Share2
+  Sparkles
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
@@ -73,6 +70,8 @@ export function FullScreenPlayer() {
     isFullScreen,
     isLoading,
     sleepTimer,
+    isAutoplay,
+    toggleAutoplay,
     setIsFullScreen,
     togglePlay,
     nextSong,
@@ -82,14 +81,13 @@ export function FullScreenPlayer() {
     toggleMute,
     toggleShuffle,
     toggleRepeat,
-    playSong,
-    startRadio
+    playSong
   } = usePlayer();
 
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu, setView: setContextView, showToast } = useContextMenu();
 
-  // Desktop active tab: 'upnext' | 'lyrics'
+  // Desktop active tab: 'upnext' | 'lyrics' | 'related'
   const [activeTab, setActiveTab] = useState('upnext');
   // Mobile segmented mode: 'song' | 'lyrics' | 'upnext'
   const [mobileMode, setMobileMode] = useState('song');
@@ -105,8 +103,12 @@ export function FullScreenPlayer() {
     notFound: false
   });
 
+  const [relatedSongs, setRelatedSongs] = useState([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
+
   const lyricsContainerRef = useRef(null);
 
+  // Resize listener
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 850);
@@ -114,6 +116,19 @@ export function FullScreenPlayer() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Escape key closes player
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsFullScreen(false);
+      }
+    };
+    if (isFullScreen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullScreen, setIsFullScreen]);
 
   // Fetch lyrics whenever currentSong changes
   useEffect(() => {
@@ -170,6 +185,20 @@ export function FullScreenPlayer() {
     };
   }, [currentSong?.videoId, currentSong?.title, currentSong?.artist]);
 
+  // Fetch related songs for RELATED tab
+  useEffect(() => {
+    if (!currentSong?.videoId) return;
+    setLoadingRelated(true);
+    api.getRelatedSongs(currentSong.videoId, currentSong.artist)
+      .then(res => {
+        if (res && Array.isArray(res.songs)) {
+          setRelatedSongs(res.songs);
+        }
+      })
+      .catch(err => console.warn('Related fetch error:', err))
+      .finally(() => setLoadingRelated(false));
+  }, [currentSong?.videoId, currentSong?.artist]);
+
   // Compute active lyric line
   let activeLyricIndex = -1;
   if (lyricsData.syncedLyrics.length > 0) {
@@ -198,39 +227,16 @@ export function FullScreenPlayer() {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const liked = isLiked(currentSong.videoId);
 
-  const handleStartRadio = () => {
-    startRadio(currentSong);
-    showToast(`Started radio based on "${currentSong.title}"`);
-  };
-
   const handleOpenPlaylistMenu = (e) => {
+    e.stopPropagation();
     openMenu(currentSong, e);
     setContextView('playlist');
   };
 
   const handleOpenSleepTimerMenu = (e) => {
+    e.stopPropagation();
     openMenu(currentSong, e);
     setContextView('sleep_timer');
-  };
-
-  const handleShare = async (e) => {
-    e.stopPropagation();
-    const shareUrl = `${window.location.origin}/?v=${currentSong.videoId}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: currentSong.title,
-          text: `Listen to "${currentSong.title}" on FreeSong.in`,
-          url: shareUrl
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Song link copied to clipboard!');
-      }
-    } catch {
-      await navigator.clipboard.writeText(shareUrl);
-      showToast('Song link copied to clipboard!');
-    }
   };
 
   return (
@@ -247,410 +253,501 @@ export function FullScreenPlayer() {
         style={{ backgroundImage: `url(${currentSong.thumbnail})` }}
       />
 
-      <div className="fs-fs-container">
-        {/* Top bar */}
-        <div className="fs-fs-topbar">
-          <button
-            className="btn-icon fs-fs-collapse-btn"
-            onClick={() => setIsFullScreen(false)}
-            aria-label="Collapse player"
-          >
-            <ChevronDown size={28} />
-          </button>
+      {/* Top minimal bar with Collapse button */}
+      <div className="fs-fs-header">
+        <button
+          className="btn-icon fs-fs-collapse-btn"
+          onClick={() => setIsFullScreen(false)}
+          aria-label="Collapse player"
+          title="Close player (Esc)"
+        >
+          <ChevronDown size={28} />
+        </button>
 
-          {/* Desktop Title vs Mobile Segmented Tabs */}
-          {isMobile ? (
-            <div className="fs-fs-mobile-segments">
-              <button
-                className={`fs-fs-seg-btn ${mobileMode === 'song' ? 'active' : ''}`}
-                onClick={() => setMobileMode('song')}
-              >
-                Song
-              </button>
-              <button
-                className={`fs-fs-seg-btn ${mobileMode === 'lyrics' ? 'active' : ''}`}
-                onClick={() => setMobileMode('lyrics')}
-              >
-                Lyrics
-              </button>
-              <button
-                className={`fs-fs-seg-btn ${mobileMode === 'upnext' ? 'active' : ''}`}
-                onClick={() => setMobileMode('upnext')}
-              >
-                Up Next {queue.length > 0 && `(${queue.length})`}
-              </button>
-            </div>
-          ) : (
-            <div className="fs-fs-header-title">
-              <span>NOW PLAYING</span>
-            </div>
-          )}
-
-          {/* Top Right Actions */}
-          <div className="fs-fs-top-actions">
-            {sleepTimer && (
-              <button
-                className="fs-fs-timer-badge"
-                onClick={handleOpenSleepTimerMenu}
-                title="Sleep Timer Active"
-              >
-                <Moon size={14} />
-                <span>{sleepTimer.label}</span>
-              </button>
-            )}
-
+        {isMobile ? (
+          <div className="fs-fs-mobile-segments">
             <button
-              className="btn-icon fs-fs-more-btn"
-              onClick={(e) => openMenu(currentSong, e)}
-              title="More options"
-              aria-label="More options"
+              className={`fs-fs-seg-btn ${mobileMode === 'song' ? 'active' : ''}`}
+              onClick={() => setMobileMode('song')}
             >
-              <MoreVertical size={22} />
+              Song
+            </button>
+            <button
+              className={`fs-fs-seg-btn ${mobileMode === 'lyrics' ? 'active' : ''}`}
+              onClick={() => setMobileMode('lyrics')}
+            >
+              Lyrics
+            </button>
+            <button
+              className={`fs-fs-seg-btn ${mobileMode === 'upnext' ? 'active' : ''}`}
+              onClick={() => setMobileMode('upnext')}
+            >
+              Up Next {queue.length > 0 && `(${queue.length})`}
             </button>
           </div>
+        ) : (
+          <div className="fs-fs-header-spacer" />
+        )}
+
+        <div className="fs-fs-top-actions">
+          {sleepTimer && (
+            <button
+              className="fs-fs-timer-badge"
+              onClick={handleOpenSleepTimerMenu}
+              title="Sleep Timer Active"
+            >
+              <Moon size={14} />
+              <span>{sleepTimer.label}</span>
+            </button>
+          )}
+          <button
+            className="btn-icon fs-fs-more-btn"
+            onClick={(e) => openMenu(currentSong, e)}
+            title="More options"
+            aria-label="More options"
+          >
+            <MoreVertical size={20} />
+          </button>
         </div>
+      </div>
 
-        {/* ─── MAIN CONTENT ─── */}
-        <div className={`fs-fs-main ${isMobile ? `mobile-${mobileMode}` : ''}`}>
-          {/* ── Left / Center Artwork & Info (Always shown on Desktop, shown in 'song' on Mobile) ── */}
-          {(!isMobile || mobileMode === 'song') && (
-            <div className="fs-fs-art-col">
-              <div className="fs-fs-art-wrap">
-                <img
-                  src={
-                    currentSong.thumbnail ||
-                    (currentSong.videoId
-                      ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`
-                      : '/images/freesonglogowebp.webp')
+      {/* ── Main 2-Column Stage (YouTube Music style) ── */}
+      <div className={`fs-fs-stage ${isMobile ? `mobile-${mobileMode}` : ''}`}>
+        {/* Left Column: Big Album Artwork */}
+        {(!isMobile || mobileMode === 'song') && (
+          <div className="fs-fs-art-column">
+            <div className="fs-fs-art-wrapper">
+              <img
+                src={
+                  currentSong.thumbnail ||
+                  (currentSong.videoId
+                    ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`
+                    : '/images/freesonglogowebp.webp')
+                }
+                alt={currentSong.title}
+                className="fs-fs-art-image"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const currentSrc = e.currentTarget.src || '';
+                  if (currentSong.videoId && !currentSrc.includes('i.ytimg.com')) {
+                    e.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`;
+                  } else {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = getArtworkFallback(currentSong.title);
                   }
-                  alt={currentSong.title}
-                  className="fs-fs-artwork"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    const currentSrc = e.currentTarget.src || '';
-                    if (currentSong.videoId && !currentSrc.includes('i.ytimg.com')) {
-                      e.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`;
-                    } else {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = getArtworkFallback(currentSong.title);
-                    }
-                  }}
-                />
-              </div>
+                }}
+              />
+            </div>
 
-              <div className="fs-fs-track-info">
-                <div className="fs-fs-text-group">
-                  <h2 className="fs-fs-song-name truncate">{currentSong.title}</h2>
-                  <p className="fs-fs-song-artist truncate">{currentSong.artist}</p>
+            {/* Mobile metadata underneath art in 'song' mode */}
+            {isMobile && (
+              <div className="fs-fs-mobile-art-meta">
+                <div className="fs-fs-mobile-meta-text">
+                  <h2 className="fs-fs-mobile-title truncate">{currentSong.title}</h2>
+                  <p className="fs-fs-mobile-artist truncate">{currentSong.artist}</p>
                 </div>
                 <button
-                  className={`btn-icon fs-fs-like-btn ${liked ? 'liked' : ''}`}
+                  className={`btn-icon fs-fs-mobile-like-btn ${liked ? 'liked' : ''}`}
                   onClick={() => toggleLike(currentSong)}
                   aria-label={liked ? 'Unlike track' : 'Like track'}
                 >
                   <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
                 </button>
               </div>
+            )}
+          </div>
+        )}
 
-              {/* Quick Actions Bar (Radio, Playlist, Sleep Timer, Share, Options) */}
-              <div className="fs-fs-quick-actions">
+        {/* Right Column: YouTube Music Tabs (UP NEXT / LYRICS / RELATED) */}
+        {(!isMobile || mobileMode !== 'song') && (
+          <div className={`fs-fs-panel-column ${isMobile ? 'mobile-panel-full' : ''}`}>
+            {/* Desktop Tabs Header (UP NEXT | LYRICS | RELATED) */}
+            {!isMobile && (
+              <div className="fs-fs-tab-bar">
                 <button
-                  className="fs-fs-action-chip"
-                  onClick={handleStartRadio}
-                  title="Start Radio"
+                  className={`fs-fs-tab-link ${activeTab === 'upnext' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('upnext')}
                 >
-                  <Radio size={16} />
-                  <span>Radio</span>
+                  UP NEXT
                 </button>
-
                 <button
-                  className="fs-fs-action-chip"
-                  onClick={handleOpenPlaylistMenu}
-                  title="Add to Playlist"
+                  className={`fs-fs-tab-link ${activeTab === 'lyrics' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('lyrics')}
                 >
-                  <FolderPlus size={16} />
-                  <span>Playlist</span>
+                  LYRICS
                 </button>
-
                 <button
-                  className={`fs-fs-action-chip ${sleepTimer ? 'active-timer' : ''}`}
-                  onClick={handleOpenSleepTimerMenu}
-                  title="Sleep Timer"
+                  className={`fs-fs-tab-link ${activeTab === 'related' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('related')}
                 >
-                  <Moon size={16} />
-                  <span>{sleepTimer ? sleepTimer.label : 'Timer'}</span>
-                </button>
-
-                <button
-                  className="fs-fs-action-chip"
-                  onClick={handleShare}
-                  title="Share"
-                >
-                  <Share2 size={16} />
-                  <span>Share</span>
-                </button>
-
-                <button
-                  className="fs-fs-action-chip"
-                  onClick={(e) => openMenu(currentSong, e)}
-                  title="All Options"
-                >
-                  <MoreVertical size={16} />
-                  <span>More</span>
+                  RELATED
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── Right Column: Up Next & Synced Lyrics (Shown on Desktop OR in 'lyrics'/'upnext' on Mobile) ── */}
-          {(!isMobile || mobileMode !== 'song') && (
-            <div className={`fs-fs-side-col ${isMobile ? 'mobile-full' : ''}`}>
-              {/* Desktop Tabs Header */}
-              {!isMobile && (
-                <div className="fs-fs-tabs">
-                  <button
-                    className={`fs-fs-tab-btn ${activeTab === 'upnext' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('upnext')}
-                  >
-                    <ListMusic size={16} />
-                    <span>UP NEXT ({queue.length})</span>
-                  </button>
-                  <button
-                    className={`fs-fs-tab-btn ${activeTab === 'lyrics' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('lyrics')}
-                  >
-                    <FileText size={16} />
-                    <span>LYRICS</span>
-                  </button>
-                </div>
-              )}
+            {/* Tab Body */}
+            <div className="fs-fs-tab-body">
+              {/* TAB 1: UP NEXT */}
+              {((!isMobile && activeTab === 'upnext') || (isMobile && mobileMode === 'upnext')) && (
+                <div className="fs-fs-upnext-container">
+                  {/* Playing from row + Save button */}
+                  <div className="fs-fs-queue-subheader">
+                    <div className="fs-fs-source-meta">
+                      <span className="fs-fs-playing-from">Playing from</span>
+                      <span className="fs-fs-source-name truncate">
+                        {currentSong.artist ? `${currentSong.artist} Radio` : 'FreeSong Queue'}
+                      </span>
+                    </div>
+                    <button
+                      className="fs-fs-save-btn"
+                      onClick={handleOpenPlaylistMenu}
+                      title="Save queue to playlist"
+                    >
+                      <BookmarkPlus size={16} />
+                      <span>Save</span>
+                    </button>
+                  </div>
 
-              <div className="fs-fs-tab-content">
-                {/* Up Next List */}
-                {((!isMobile && activeTab === 'upnext') || (isMobile && mobileMode === 'upnext')) && (
+                  {/* Autoplay toggle switch row (YouTube Music style) */}
+                  <div className="fs-fs-autoplay-row">
+                    <div className="fs-fs-autoplay-info">
+                      <span className="fs-fs-autoplay-title">Auto-play</span>
+                      <span className="fs-fs-autoplay-desc">Add similar content to the end of the queue</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isAutoplay}
+                      onClick={toggleAutoplay}
+                      className={`fs-fs-switch ${isAutoplay ? 'active' : ''}`}
+                      title={isAutoplay ? 'Auto-play is ON' : 'Auto-play is OFF'}
+                    >
+                      <span className="fs-fs-switch-knob" />
+                    </button>
+                  </div>
+
+                  {/* Queue List with thumbnails, titles, artists and right-aligned durations */}
                   <div className="fs-fs-queue-list">
                     {queue.length === 0 ? (
                       <div className="fs-empty-queue">Queue is empty</div>
                     ) : (
-                      queue.map((track, idx) => (
+                      queue.map((track, idx) => {
+                        const isCurrent = idx === queueIndex;
+                        return (
+                          <div
+                            key={`${track.videoId}-${idx}`}
+                            className={`fs-fs-queue-item ${isCurrent ? 'playing' : ''}`}
+                            onClick={() => playSong(track, queue)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openMenu(track, e);
+                            }}
+                          >
+                            <div className="fs-fs-queue-thumb-wrap">
+                              <img
+                                src={
+                                  track.thumbnail ||
+                                  (track.videoId
+                                    ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
+                                    : '/images/freesonglogowebp.webp')
+                                }
+                                alt={track.title}
+                                className="fs-fs-queue-thumb"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const currentSrc = e.currentTarget.src || '';
+                                  if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
+                                    e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
+                                  } else {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = getArtworkFallback(track.title);
+                                  }
+                                }}
+                              />
+                              {isCurrent && (
+                                <div className="fs-fs-playing-speaker">
+                                  <Volume2 size={15} />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="fs-fs-queue-meta">
+                              <span className={`fs-fs-queue-title truncate ${isCurrent ? 'text-green' : ''}`}>
+                                {track.title}
+                              </span>
+                              <span className="fs-fs-queue-artist truncate">{track.artist}</span>
+                            </div>
+
+                            <span className="fs-fs-queue-duration">
+                              {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
+                            </span>
+
+                            <button
+                              className="btn-icon fs-fs-queue-more"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openMenu(track, e);
+                              }}
+                              title="Track options"
+                              aria-label="Track options"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: LYRICS */}
+              {((!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics')) && (
+                <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
+                  {lyricsData.loading && (
+                    <div className="fs-lyrics-loading">
+                      <Loader2 size={32} className="spin text-brand" />
+                      <span>Syncing lyrics...</span>
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
+                    <div className="fs-synced-lyrics-text">
+                      {lyricsData.syncedLyrics.map((line, idx) => {
+                        const isActive = idx === activeLyricIndex;
+                        const isPassed = idx < activeLyricIndex;
+                        return (
+                          <p
+                            key={idx}
+                            className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
+                            onClick={() => seekTo(line.time)}
+                          >
+                            {line.text}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
+                    <div className="fs-plain-lyrics-text">
+                      {lyricsData.plainLyrics}
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.notFound && (
+                    <div className="fs-lyrics-not-found">
+                      <Mic2 size={44} className="fs-lyrics-not-found-icon" />
+                      <p>No lyrics found for this song</p>
+                      <span>Enjoy the high-fidelity audio stream</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: RELATED */}
+              {((!isMobile && activeTab === 'related') || (isMobile && mobileMode === 'related')) && (
+                <div className="fs-fs-related-panel">
+                  {loadingRelated ? (
+                    <div className="fs-lyrics-loading">
+                      <Loader2 size={32} className="spin text-brand" />
+                      <span>Finding related tracks...</span>
+                    </div>
+                  ) : relatedSongs.length === 0 ? (
+                    <div className="fs-lyrics-not-found">
+                      <Sparkles size={40} className="fs-lyrics-not-found-icon" />
+                      <p>No related songs found right now</p>
+                    </div>
+                  ) : (
+                    <div className="fs-fs-related-list">
+                      {relatedSongs.map((track, idx) => (
                         <div
-                          key={`${track.videoId}-${idx}`}
-                          className={`fs-fs-queue-item ${idx === queueIndex ? 'playing' : ''}`}
-                          onClick={() => playSong(track, queue)}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            openMenu(track, e);
-                          }}
+                          key={`rel-${track.videoId}-${idx}`}
+                          className="fs-fs-queue-item"
+                          onClick={() => playSong(track)}
                         >
                           <img
-                            src={
-                              track.thumbnail ||
-                              (track.videoId
-                                ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
-                                : '/images/freesonglogowebp.webp')
-                            }
+                            src={track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`}
                             alt={track.title}
                             className="fs-fs-queue-thumb"
                             referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              const currentSrc = e.currentTarget.src || '';
-                              if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
-                                e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
-                              } else {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src = getArtworkFallback(track.title);
-                              }
-                            }}
                           />
                           <div className="fs-fs-queue-meta">
                             <span className="fs-fs-queue-title truncate">{track.title}</span>
                             <span className="fs-fs-queue-artist truncate">{track.artist}</span>
                           </div>
-
-                          {idx === queueIndex && (
-                            <div className="fs-fs-playing-indicator">
-                              <span />
-                              <span />
-                              <span />
-                            </div>
-                          )}
-
+                          <span className="fs-fs-queue-duration">
+                            {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
+                          </span>
                           <button
                             className="btn-icon fs-fs-queue-more"
                             onClick={(e) => {
                               e.stopPropagation();
                               openMenu(track, e);
                             }}
-                            title="Track options"
-                            aria-label="Track options"
                           >
                             <MoreVertical size={16} />
                           </button>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Lyrics Panel */}
-                {((!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics')) && (
-                  <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
-                    {lyricsData.loading && (
-                      <div className="fs-lyrics-loading">
-                        <Loader2 size={32} className="spin text-brand" />
-                        <span>Syncing lyrics...</span>
-                      </div>
-                    )}
-
-                    {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
-                      <div className="fs-synced-lyrics-text">
-                        {lyricsData.syncedLyrics.map((line, idx) => {
-                          const isActive = idx === activeLyricIndex;
-                          const isPassed = idx < activeLyricIndex;
-                          return (
-                            <p
-                              key={idx}
-                              className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
-                              onClick={() => seekTo(line.time)}
-                            >
-                              {line.text}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
-                      <div className="fs-plain-lyrics-text">
-                        {lyricsData.plainLyrics}
-                      </div>
-                    )}
-
-                    {!lyricsData.loading && lyricsData.notFound && (
-                      <div className="fs-lyrics-not-found">
-                        <Mic2 size={44} className="fs-lyrics-not-found-icon" />
-                        <p>No synced lyrics found for this song</p>
-                        <span>Enjoy the high-fidelity audio stream!</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Fixed Bottom Player Bar (Exact YouTube Music Layout) ── */}
+      <div className="fs-fs-bottom-player">
+        {/* Full width Scrubber along the top edge */}
+        <div className="fs-fs-scrubber-top">
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            value={currentTime}
+            onChange={(e) => seekTo(parseFloat(e.target.value))}
+            className="fs-fs-scrubber-range"
+            style={{
+              background: `linear-gradient(to right, var(--color-primary) ${progressPercent}%, rgba(255, 255, 255, 0.18) ${progressPercent}%)`
+            }}
+          />
         </div>
 
-        {/* ── Bottom Controls & Scrubber ── */}
-        {/* ── Bottom Controls & Scrubber ── */}
-        <div className="fs-fs-controls-section">
-          {/* Progress Slider */}
-          <div className="fs-fs-scrubber-row">
-            <span className="fs-time-text">{formatTime(currentTime)}</span>
-            <div className="fs-scrubber-track-wrap">
+        <div className="fs-fs-bottom-content">
+          {/* LEFT: Controls (Prev, Play/Pause, Next) + Time display */}
+          <div className="fs-fs-bar-left">
+            <button
+              className="btn-icon fs-fs-bar-btn"
+              onClick={prevSong}
+              title="Previous Track"
+              aria-label="Previous Track"
+            >
+              <SkipBack size={20} />
+            </button>
+
+            <button
+              className="btn-icon fs-fs-bar-play-btn"
+              onClick={togglePlay}
+              title={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isLoading ? (
+                <Loader2 size={24} className="spin" />
+              ) : isPlaying ? (
+                <Pause size={24} fill="currentColor" />
+              ) : (
+                <Play size={24} fill="currentColor" style={{ marginLeft: 2 }} />
+              )}
+            </button>
+
+            <button
+              className="btn-icon fs-fs-bar-btn"
+              onClick={nextSong}
+              title="Next Track"
+              aria-label="Next Track"
+            >
+              <SkipForward size={20} />
+            </button>
+
+            <span className="fs-fs-time-counter">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+
+          {/* CENTER: Mini Thumbnail + Song Meta + Like + More */}
+          <div className="fs-fs-bar-center">
+            <img
+              src={
+                currentSong.thumbnail ||
+                (currentSong.videoId
+                  ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`
+                  : '/images/freesonglogowebp.webp')
+              }
+              alt={currentSong.title}
+              className="fs-fs-bar-thumb"
+              referrerPolicy="no-referrer"
+            />
+            <div className="fs-fs-bar-meta">
+              <span className="fs-fs-bar-title truncate">{currentSong.title}</span>
+              <span className="fs-fs-bar-artist truncate">{currentSong.artist}</span>
+            </div>
+            <button
+              className={`btn-icon fs-fs-bar-like ${liked ? 'liked' : ''}`}
+              onClick={() => toggleLike(currentSong)}
+              aria-label={liked ? 'Unlike' : 'Like'}
+              title={liked ? 'Liked' : 'Like'}
+            >
+              <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              className="btn-icon fs-fs-bar-more"
+              onClick={(e) => openMenu(currentSong, e)}
+              title="More options"
+              aria-label="More options"
+            >
+              <MoreVertical size={18} />
+            </button>
+          </div>
+
+          {/* RIGHT: Volume slider + Repeat + Shuffle + Collapse Down Chevron */}
+          <div className="fs-fs-bar-right">
+            {/* Volume */}
+            <div className="fs-fs-bar-volume">
+              <button
+                className="btn-icon fs-fs-vol-icon-btn"
+                onClick={toggleMute}
+                title={isMuted ? 'Unmute' : 'Mute'}
+                aria-label="Volume"
+              >
+                {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </button>
               <input
                 type="range"
                 min={0}
-                max={duration || 100}
-                value={currentTime}
-                onChange={(e) => seekTo(parseFloat(e.target.value))}
-                className="fs-scrubber-input fs-large-scrubber"
+                max={1}
+                step={0.01}
+                value={isMuted ? 0 : volume}
+                onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
+                className="fs-fs-bar-vol-slider"
                 style={{
-                  background: `linear-gradient(to right, var(--color-primary-hover) ${progressPercent}%, #333333 ${progressPercent}%)`
+                  background: `linear-gradient(to right, var(--color-primary) ${(isMuted ? 0 : volume) * 100}%, rgba(255, 255, 255, 0.2) ${(isMuted ? 0 : volume) * 100}%)`
                 }}
               />
             </div>
-            <span className="fs-time-text">{formatTime(duration)}</span>
-          </div>
 
-          {/* Unified Controls Bar */}
-          <div className="fs-fs-controls-bar">
-            {/* Left Balance Area */}
-            <div className="fs-fs-ctrl-left">
-              <span className="fs-fs-audio-badge">AMOLED HD</span>
-            </div>
+            {/* Repeat (Active bright green with dot) */}
+            <button
+              className={`btn-icon fs-fs-bar-btn ${repeatMode !== 'off' ? 'active' : ''}`}
+              onClick={toggleRepeat}
+              title={`Repeat: ${repeatMode.toUpperCase()}`}
+              aria-label={`Repeat: ${repeatMode}`}
+            >
+              {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+            </button>
 
-            {/* Center Buttons Row */}
-            <div className="fs-fs-buttons-row">
-              <button
-                className={`btn-icon fs-fs-ctrl-btn ${isShuffle ? 'active' : ''}`}
-                onClick={toggleShuffle}
-                title={isShuffle ? 'Shuffle: On' : 'Shuffle: Off'}
-                aria-label="Shuffle"
-              >
-                <Shuffle size={20} />
-              </button>
+            {/* Shuffle (Active bright green with dot) */}
+            <button
+              className={`btn-icon fs-fs-bar-btn ${isShuffle ? 'active' : ''}`}
+              onClick={toggleShuffle}
+              title={isShuffle ? 'Shuffle is ON' : 'Shuffle is OFF'}
+              aria-label="Shuffle"
+            >
+              <Shuffle size={18} />
+            </button>
 
-              <button
-                className="btn-icon fs-fs-ctrl-btn"
-                onClick={prevSong}
-                title="Previous Track"
-                aria-label="Previous"
-              >
-                <SkipBack size={26} />
-              </button>
-
-              <button
-                className="btn-play-circle fs-fs-big-play"
-                onClick={togglePlay}
-                title={isPlaying ? 'Pause' : 'Play'}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isLoading ? (
-                  <Loader2 size={28} className="spin" />
-                ) : isPlaying ? (
-                  <Pause size={28} fill="currentColor" />
-                ) : (
-                  <Play size={28} fill="currentColor" style={{ marginLeft: 3 }} />
-                )}
-              </button>
-
-              <button
-                className="btn-icon fs-fs-ctrl-btn"
-                onClick={nextSong}
-                title="Next Track"
-                aria-label="Next"
-              >
-                <SkipForward size={26} />
-              </button>
-
-              <button
-                className={`btn-icon fs-fs-ctrl-btn ${repeatMode !== 'off' ? 'active' : ''}`}
-                onClick={toggleRepeat}
-                title={`Repeat: ${repeatMode.toUpperCase()}`}
-                aria-label={`Repeat: ${repeatMode}`}
-              >
-                {repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
-              </button>
-            </div>
-
-            {/* Right: Hover Expandable Volume Control */}
-            <div className="fs-fs-ctrl-right">
-              <div className="fs-fs-volume-wrap">
-                <button
-                  className="btn-icon fs-fs-vol-btn"
-                  onClick={toggleMute}
-                  title={isMuted ? 'Unmute' : 'Mute'}
-                  aria-label="Toggle Mute"
-                >
-                  {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
-                <div className="fs-fs-vol-slider-container">
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={isMuted ? 0 : volume}
-                    onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
-                    className="fs-volume-input fs-fs-vol-slider"
-                    style={{
-                      background: `linear-gradient(to right, var(--color-primary) ${(isMuted ? 0 : volume) * 100}%, #333333 ${(isMuted ? 0 : volume) * 100}%)`
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Down Chevron to collapse */}
+            <button
+              className="btn-icon fs-fs-bar-btn fs-fs-bar-collapse"
+              onClick={() => setIsFullScreen(false)}
+              title="Close player"
+              aria-label="Close player"
+            >
+              <ChevronDown size={22} />
+            </button>
           </div>
         </div>
       </div>

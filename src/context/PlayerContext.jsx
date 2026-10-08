@@ -19,6 +19,7 @@ export function PlayerProvider({ children }) {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sleepTimer, setSleepTimerState] = useState(null); // null | { type: 'time'|'end_of_song', minutes, label, endTime }
+  const [isAutoplay, setIsAutoplay] = useState(true);
 
   const playerRef = useRef(null);
   const progressTimerRef = useRef(null);
@@ -27,6 +28,7 @@ export function PlayerProvider({ children }) {
   const isFetchingRelatedRef = useRef(false);
   const fetchedVideoIdsRef = useRef(new Set());
   const isTransitioningRef = useRef(false);
+  const isAutoplayRef = useRef(true);
 
   // Synchronized refs to prevent stale closures in YouTube Player callbacks
   const queueRef = useRef(queue);
@@ -37,6 +39,10 @@ export function PlayerProvider({ children }) {
   const sleepTimerRef = useRef(sleepTimer);
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
+
+  useEffect(() => {
+    isAutoplayRef.current = isAutoplay;
+  }, [isAutoplay]);
 
   // Keep refs synchronized on every update
   useEffect(() => {
@@ -200,6 +206,7 @@ export function PlayerProvider({ children }) {
 
   // Auto-fetch related tracks and append to queue for infinite playback
   const fetchAndAppendRelated = useCallback(async (baseSong) => {
+    if (!isAutoplayRef.current) return;
     if (!baseSong?.videoId || isFetchingRelatedRef.current) return;
     if (fetchedVideoIdsRef.current.has(baseSong.videoId)) return;
 
@@ -261,20 +268,20 @@ export function PlayerProvider({ children }) {
     });
 
     // Auto-expand queue if small so queue is never just 1 song!
-    if (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2) {
+    if (isAutoplayRef.current && (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2)) {
       fetchAndAppendRelated(song);
     }
   }, [ensurePlayer, fetchAndAppendRelated]);
 
   // Auto-fetch next batch of songs when approaching the end of queue
   useEffect(() => {
-    if (queue.length > 0 && queueIndex >= queue.length - 2) {
+    if (isAutoplay && queue.length > 0 && queueIndex >= queue.length - 2) {
       const activeSong = queue[queueIndex] || currentSong;
       if (activeSong) {
         fetchAndAppendRelated(activeSong);
       }
     }
-  }, [queueIndex, queue.length, currentSong, fetchAndAppendRelated]);
+  }, [isAutoplay, queueIndex, queue.length, currentSong, fetchAndAppendRelated]);
 
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
@@ -284,6 +291,10 @@ export function PlayerProvider({ children }) {
       playerRef.current.playVideo();
     }
   }, [isPlaying]);
+
+  const toggleAutoplay = useCallback(() => {
+    setIsAutoplay(prev => !prev);
+  }, []);
 
   const nextSong = useCallback(async () => {
     const currentQ = queueRef.current;
@@ -309,7 +320,7 @@ export function PlayerProvider({ children }) {
     if (nextIdx >= currentQ.length) {
       if (currentRepeat === 'all') {
         nextIdx = 0;
-      } else {
+      } else if (isAutoplayRef.current) {
         // Continuous playback: Attempt fetching more songs or loop to beginning
         const activeSong = currentSongRef.current || currentQ[currentQ.length - 1];
         if (activeSong?.videoId && !isFetchingRelatedRef.current) {
@@ -338,6 +349,9 @@ export function PlayerProvider({ children }) {
 
         // Loop back to index 0 so music never stops
         nextIdx = 0;
+      } else {
+        setIsPlaying(false);
+        return;
       }
     }
 
@@ -549,7 +563,10 @@ export function PlayerProvider({ children }) {
         sleepTimer,
         setSleepTimer,
         setIsFullScreen,
-        setIsQueueOpen
+        setIsQueueOpen,
+        isAutoplay,
+        toggleAutoplay,
+        setIsAutoplay
       }}
     >
       {children}
