@@ -87,34 +87,44 @@ app.get('/api/health', (req, res) => {
 
 // Home Feeds: "From the community", "From your library", "Quick picks"
 app.get('/api/home', async (req, res) => {
-  const cacheKey = 'home_feeds_v1';
+  const userGenres = req.query.genres ? req.query.genres.split(',').filter(Boolean) : [];
+  const userArtists = req.query.artists ? req.query.artists.split(',').filter(Boolean) : [];
+
+  const cacheKey = `home_feed_${userGenres.slice(0, 3).sort().join('_')}_${userArtists.slice(0, 3).sort().join('_')}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     const yt = await getYTMusic();
 
-    // 1. Search for popular community playlists
-    const [communityPlaylists, hindiMixes, librarySuggestions, quickPicks] = await Promise.all([
-      yt.searchPlaylists('chill playlist').catch(() => []),
-      yt.searchPlaylists('hindi lofi songs').catch(() => []),
-      yt.searchPlaylists('bolly hits').catch(() => []),
-      yt.searchSongs('arijit singh top').catch(() => [])
+    // Determine target search queries based on user preferences
+    const genre1 = userGenres[0] || 'chill';
+    const genre2 = userGenres[1] || 'bollywood';
+    const artist1 = userArtists[0] || 'Arijit Singh';
+    const artist2 = userArtists[1] || (userArtists[0] ? userArtists[0] : 'Taylor Swift');
+    const artist3 = userArtists[2] || (userArtists[1] || 'Diljit Dosanjh');
+
+    const [communityPlaylists, genrePlaylists, librarySuggestions, quickPicks1, quickPicks2, quickPicks3] = await Promise.all([
+      yt.searchPlaylists(`${genre1} mix playlist`).catch(() => []),
+      yt.searchPlaylists(`${genre2} songs playlist`).catch(() => []),
+      yt.searchPlaylists(`${artist1} songs`).catch(() => []),
+      yt.searchSongs(`${artist1} top`).catch(() => []),
+      yt.searchSongs(`${artist2} top`).catch(() => []),
+      yt.searchSongs(`${artist3} top`).catch(() => [])
     ]);
 
     // Format community items matching screenshot
-    const communityItems = [...communityPlaylists, ...hindiMixes].slice(0, 10).map((p, index) => {
+    const communityItems = [...communityPlaylists, ...genrePlaylists].slice(0, 10).map((p, index) => {
       const thumbs = p.thumbnails || [];
       const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '';
       return {
         id: p.playlistId || `comm-${index}`,
-        title: p.name || 'Community Playlist',
-        creator: p.artist?.name || 'Curated',
+        title: p.name || `${genre1} Playlist`,
+        creator: p.artist?.name || 'Community Curator',
         views: `${Math.floor(Math.random() * 450 + 50)}k views`,
         thumbnail: toHDUrl(bestThumb),
         type: 'playlist',
-        badge: (p.artist?.name || 'A')[0].toUpperCase(),
-        // Multi-image collage simulation if 4 thumbs available or generated
+        badge: (p.artist?.name || p.name || 'C')[0].toUpperCase(),
         thumbnails: thumbs.map(t => toHDUrl(t.url))
       };
     });
@@ -125,31 +135,48 @@ app.get('/api/home', async (req, res) => {
       const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '';
       return {
         id: p.playlistId || `lib-${index}`,
-        title: p.name || 'Library Collection',
-        subtitle: `${p.artist?.name || 'FreeSong'} • ${Math.floor(Math.random() * 20 + 8)} tracks`,
+        title: p.name || `${artist1} Collection`,
+        subtitle: `${p.artist?.name || artist1} • ${Math.floor(Math.random() * 20 + 8)} tracks`,
         thumbnail: toHDUrl(bestThumb),
         type: 'playlist'
       };
     });
 
-    // Quick pick songs
-    const quickPickSongs = quickPicks.slice(0, 12).map(s => {
-      const thumbs = s.thumbnails || [];
-      return {
-        videoId: s.videoId,
-        title: s.name,
-        artist: s.artist?.name || 'Unknown Artist',
-        album: s.album?.name || '',
-        duration: parseDuration(s.duration),
-        durationText: typeof s.duration === 'string' ? s.duration : `${Math.floor(s.duration / 60)}:${(s.duration % 60).toString().padStart(2, '0')}`,
-        thumbnail: toHDUrl(thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '')
-      };
-    });
+    // Combine and interleave quick picks for variety
+    const rawQuickPicks = [];
+    const maxLen = Math.max(quickPicks1.length, quickPicks2.length, quickPicks3.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (quickPicks1[i]) rawQuickPicks.push(quickPicks1[i]);
+      if (quickPicks2[i]) rawQuickPicks.push(quickPicks2[i]);
+      if (quickPicks3[i]) rawQuickPicks.push(quickPicks3[i]);
+    }
+
+    const seenIds = new Set();
+    const quickPickSongs = rawQuickPicks
+      .filter(s => {
+        if (!s || !s.videoId || seenIds.has(s.videoId)) return false;
+        seenIds.add(s.videoId);
+        return true;
+      })
+      .slice(0, 18)
+      .map(s => {
+        const thumbs = s.thumbnails || [];
+        return {
+          videoId: s.videoId,
+          title: s.name,
+          artist: s.artist?.name || (typeof s.artist === 'string' ? s.artist : 'Artist'),
+          album: s.album?.name || '',
+          duration: parseDuration(s.duration),
+          durationText: typeof s.duration === 'string' ? s.duration : `${Math.floor(s.duration / 60)}:${(s.duration % 60).toString().padStart(2, '0')}`,
+          thumbnail: toHDUrl(thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '')
+        };
+      });
 
     const result = {
       community: communityItems,
       library: libraryItems,
-      quickPicks: quickPickSongs
+      quickPicks: quickPickSongs,
+      preferencesApplied: userGenres.length > 0 || userArtists.length > 0
     };
 
     setCache(cacheKey, result);
@@ -305,10 +332,20 @@ app.get('/api/explore', async (req, res) => {
         { id: 'punjabi', name: 'Punjabi Beats', color: '#FF9800', icon: 'Flame' },
         { id: 'lofi', name: 'Lo-Fi & Chill', color: '#9C27B0', icon: 'Coffee' },
         { id: 'romantic', name: 'Romantic & Love', color: '#F44336', icon: 'Heart' },
+        { id: 'desihiphop', name: 'Desi Hip Hop', color: '#4CAF50', icon: 'Mic' },
         { id: 'indie', name: 'Indian Indie', color: '#00BCD4', icon: 'Guitar' },
+        { id: 'englishpop', name: 'English Pop', color: '#2196F3', icon: 'Headphones' },
+        { id: 'hiphoprap', name: 'Global Rap / Hip Hop', color: '#673AB7', icon: 'Radio' },
         { id: 'devotional', name: 'Devotional & Spiritual', color: '#FFC107', icon: 'Sparkles' },
-        { id: 'hiphop', name: 'Desi Hip Hop', color: '#4CAF50', icon: 'Mic' },
-        { id: 'workout', name: 'Workout & Energy', color: '#FF5722', icon: 'Zap' }
+        { id: 'workout', name: 'Workout & Energy', color: '#FF5722', icon: 'Zap' },
+        { id: 'party', name: 'Party & Club Hits', color: '#E040FB', icon: 'Volume2' },
+        { id: '90s', name: '90s Bollywood Nostalgia', color: '#795548', icon: 'Disc' },
+        { id: 'ghazals', name: 'Ghazals & Sufi', color: '#607D8B', icon: 'BookOpen' },
+        { id: 'southhits', name: 'Tollywood & Kollywood', color: '#FF5252', icon: 'Activity' },
+        { id: 'edm', name: 'EDM & Electronic', color: '#00E676', icon: 'Sliders' },
+        { id: 'rock', name: 'Rock & Alternative', color: '#FF3D00', icon: 'Flame' },
+        { id: 'sleep', name: 'Sleep & Ambient', color: '#3F51B5', icon: 'Moon' },
+        { id: 'focus', name: 'Focus & Study', color: '#009688', icon: 'Compass' }
       ],
       featuredTracks: popSongs.slice(0, 8).map(formatSong),
       lofiTracks: lofiSongs.slice(0, 8).map(formatSong),

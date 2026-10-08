@@ -100,5 +100,31 @@ export const storage = {
     } catch (e) {
       console.warn('Settings storage error:', e);
     }
+  },
+
+  getPreferences() {
+    try {
+      const data = localStorage.getItem('fs_preferences');
+      return data ? JSON.parse(data) : { genres: [], artists: [] };
+    } catch {
+      return { genres: [], artists: [] };
+    }
+  },
+
+  savePreferences(pref) {
+    try {
+      localStorage.setItem('fs_preferences', JSON.stringify(pref));
+      localStorage.setItem('fs_onboarding_completed', 'true');
+    } catch (e) {
+      console.warn('Preferences storage error:', e);
+    }
+  },
+
+  hasCompletedOnboarding() {
+    try {
+      return localStorage.getItem('fs_onboarding_completed') === 'true';
+    } catch {
+      return false;
+    }
   }
 };

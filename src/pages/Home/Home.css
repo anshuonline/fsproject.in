@@ -1,7 +1,7 @@
 .fs-home-page {
   display: flex;
   flex-direction: column;
-  gap: 48px;
+  gap: 40px;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -16,7 +16,74 @@
   color: var(--color-text-secondary);
 }
 
-/* Shelf styling */
+/* ─── Taste Profile Banner ───────────────────────────────────────────────── */
+.fs-home-taste-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, rgba(0, 200, 83, 0.08) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 1px solid rgba(0, 200, 83, 0.2);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  margin-bottom: -12px;
+}
+
+.fs-taste-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fs-taste-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 200, 83, 0.15);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fs-taste-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-white);
+  margin: 0 0 2px 0;
+}
+
+.fs-taste-desc {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.fs-tune-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.fs-tune-btn:hover {
+  background-color: var(--color-primary);
+  color: #000000;
+  border-color: var(--color-primary);
+}
+
+/* ─── Shelf styling ──────────────────────────────────────────────────────── */
 .fs-shelf {
   display: flex;
   flex-direction: column;
@@ -101,6 +168,12 @@
   max-width: 240px;
 }
 
+.fs-shelf-col-artist {
+  flex: 0 0 calc((100% - (6 * 16px)) / 7);
+  min-width: 150px;
+  max-width: 190px;
+}
+
 /* Horizontal scroll indicator bar */
 .fs-scroll-bar-indicator {
   width: 100%;
@@ -133,6 +206,9 @@
   .fs-shelf-col {
     flex: 0 0 calc((100% - (4 * 16px)) / 5);
   }
+  .fs-shelf-col-artist {
+    flex: 0 0 calc((100% - (5 * 16px)) / 6);
+  }
 }
 
 @media (max-width: 1050px) {
@@ -140,11 +216,26 @@
     flex: 0 0 calc((100% - (3 * 16px)) / 4);
     min-width: 170px;
   }
+  .fs-shelf-col-artist {
+    flex: 0 0 calc((100% - (4 * 16px)) / 5);
+    min-width: 140px;
+  }
 }
 
 @media (max-width: 768px) {
   .fs-home-page {
-    gap: 36px;
+    gap: 32px;
+  }
+
+  .fs-home-taste-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .fs-tune-btn {
+    align-self: flex-start;
   }
 
   .fs-shelf-title {
@@ -154,6 +245,11 @@
   .fs-shelf-col {
     flex: 0 0 calc((100% - 16px) / 2.3);
     min-width: 150px;
+  }
+
+  .fs-shelf-col-artist {
+    flex: 0 0 calc((100% - 16px) / 2.8);
+    min-width: 125px;
   }
 
   .fs-quickpicks-grid {
@@ -169,5 +265,9 @@
   .fs-shelf-col {
     flex: 0 0 calc((100% - 12px) / 2.15);
     min-width: 140px;
+  }
+  .fs-shelf-col-artist {
+    flex: 0 0 calc((100% - 12px) / 2.6);
+    min-width: 115px;
   }
 }

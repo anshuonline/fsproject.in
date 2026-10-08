@@ -1,0 +1,326 @@
+.fs-onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fs-onboarding-modal {
+  width: 100%;
+  max-width: 900px;
+  height: 90vh;
+  max-height: 800px;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+}
+
+.fs-onboarding-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.fs-onboarding-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fs-onboarding-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fs-onboarding-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fs-onboarding-step-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: 0.1em;
+}
+
+.fs-onboarding-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.fs-onboarding-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.fs-onboarding-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+/* Step 1: Genres */
+.fs-onboarding-genres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.fs-genre-select-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.fs-genre-select-card:hover {
+  background-color: var(--color-card-hover);
+  border-color: #383838;
+}
+
+.fs-genre-select-card.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 16px rgba(0, 200, 83, 0.2);
+}
+
+.fs-genre-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fs-genre-label {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.fs-genre-check {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Step 2: Artists Container */
+.fs-onboarding-artists-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-artists-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fs-artists-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.fs-search-icon-sm {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.fs-artists-search-input {
+  width: 100%;
+  height: 42px;
+  background-color: #161616;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 20px 0 42px;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast);
+}
+
+.fs-artists-search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.fs-artists-cat-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.fs-artists-cat-chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* 100 Artists Grid */
+.fs-artists-circle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 16px 12px;
+  padding: 4px 0;
+}
+
+.fs-artist-circle-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition-fast);
+}
+
+.fs-artist-circle-card:hover {
+  transform: translateY(-3px);
+}
+
+.fs-artist-circle-wrap {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+  background-color: #1a1a1a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.fs-artist-circle-card.selected .fs-artist-circle-wrap {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 16px rgba(0, 200, 83, 0.4);
+}
+
+.fs-artist-circle-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fs-artist-circle-badge {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 200, 83, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+}
+
+.fs-artist-circle-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  width: 100%;
+}
+
+.fs-artist-circle-genre {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  width: 100%;
+}
+
+/* Footer */
+.fs-onboarding-footer {
+  padding: 18px 28px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.fs-onboarding-stats {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.fs-onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-finish-btn {
+  padding: 10px 24px;
+  box-shadow: 0 0 20px rgba(0, 200, 83, 0.35);
+}
+
+@media (max-width: 650px) {
+  .fs-onboarding-modal {
+    height: 96vh;
+    border-radius: var(--radius-md);
+  }
+
+  .fs-onboarding-header {
+    padding: 16px;
+  }
+
+  .fs-onboarding-title {
+    font-size: 1.25rem;
+  }
+
+  .fs-onboarding-body {
+    padding: 16px;
+  }
+
+  .fs-onboarding-genres-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .fs-genre-select-card {
+    padding: 10px 12px;
+    font-size: 0.8125rem;
+  }
+
+  .fs-artists-circle-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 6px;
+  }
+
+  .fs-artist-circle-wrap {
+    width: 72px;
+    height: 72px;
+  }
+
+  .fs-onboarding-footer {
+    padding: 14px 16px;
+  }
+}

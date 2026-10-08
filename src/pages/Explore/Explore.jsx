@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Film, Flame, Coffee, Heart, Music, Sparkles, Mic, Zap, Loader2 } from 'lucide-react';
+import {
+  Film, Flame, Coffee, Heart, Music, Sparkles, Mic, Zap, Loader2,
+  Headphones, Radio, Volume2, Disc, BookOpen, Activity, Sliders, Moon, Compass
+} from 'lucide-react';
 import { api } from '../../services/api';
 import { SongCard } from '../../components/Cards/SongCard';
 import './Explore.css';
@@ -11,9 +14,19 @@ const ICON_MAP = {
   Coffee,
   Heart,
   Guitar: Music,
+  Music,
   Sparkles,
   Mic,
-  Zap
+  Zap,
+  Headphones,
+  Radio,
+  Volume2,
+  Disc,
+  BookOpen,
+  Activity,
+  Sliders,
+  Moon,
+  Compass
 };
 
 export function Explore() {

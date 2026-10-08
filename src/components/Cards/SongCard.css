@@ -7,6 +7,9 @@
   cursor: pointer;
   background-color: transparent;
   transition: background-color var(--transition-fast);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .fs-song-row:hover {
@@ -56,6 +59,7 @@
 
 .fs-song-info {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -65,19 +69,28 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .fs-song-artist {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .fs-song-duration {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
-  min-width: 44px;
+  min-width: 38px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .fs-song-actions {
@@ -86,6 +99,7 @@
   gap: 4px;
   opacity: 0;
   transition: opacity var(--transition-fast);
+  flex-shrink: 0;
 }
 
 .fs-song-row:hover .fs-song-actions {
@@ -108,7 +122,36 @@
 }
 
 @media (max-width: 768px) {
+  .fs-song-row {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .fs-song-thumb-wrap {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fs-song-title {
+    font-size: 0.875rem;
+  }
+
+  .fs-song-artist {
+    font-size: 0.75rem;
+  }
+
+  .fs-song-duration {
+    min-width: 32px;
+    font-size: 0.75rem;
+  }
+
   .fs-song-actions {
     opacity: 1;
+    gap: 2px;
+  }
+
+  .fs-song-btn {
+    width: 28px;
+    height: 28px;
   }
 }

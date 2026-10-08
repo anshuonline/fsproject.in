@@ -1,9 +1,16 @@
 const API_BASE = '/api';
 
 export const api = {
-  async getHomeFeed() {
+  async getHomeFeed(prefs = null) {
     try {
-      const res = await fetch(`${API_BASE}/home`);
+      let url = `${API_BASE}/home`;
+      if (prefs) {
+        const params = new URLSearchParams();
+        if (prefs.genres?.length) params.set('genres', prefs.genres.join(','));
+        if (prefs.artists?.length) params.set('artists', prefs.artists.map(a => typeof a === 'string' ? a : a.name).join(','));
+        url += `?${params.toString()}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       return await res.json();
     } catch (err) {
