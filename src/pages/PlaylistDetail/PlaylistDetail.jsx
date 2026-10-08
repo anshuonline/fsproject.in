@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { Play, Shuffle, ListMusic, Loader2, Clock, MoreHorizontal } from 'lucide-react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { Play, Shuffle, Loader2, Clock, MoreHorizontal, BookmarkPlus, BookmarkCheck, Pencil } from 'lucide-react';
 import { api } from '../../services/api';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
+import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
 import './PlaylistDetail.css';
 
 export function PlaylistDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryName = searchParams.get('name');
-  const { playlists } = useLibrary();
+  const { playlists, saveExternalPlaylist, getSavedClone } = useLibrary();
   const { playSong } = usePlayer();
-  const { openPlaylistMenu } = useContextMenu();
+  const { openPlaylistMenu, openEditPlaylistModal, showToast } = useContextMenu();
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Check if this playlist is a user-created local playlist
+  const isCustom = playlists.some(p => p.id === id);
+  // Check if this external playlist is already saved in the user's library
+  const savedClone = !isCustom ? getSavedClone(id) : null;
 
   useEffect(() => {
     // Check if it's a user-created local playlist
@@ -85,6 +92,15 @@ export function PlaylistDetail() {
     }
   };
 
+  const handleSavePlaylist = () => {
+    if (!playlist) return;
+    const cloned = saveExternalPlaylist(playlist);
+    if (cloned) {
+      showToast(`Saved "${cloned.name}" to your Library! Opening editable copy...`, 'success');
+      navigate(`/playlist/${cloned.id}`);
+    }
+  };
+
   return (
     <div className="fs-pl-page">
       <div
@@ -93,11 +109,19 @@ export function PlaylistDetail() {
           if (playlist) openPlaylistMenu(playlist, e);
         }}
       >
-        <div className="fs-pl-cover">
-          {playlist?.coverImage ? (
-            <img src={playlist.coverImage} alt={playlist.title} className="fs-pl-cover-img" />
-          ) : (
-            <ListMusic size={64} className="text-brand" />
+        <div
+          className={`fs-pl-cover-wrapper ${isCustom ? 'is-editable' : ''}`}
+          onClick={() => {
+            if (isCustom && playlist) openEditPlaylistModal(playlist);
+          }}
+          title={isCustom ? 'Click to edit playlist details & cover' : undefined}
+        >
+          <PlaylistCover playlist={playlist} size="hero" className="fs-pl-hero-cover" />
+          {isCustom && (
+            <div className="fs-pl-cover-edit-badge">
+              <Pencil size={18} />
+              <span>Change cover</span>
+            </div>
           )}
         </div>
 
@@ -121,6 +145,7 @@ export function PlaylistDetail() {
               <Play size={18} fill="#000000" />
               <span>Play All</span>
             </button>
+
             <button
               type="button"
               className="btn btn-secondary fs-pl-shuffle-btn"
@@ -130,6 +155,45 @@ export function PlaylistDetail() {
               <Shuffle size={18} />
               <span>Shuffle</span>
             </button>
+
+            {/* Save / Clone Playlist Button for External Playlists */}
+            {!isCustom && (
+              savedClone ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary fs-pl-saved-btn"
+                  onClick={() => navigate(`/playlist/${savedClone.id}`)}
+                  title="View your saved copy"
+                >
+                  <BookmarkCheck size={18} className="text-brand" />
+                  <span>Saved in Library</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary fs-pl-save-btn"
+                  onClick={handleSavePlaylist}
+                  title="Save an editable clone of this playlist to your Library"
+                >
+                  <BookmarkPlus size={18} />
+                  <span>Save Playlist</span>
+                </button>
+              )
+            )}
+
+            {/* Edit Playlist Button for User's Own Playlists */}
+            {isCustom && (
+              <button
+                type="button"
+                className="btn btn-secondary fs-pl-edit-btn"
+                onClick={() => openEditPlaylistModal(playlist)}
+                title="Edit playlist details"
+              >
+                <Pencil size={18} />
+                <span>Edit Playlist</span>
+              </button>
+            )}
+
             <button
               type="button"
               className="btn btn-secondary btn-icon fs-pl-more-btn"
@@ -170,6 +234,8 @@ export function PlaylistDetail() {
                 song={song}
                 queueContext={playlist.songs}
                 index={idx}
+                playlistId={isCustom ? playlist.id : null}
+                isUserPlaylist={isCustom}
               />
             ))
           )}

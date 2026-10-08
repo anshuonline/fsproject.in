@@ -34,24 +34,45 @@
   backdrop-filter: blur(20px);
 }
 
-.fs-pl-cover {
+.fs-pl-cover-wrapper {
+  position: relative;
   width: 210px;
   height: 210px;
-  border-radius: var(--radius-md);
-  background-color: var(--color-card);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85);
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85);
 }
 
-.fs-pl-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.fs-pl-cover-wrapper.is-editable {
+  cursor: pointer;
+}
+
+.fs-pl-cover-wrapper.is-editable:hover .fs-pl-cover-edit-badge {
+  opacity: 1;
+}
+
+.fs-pl-cover-edit-badge {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-white);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.fs-pl-hero-cover {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .fs-pl-hero-meta {
@@ -115,6 +136,44 @@
   border-radius: var(--radius-full);
   padding: 12px 24px;
   font-size: 0.9375rem;
+}
+
+.fs-pl-save-btn,
+.fs-pl-saved-btn,
+.fs-pl-edit-btn {
+  border-radius: var(--radius-full);
+  padding: 12px 22px;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.fs-pl-save-btn:hover {
+  background-color: rgba(0, 200, 83, 0.15);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: scale(1.03);
+}
+
+.fs-pl-saved-btn {
+  background-color: rgba(0, 200, 83, 0.1);
+  border-color: rgba(0, 200, 83, 0.3);
+  color: var(--color-white);
+}
+
+.fs-pl-saved-btn:hover {
+  background-color: rgba(0, 200, 83, 0.2);
+  border-color: var(--color-primary);
+  transform: scale(1.03);
+}
+
+.fs-pl-edit-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.03);
 }
 
 .fs-pl-desc {
@@ -196,7 +255,7 @@
 }
 
 .fs-pl-th-actions-spacer {
-  width: 70px;
+  width: 104px;
   min-width: 70px;
   flex-shrink: 0;
   margin-left: 16px;

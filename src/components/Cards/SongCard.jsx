@@ -1,16 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Heart, MoreVertical } from 'lucide-react';
+import { Play, Pause, Heart, MoreVertical, Trash2 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongCard.css';
 
-export function SongCard({ song, queueContext = [], index = null }) {
+export function SongCard({
+  song,
+  queueContext = [],
+  index = null,
+  playlistId = null,
+  isUserPlaylist = false
+}) {
   const { currentSong, isPlaying, playSong, togglePlay, setIsFullScreen } = usePlayer();
-  const { isLiked, toggleLike } = useLibrary();
-  const { openMenu } = useContextMenu();
+  const { isLiked, toggleLike, removeSongFromPlaylist } = useLibrary();
+  const { openMenu, showToast } = useContextMenu();
   const navigate = useNavigate();
 
   if (!song) return null;
@@ -39,6 +45,16 @@ export function SongCard({ song, queueContext = [], index = null }) {
     }
   };
 
+  const songWithContext = playlistId && isUserPlaylist ? { ...song, _playlistId: playlistId } : song;
+
+  const handleRemoveFromPlaylist = (e) => {
+    e.stopPropagation();
+    if (playlistId && song.videoId) {
+      removeSongFromPlaylist(playlistId, song.videoId);
+      showToast(`Removed "${song.title}" from playlist`, 'info');
+    }
+  };
+
   return (
     <div
       className={`fs-song-row ${isCurrent ? 'active' : ''}`}
@@ -46,7 +62,7 @@ export function SongCard({ song, queueContext = [], index = null }) {
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        openMenu(song, e);
+        openMenu(songWithContext, e);
       }}
     >
       {/* Track Index Column (Spotify Style) */}
@@ -120,7 +136,7 @@ export function SongCard({ song, queueContext = [], index = null }) {
           <span>{song.durationText || ''}</span>
         </div>
 
-        <div className={`fs-song-actions ${liked ? 'has-liked' : ''}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`fs-song-actions ${liked ? 'has-liked' : ''} ${isUserPlaylist ? 'has-playlist' : ''}`} onClick={(e) => e.stopPropagation()}>
           <button
             className={`btn-icon fs-song-btn ${liked ? 'liked' : ''}`}
             onClick={() => toggleLike(song)}
@@ -130,9 +146,20 @@ export function SongCard({ song, queueContext = [], index = null }) {
             <Heart size={16} fill={liked ? 'currentColor' : 'none'} />
           </button>
 
+          {isUserPlaylist && playlistId && (
+            <button
+              className="btn-icon fs-song-btn fs-song-remove-btn"
+              onClick={handleRemoveFromPlaylist}
+              title="Remove from this playlist"
+              aria-label="Remove from this playlist"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+
           <button
             className="btn-icon fs-song-btn"
-            onClick={(e) => openMenu(song, e)}
+            onClick={(e) => openMenu(songWithContext, e)}
             title="More actions"
             aria-label="More actions"
           >
