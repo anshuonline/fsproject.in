@@ -1,15 +1,15 @@
 .fs-sidebar {
   width: var(--sidebar-width);
-  height: 100vh;
+  height: calc(100vh - var(--header-height));
   position: fixed;
-  top: 0;
+  top: var(--header-height);
   left: 0;
   background-color: var(--color-bg-main);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
-  padding: 12px 12px calc(var(--player-height) + 12px) 12px;
+  padding: 8px 12px calc(var(--player-height) + 12px) 12px;
   overflow-y: auto;
   transition: width var(--transition-smooth), transform var(--transition-smooth);
 }
@@ -17,11 +17,11 @@
 /* Collapsed Mode (YouTube Music style) */
 .fs-sidebar.collapsed {
   width: var(--sidebar-collapsed-width);
-  padding: 12px 4px calc(var(--player-height) + 12px) 4px;
+  padding: 8px 4px calc(var(--player-height) + 12px) 4px;
 }
 
 .fs-sidebar.collapsed .fs-sidebar-nav {
-  margin-top: 56px;
+  margin-top: 4px;
   gap: 8px;
 }
 
@@ -82,7 +82,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 56px; /* Space below header */
+  margin-top: 8px;
 }
 
 .fs-nav-item {

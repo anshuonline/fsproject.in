@@ -35,9 +35,23 @@ export const storage = {
   getPlaylists() {
     try {
       const data = localStorage.getItem(KEYS.PLAYLISTS);
-      return data ? JSON.parse(data) : DEFAULT_PLAYLISTS;
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      const legacyIds = new Set([
+        'pl-stillhere', 'pl-eng65', 'pl-latesthindi', 'pl-tamilsec1',
+        'pl-tollywood', 'pl-kollywood', 'pl-pumped', 'pl-bollywood'
+      ]);
+      const legacyNames = new Set([
+        'Still Here', 'eng65', 'latest hindi 1', 'tamil sec1',
+        'Tollywood Hits', 'Kollywood Hits', 'Pumped Up', 'Bollywood Romance'
+      ]);
+      const filtered = parsed.filter(p => !legacyIds.has(p.id) && !legacyNames.has(p.name));
+      if (filtered.length !== parsed.length) {
+        localStorage.setItem(KEYS.PLAYLISTS, JSON.stringify(filtered));
+      }
+      return filtered;
     } catch {
-      return DEFAULT_PLAYLISTS;
+      return [];
     }
   },
 

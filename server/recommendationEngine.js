@@ -136,10 +136,40 @@ export function generateShelfPlan(preferences = {}, history = []) {
   const shelves = [];
 
   // 1. Primary Artist Top Shelves
-  primaryArtists.slice(0, 3).forEach((artist, idx) => {
+  const mainArtist = primaryArtists[0] || 'Diljit Dosanjh';
+  shelves.push({
+    id: `shelf-art-best-0`,
+    eyebrow: 'SIGNATURE ARTIST',
+    title: `Best of ${mainArtist}`,
+    searchQuery: `${mainArtist} best songs`,
+    type: 'songs',
+    category: 'artist'
+  });
+
+  // 2. QUICK PICKS (Prominently near the top like YouTube Music!)
+  shelves.push({
+    id: 'shelf-quickpicks',
+    eyebrow: 'START RADIO BASED ON A SONG',
+    title: 'Quick picks for you',
+    searchQuery: `${mainArtist} top hits`,
+    type: 'quickpicks',
+    category: 'picks'
+  });
+
+  // 3. Artist Special & Other Top Artists
+  shelves.push({
+    id: `shelf-art-special-0`,
+    eyebrow: `${mainArtist.toUpperCase()} SPOTLIGHT`,
+    title: `${mainArtist} Special`,
+    searchQuery: `${mainArtist} hit playlist`,
+    type: 'playlists',
+    category: 'artist'
+  });
+
+  primaryArtists.slice(1, 4).forEach((artist, idx) => {
     shelves.push({
-      id: `shelf-art-best-${idx}`,
-      eyebrow: idx === 0 ? 'SIGNATURE ARTIST' : 'FOR FANS OF ' + artist.toUpperCase(),
+      id: `shelf-art-best-${idx + 1}`,
+      eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
       title: `Best of ${artist}`,
       searchQuery: `${artist} best songs`,
       type: 'songs',
@@ -147,7 +177,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
 
     shelves.push({
-      id: `shelf-art-special-${idx}`,
+      id: `shelf-art-special-${idx + 1}`,
       eyebrow: `${artist.toUpperCase()} SPOTLIGHT`,
       title: `${artist} Special`,
       searchQuery: `${artist} hit playlist`,
@@ -156,7 +186,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   });
 
-  // 2. Primary Genre Shelves
+  // 4. Primary Genre Shelves
   primaryGenres.slice(0, 3).forEach((genre, idx) => {
     const capitalized = genre.charAt(0).toUpperCase() + genre.slice(1);
     shelves.push({
@@ -178,7 +208,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   });
 
-  // 3. Artist Mood Shelves (Romantic, Party, Acoustic)
+  // 5. Artist Mood Shelves (Romantic, Party, Acoustic)
   if (primaryArtists[0]) {
     shelves.push({
       id: 'shelf-art-party',
@@ -202,7 +232,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 4. Genre Specific High-Energy & Roadtrip
+  // 6. Genre Specific High-Energy & Workout
   if (primaryGenres[0]) {
     const gen = primaryGenres[0].charAt(0).toUpperCase() + primaryGenres[0].slice(1);
     shelves.push({
@@ -215,7 +245,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 5. Collaborations / Similar Artists
+  // 7. Collaborations / Similar Artists
   if (primaryArtists[0] && primaryArtists[1]) {
     shelves.push({
       id: 'shelf-collab',
@@ -227,7 +257,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 6. Indie Discoveries
+  // 8. Indie Discoveries
   shelves.push({
     id: 'shelf-indie',
     eyebrow: 'FRESH DISCOVERIES',
@@ -237,7 +267,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'discovery'
   });
 
-  // 7. Listening History Driven Shelves (Real-Time Adaptability!)
+  // 9. Listening History Driven Shelves (Real-Time Adaptability!)
   if (history && history.length > 0) {
     const recentItem = history[0];
     if (recentItem?.artist) {
@@ -260,16 +290,6 @@ export function generateShelfPlan(preferences = {}, history = []) {
       });
     }
   }
-
-  // 8. Quick Picks Shelf
-  shelves.push({
-    id: 'shelf-quickpicks',
-    eyebrow: 'START RADIO BASED ON A SONG',
-    title: 'Quick picks for you',
-    searchQuery: `${primaryArtists[0]} top`,
-    type: 'quickpicks',
-    category: 'picks'
-  });
 
   // Cap at 18–20 dynamic shelves
   return shelves.slice(0, 20);

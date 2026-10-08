@@ -18,6 +18,26 @@
   align-items: center;
   gap: 16px;
   min-width: 220px;
+  z-index: 10;
+}
+
+.fs-menu-btn {
+  color: var(--color-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.fs-menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .fs-brand {
