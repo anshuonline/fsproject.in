@@ -102,3 +102,39 @@
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
+
+.fs-comm-more-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  z-index: 3;
+  cursor: pointer;
+}
+
+.fs-comm-card:hover .fs-comm-more-btn {
+  opacity: 1;
+}
+
+.fs-comm-more-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.08);
+}
+
+@media (max-width: 768px) {
+  .fs-comm-more-btn {
+    opacity: 1;
+  }
+}
+

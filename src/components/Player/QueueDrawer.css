@@ -160,10 +160,28 @@
   transition: opacity var(--transition-fast);
 }
 
-.fs-queue-row:hover .fs-queue-remove-btn {
+.fs-queue-more-btn {
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.fs-queue-row:hover .fs-queue-remove-btn,
+.fs-queue-row:hover .fs-queue-more-btn {
   opacity: 1;
 }
 
 .fs-queue-remove-btn:hover {
   color: #ff5252;
+}
+
+.fs-queue-more-btn:hover {
+  color: var(--color-white);
+}
+
+@media (max-width: 768px) {
+  .fs-queue-remove-btn,
+  .fs-queue-more-btn {
+    opacity: 1;
+  }
 }

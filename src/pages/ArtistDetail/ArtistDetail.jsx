@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
+import { AlbumCard } from '../../components/Cards/AlbumCard';
 import './ArtistDetail.css';
 
 export function ArtistDetail() {
@@ -106,14 +107,9 @@ export function ArtistDetail() {
           <h2 className="fs-section-title">Discography</h2>
           <div className="fs-artist-albums-grid">
             {artist.albums.map(al => (
-              <LibraryCard
+              <AlbumCard
                 key={al.id}
-                item={{
-                  id: al.id,
-                  title: al.title,
-                  subtitle: al.year ? `${al.year} • Album` : 'Album',
-                  thumbnail: al.thumbnail
-                }}
+                album={al}
               />
             ))}
           </div>

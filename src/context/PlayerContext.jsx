@@ -18,9 +18,11 @@ export function PlayerProvider({ children }) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sleepTimer, setSleepTimerState] = useState(null); // null | { type: 'time'|'end_of_song', minutes, label, endTime }
 
   const playerRef = useRef(null);
   const progressTimerRef = useRef(null);
+  const sleepTimerTimeoutRef = useRef(null);
   const ytApiReadyRef = useRef(false);
   const isFetchingRelatedRef = useRef(false);
   const fetchedVideoIdsRef = useRef(new Set());
@@ -273,6 +275,13 @@ export function PlayerProvider({ children }) {
 
   // Handle track ending
   const handleSongEnded = useCallback(() => {
+    if (sleepTimer?.type === 'end_of_song') {
+      setSleepTimerState(null);
+      setIsPlaying(false);
+      if (playerRef.current?.pauseVideo) playerRef.current.pauseVideo();
+      return;
+    }
+
     if (repeatMode === 'one') {
       if (playerRef.current?.seekTo) {
         playerRef.current.seekTo(0);
@@ -282,7 +291,63 @@ export function PlayerProvider({ children }) {
     }
 
     nextSong();
-  }, [repeatMode, nextSong]);
+  }, [repeatMode, nextSong, sleepTimer]);
+
+  const playNext = useCallback((song) => {
+    if (!song || !song.videoId) return;
+    setQueue(prev => {
+      if (prev.length === 0) {
+        playSong(song);
+        return [song];
+      }
+      const newQueue = [...prev];
+      const insertAt = queueIndex >= 0 ? queueIndex + 1 : 0;
+      newQueue.splice(insertAt, 0, song);
+      return newQueue;
+    });
+  }, [queueIndex, playSong]);
+
+  const startRadio = useCallback((song) => {
+    if (!song || !song.videoId) return;
+    setQueue([song]);
+    setQueueIndex(0);
+    playSong(song, [song]);
+    fetchAndAppendRelated(song);
+  }, [playSong, fetchAndAppendRelated]);
+
+  const setSleepTimer = useCallback((minutes) => {
+    if (sleepTimerTimeoutRef.current) {
+      clearTimeout(sleepTimerTimeoutRef.current);
+      sleepTimerTimeoutRef.current = null;
+    }
+
+    if (!minutes || minutes === 'off') {
+      setSleepTimerState(null);
+      return;
+    }
+
+    if (minutes === 'end_of_song') {
+      setSleepTimerState({ type: 'end_of_song', label: 'End of track' });
+      return;
+    }
+
+    const mins = parseInt(minutes, 10);
+    if (isNaN(mins) || mins <= 0) {
+      setSleepTimerState(null);
+      return;
+    }
+
+    const endTime = Date.now() + mins * 60 * 1000;
+    setSleepTimerState({ type: 'time', minutes: mins, endTime, label: `${mins}m` });
+
+    sleepTimerTimeoutRef.current = setTimeout(() => {
+      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+        playerRef.current.pauseVideo();
+      }
+      setIsPlaying(false);
+      setSleepTimerState(null);
+    }, mins * 60 * 1000);
+  }, []);
 
   const prevSong = useCallback(() => {
     if (currentTime > 4 && playerRef.current?.seekTo) {
@@ -385,6 +450,10 @@ export function PlayerProvider({ children }) {
         addToQueue,
         removeFromQueue,
         clearQueue,
+        playNext,
+        startRadio,
+        sleepTimer,
+        setSleepTimer,
         setIsFullScreen,
         setIsQueueOpen
       }}

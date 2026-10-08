@@ -2,12 +2,14 @@ import React from 'react';
 import { Play, Pause, Heart, Plus, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongCard.css';
 
 export function SongCard({ song, queueContext = [] }) {
   const { currentSong, isPlaying, playSong, togglePlay, addToQueue } = usePlayer();
   const { isLiked, toggleLike } = useLibrary();
+  const { openMenu } = useContextMenu();
 
   if (!song) return null;
 
@@ -27,6 +29,11 @@ export function SongCard({ song, queueContext = [] }) {
     <div
       className={`fs-song-row ${isCurrent ? 'active' : ''}`}
       onClick={handlePlay}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openMenu(song, e);
+      }}
     >
       <div className="fs-song-thumb-wrap">
         <img
@@ -80,6 +87,15 @@ export function SongCard({ song, queueContext = [] }) {
           aria-label="Add to queue"
         >
           <Plus size={18} />
+        </button>
+
+        <button
+          className="btn-icon fs-song-btn"
+          onClick={(e) => openMenu(song, e)}
+          title="More actions"
+          aria-label="More actions"
+        >
+          <MoreVertical size={16} />
         </button>
       </div>
     </div>

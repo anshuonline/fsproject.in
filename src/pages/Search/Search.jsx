@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Loader2, Music, Disc, ListMusic, User } from 'lucide-react';
 import { useSearchData } from './useSearchData';
 import { SongCard } from '../../components/Cards/SongCard';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
+import { AlbumCard } from '../../components/Cards/AlbumCard';
 import './Search.css';
 
 const FILTERS = [
@@ -15,6 +17,7 @@ const FILTERS = [
 ];
 
 export function Search() {
+  const navigate = useNavigate();
   const { query, filterType, setFilterType, results, loading, error } = useSearchData();
 
   return (
@@ -55,6 +58,20 @@ export function Search() {
           <SearchIcon size={48} className="fs-search-empty-icon" />
           <h3>Type in the top bar to search</h3>
           <p>Find your favorite songs, artists, playlists, and albums.</p>
+          <div className="fs-search-trending-tags">
+            <span className="fs-trending-label">Trending Searches:</span>
+            <div className="fs-trending-chips">
+              {['Arijit Singh', 'Rockstar', 'Sidhu Moose Wala', 'Aashiqui 2', 'Bollywood Lo-Fi', 'Coke Studio', 'AP Dhillon', 'Taylor Swift'].map(term => (
+                <button
+                  key={term}
+                  className="filter-chip"
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(term)}`)}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -83,14 +100,9 @@ export function Search() {
               <h3 className="fs-section-title">Albums</h3>
               <div className="fs-cards-grid">
                 {results.albums.map(album => (
-                  <LibraryCard
+                  <AlbumCard
                     key={album.id}
-                    item={{
-                      id: album.id,
-                      title: album.title,
-                      subtitle: `${album.artist} • ${album.year || 'Album'}`,
-                      thumbnail: album.thumbnail
-                    }}
+                    album={album}
                   />
                 ))}
               </div>

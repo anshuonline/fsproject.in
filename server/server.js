@@ -163,6 +163,57 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Search Suggestions Endpoint (YouTube Music / YouTube Autocomplete)
+app.get('/api/search/suggestions', async (req, res) => {
+  const query = req.query.q?.trim();
+  if (!query) {
+    return res.json({ suggestions: [] });
+  }
+
+  const cacheKey = `suggestions_${query.toLowerCase()}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const yt = await getYTMusic();
+    let suggestions = [];
+    try {
+      suggestions = await yt.getSearchSuggestions(query);
+    } catch (e) {
+      console.warn(`yt.getSearchSuggestions failed for "${query}":`, e.message);
+    }
+
+    // High-reliability fallback: Google YouTube suggest endpoint
+    if (!suggestions || suggestions.length === 0) {
+      try {
+        const fallbackRes = await fetch(
+          `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}`
+        );
+        if (fallbackRes.ok) {
+          const text = await fallbackRes.text();
+          const jsonMatch = text.match(/\((.*)\)/);
+          if (jsonMatch && jsonMatch[1]) {
+            const data = JSON.parse(jsonMatch[1]);
+            if (Array.isArray(data[1])) {
+              suggestions = data[1].map(item => item[0]).filter(Boolean);
+            }
+          }
+        }
+      } catch (fbErr) {
+        console.warn('Fallback suggestion error:', fbErr.message);
+      }
+    }
+
+    const unique = Array.from(new Set(suggestions || [])).slice(0, 8);
+    const result = { suggestions: unique };
+    setCache(cacheKey, result, 10 * 60 * 1000);
+    res.json(result);
+  } catch (err) {
+    console.error(`Error fetching suggestions for "${query}":`, err);
+    res.json({ suggestions: [] });
+  }
+});
+
 // Synchronized Lyrics endpoint (lrclib + cache)
 app.get('/api/lyrics', async (req, res) => {
   const { title, artist } = req.query;
@@ -394,23 +445,48 @@ app.get('/api/album/:id', async (req, res) => {
 
   try {
     const yt = await getYTMusic();
-    const album = await yt.getAlbum(id);
-    let songs = [];
+    let targetId = id;
+    if (targetId.startsWith('OLAK')) {
+      targetId = 'VL' + targetId;
+    }
 
-    if (album.playlistId) {
-      const videos = await yt.getPlaylistVideos(album.playlistId).catch(() => []);
-      songs = videos.map(formatSong);
-    } else if (album.songs && album.songs.length > 0) {
-      songs = album.songs.map(formatSong);
+    let album = null;
+    try {
+      album = await yt.getAlbum(targetId);
+    } catch (err) {
+      if (!targetId.startsWith('VL') && !targetId.startsWith('MPREb_')) {
+        try {
+          album = await yt.getAlbum('VL' + targetId);
+        } catch {}
+      }
+    }
+
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+
+    let songs = [];
+    // Prioritize album.songs because yt.getAlbum already extracts tracks directly with full metadata
+    if (Array.isArray(album.songs) && album.songs.length > 0) {
+      songs = album.songs.map(formatSong).filter(Boolean);
+    } else if (album.playlistId) {
+      let pid = album.playlistId;
+      if (pid.startsWith('PL')) pid = 'VL' + pid;
+      const videos = await yt.getPlaylistVideos(pid).catch(() => []);
+      if (videos && videos.length > 0) {
+        songs = videos.map(formatSong).filter(Boolean);
+      }
     }
 
     const thumbs = album.thumbnails || [];
+    const bestCover = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || (songs[0]?.thumbnail || '');
+
     const result = {
       id: album.albumId || id,
-      title: album.name || album.title,
-      artist: album.artist?.name || 'Various Artists',
+      title: album.name || album.title || req.query.name || 'Album',
+      artist: album.artist?.name || (typeof album.artist === 'string' ? album.artist : 'Various Artists'),
       year: album.year || '',
-      coverImage: toHDUrl(thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || ''),
+      coverImage: toHDUrl(bestCover),
       songs,
       trackCount: songs.length
     };

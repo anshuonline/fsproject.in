@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Trash2, Music } from 'lucide-react';
+import { X, Trash2, Music, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import './QueueDrawer.css';
 
 export function QueueDrawer() {
@@ -13,6 +14,8 @@ export function QueueDrawer() {
     removeFromQueue,
     clearQueue
   } = usePlayer();
+
+  const { openMenu } = useContextMenu();
 
   if (!isQueueOpen) return null;
 
@@ -62,6 +65,11 @@ export function QueueDrawer() {
                     key={`${song.videoId}-${idx}`}
                     className={`fs-queue-row ${isCurrent ? 'current' : ''}`}
                     onClick={() => playSong(song, queue)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openMenu(song, e);
+                    }}
                   >
                     <div className="fs-queue-idx">{idx + 1}</div>
                     <img
@@ -74,6 +82,19 @@ export function QueueDrawer() {
                       <span className="fs-queue-song-title truncate">{song.title}</span>
                       <span className="fs-queue-song-artist truncate">{song.artist}</span>
                     </div>
+
+                    <button
+                      className="btn-icon fs-queue-more-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openMenu(song, e);
+                      }}
+                      title="More options"
+                      aria-label="More options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+
                     <button
                       className="btn-icon fs-queue-remove-btn"
                       onClick={(e) => {

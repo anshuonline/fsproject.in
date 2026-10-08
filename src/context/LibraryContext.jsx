@@ -49,6 +49,48 @@ export function LibraryProvider({ children }) {
     setPlaylists(prev => prev.filter(p => p.id !== id));
   };
 
+  const addSongToPlaylist = (playlistId, song) => {
+    if (!playlistId || !song || !song.videoId) return false;
+    let added = false;
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        const existing = p.songs || [];
+        if (!existing.some(s => s.videoId === song.videoId)) {
+          added = true;
+          const updated = [song, ...existing];
+          return {
+            ...p,
+            songs: updated,
+            tracksCount: updated.length,
+            updatedAt: 'Just now'
+          };
+        }
+      }
+      return p;
+    }));
+    return added;
+  };
+
+  const removeSongFromPlaylist = (playlistId, videoId) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        const updated = (p.songs || []).filter(s => s.videoId !== videoId);
+        return {
+          ...p,
+          songs: updated,
+          tracksCount: updated.length,
+          updatedAt: 'Just now'
+        };
+      }
+      return p;
+    }));
+  };
+
+  const isSongInPlaylist = (playlistId, videoId) => {
+    const pl = playlists.find(p => p.id === playlistId);
+    return pl ? (pl.songs || []).some(s => s.videoId === videoId) : false;
+  };
+
   const refreshHistory = () => {
     setHistory(storage.getHistory());
   };
@@ -68,6 +110,9 @@ export function LibraryProvider({ children }) {
         isLiked,
         createPlaylist,
         deletePlaylist,
+        addSongToPlaylist,
+        removeSongFromPlaylist,
+        isSongInPlaylist,
         refreshHistory,
         clearHistory
       }}

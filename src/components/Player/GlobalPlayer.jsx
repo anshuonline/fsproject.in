@@ -12,10 +12,12 @@ import {
   ListMusic,
   Maximize2,
   Heart,
-  Loader2
+  Loader2,
+  MoreVertical
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import './GlobalPlayer.css';
 
 function formatTime(sec) {
@@ -50,6 +52,7 @@ export function GlobalPlayer() {
   } = usePlayer();
 
   const { isLiked, toggleLike } = useLibrary();
+  const { openMenu } = useContextMenu();
   const progressBarRef = useRef(null);
 
   if (!currentSong) return null;
@@ -63,7 +66,13 @@ export function GlobalPlayer() {
   const liked = isLiked(currentSong.videoId);
 
   return (
-    <div className="fs-global-player">
+    <div
+      className="fs-global-player"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        openMenu(currentSong, e);
+      }}
+    >
       {/* Top micro progress bar for mobile */}
       <div className="fs-player-micro-progress">
         <div
@@ -101,6 +110,17 @@ export function GlobalPlayer() {
             aria-label={liked ? 'Unlike' : 'Like'}
           >
             <Heart size={18} fill={liked ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            className="btn-icon fs-player-more-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              openMenu(currentSong, e);
+            }}
+            title="More options"
+            aria-label="More options"
+          >
+            <MoreVertical size={18} />
           </button>
         </div>
 

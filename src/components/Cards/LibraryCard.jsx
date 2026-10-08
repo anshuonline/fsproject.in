@@ -9,17 +9,22 @@ export function LibraryCard({ item }) {
   const { playSong } = usePlayer();
   const navigate = useNavigate();
 
+  const isAlbum = item?.type === 'album' || (typeof item?.id === 'string' && item.id.startsWith('MPREb_'));
+  const targetRoute = isAlbum
+    ? `/album/${item.id}?name=${encodeURIComponent(item.title || '')}`
+    : `/playlist/${item.id}?name=${encodeURIComponent(item.title || '')}`;
+
   const handlePlayClick = (e) => {
     e.stopPropagation();
     if (item.songs && item.songs.length > 0) {
       playSong(item.songs[0], item.songs);
     } else {
-      navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
+      navigate(targetRoute);
     }
   };
 
   const handleCardClick = () => {
-    navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
+    navigate(targetRoute);
   };
 
   return (

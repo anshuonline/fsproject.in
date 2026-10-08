@@ -14,11 +14,18 @@ import {
   ListMusic,
   FileText,
   Loader2,
-  Mic2
+  Mic2,
+  MoreVertical,
+  Radio,
+  FolderPlus,
+  Moon,
+  Share2
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
+import { getArtworkFallback } from '../../utils/imageFallback';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {
@@ -65,6 +72,7 @@ export function FullScreenPlayer() {
     repeatMode,
     isFullScreen,
     isLoading,
+    sleepTimer,
     setIsFullScreen,
     togglePlay,
     nextSong,
@@ -74,11 +82,22 @@ export function FullScreenPlayer() {
     toggleMute,
     toggleShuffle,
     toggleRepeat,
-    playSong
+    playSong,
+    startRadio
   } = usePlayer();
 
   const { isLiked, toggleLike } = useLibrary();
-  const [activeTab, setActiveTab] = useState('upnext'); // 'upnext' | 'lyrics'
+  const { openMenu, setView: setContextView, showToast } = useContextMenu();
+
+  // Desktop active tab: 'upnext' | 'lyrics'
+  const [activeTab, setActiveTab] = useState('upnext');
+  // Mobile segmented mode: 'song' | 'lyrics' | 'upnext'
+  const [mobileMode, setMobileMode] = useState('song');
+
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 850 : false
+  );
+
   const [lyricsData, setLyricsData] = useState({
     loading: false,
     syncedLyrics: [],
@@ -87,6 +106,14 @@ export function FullScreenPlayer() {
   });
 
   const lyricsContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 850);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch lyrics whenever currentSong changes
   useEffect(() => {
@@ -157,21 +184,63 @@ export function FullScreenPlayer() {
 
   // Auto-scroll to active lyric line
   useEffect(() => {
-    if (activeTab === 'lyrics' && activeLyricIndex !== -1 && lyricsContainerRef.current) {
+    const showLyrics = (!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics');
+    if (showLyrics && activeLyricIndex !== -1 && lyricsContainerRef.current) {
       const activeEl = lyricsContainerRef.current.querySelector('.fs-lyric-line.active');
       if (activeEl) {
         activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [activeLyricIndex, activeTab]);
+  }, [activeLyricIndex, activeTab, mobileMode, isMobile]);
 
   if (!isFullScreen || !currentSong) return null;
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const liked = isLiked(currentSong.videoId);
 
+  const handleStartRadio = () => {
+    startRadio(currentSong);
+    showToast(`Started radio based on "${currentSong.title}"`);
+  };
+
+  const handleOpenPlaylistMenu = (e) => {
+    openMenu(currentSong, e);
+    setContextView('playlist');
+  };
+
+  const handleOpenSleepTimerMenu = (e) => {
+    openMenu(currentSong, e);
+    setContextView('sleep_timer');
+  };
+
+  const handleShare = async (e) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/?v=${currentSong.videoId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: currentSong.title,
+          text: `Listen to "${currentSong.title}" on FreeSong.in`,
+          url: shareUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Song link copied to clipboard!');
+      }
+    } catch {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('Song link copied to clipboard!');
+    }
+  };
+
   return (
-    <div className="fs-fullscreen-overlay">
+    <div
+      className="fs-fullscreen-overlay"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        openMenu(currentSong, e);
+      }}
+    >
       {/* Ambient background glow */}
       <div
         className="fs-fs-ambient-bg"
@@ -188,139 +257,291 @@ export function FullScreenPlayer() {
           >
             <ChevronDown size={28} />
           </button>
-          <div className="fs-fs-header-title">
-            <span>NOW PLAYING</span>
+
+          {/* Desktop Title vs Mobile Segmented Tabs */}
+          {isMobile ? (
+            <div className="fs-fs-mobile-segments">
+              <button
+                className={`fs-fs-seg-btn ${mobileMode === 'song' ? 'active' : ''}`}
+                onClick={() => setMobileMode('song')}
+              >
+                Song
+              </button>
+              <button
+                className={`fs-fs-seg-btn ${mobileMode === 'lyrics' ? 'active' : ''}`}
+                onClick={() => setMobileMode('lyrics')}
+              >
+                Lyrics
+              </button>
+              <button
+                className={`fs-fs-seg-btn ${mobileMode === 'upnext' ? 'active' : ''}`}
+                onClick={() => setMobileMode('upnext')}
+              >
+                Up Next {queue.length > 0 && `(${queue.length})`}
+              </button>
+            </div>
+          ) : (
+            <div className="fs-fs-header-title">
+              <span>NOW PLAYING</span>
+            </div>
+          )}
+
+          {/* Top Right Actions */}
+          <div className="fs-fs-top-actions">
+            {sleepTimer && (
+              <button
+                className="fs-fs-timer-badge"
+                onClick={handleOpenSleepTimerMenu}
+                title="Sleep Timer Active"
+              >
+                <Moon size={14} />
+                <span>{sleepTimer.label}</span>
+              </button>
+            )}
+
+            <button
+              className="btn-icon fs-fs-more-btn"
+              onClick={(e) => openMenu(currentSong, e)}
+              title="More options"
+              aria-label="More options"
+            >
+              <MoreVertical size={22} />
+            </button>
           </div>
-          <div style={{ width: 40 }} />
         </div>
 
-        {/* Main Content: Left Art & Right Up Next / Lyrics */}
-        <div className="fs-fs-main">
-          {/* Left / Center: Artwork & Details */}
-          <div className="fs-fs-art-col">
-            <div className="fs-fs-art-wrap">
-              <img
-                src={currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
-                alt={currentSong.title}
-                className="fs-fs-artwork"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            <div className="fs-fs-track-info">
-              <div className="fs-fs-text-group">
-                <h2 className="fs-fs-song-name truncate">{currentSong.title}</h2>
-                <p className="fs-fs-song-artist truncate">{currentSong.artist}</p>
+        {/* ─── MAIN CONTENT ─── */}
+        <div className={`fs-fs-main ${isMobile ? `mobile-${mobileMode}` : ''}`}>
+          {/* ── Left / Center Artwork & Info (Always shown on Desktop, shown in 'song' on Mobile) ── */}
+          {(!isMobile || mobileMode === 'song') && (
+            <div className="fs-fs-art-col">
+              <div className="fs-fs-art-wrap">
+                <img
+                  src={
+                    currentSong.thumbnail ||
+                    (currentSong.videoId
+                      ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`
+                      : '/images/freesonglogowebp.webp')
+                  }
+                  alt={currentSong.title}
+                  className="fs-fs-artwork"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const currentSrc = e.currentTarget.src || '';
+                    if (currentSong.videoId && !currentSrc.includes('i.ytimg.com')) {
+                      e.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`;
+                    } else {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = getArtworkFallback(currentSong.title);
+                    }
+                  }}
+                />
               </div>
-              <button
-                className={`btn-icon fs-fs-like-btn ${liked ? 'liked' : ''}`}
-                onClick={() => toggleLike(currentSong)}
-                aria-label={liked ? 'Unlike track' : 'Like track'}
-              >
-                <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
-              </button>
-            </div>
-          </div>
 
-          {/* Right: Tabs (Up Next / Lyrics) */}
-          <div className="fs-fs-side-col">
-            <div className="fs-fs-tabs">
-              <button
-                className={`fs-fs-tab-btn ${activeTab === 'upnext' ? 'active' : ''}`}
-                onClick={() => setActiveTab('upnext')}
-              >
-                <ListMusic size={16} />
-                <span>UP NEXT</span>
-              </button>
-              <button
-                className={`fs-fs-tab-btn ${activeTab === 'lyrics' ? 'active' : ''}`}
-                onClick={() => setActiveTab('lyrics')}
-              >
-                <FileText size={16} />
-                <span>LYRICS</span>
-              </button>
-            </div>
-
-            <div className="fs-fs-tab-content">
-              {activeTab === 'upnext' ? (
-                <div className="fs-fs-queue-list">
-                  {queue.length === 0 ? (
-                    <div className="fs-empty-queue">Queue is empty</div>
-                  ) : (
-                    queue.map((track, idx) => (
-                      <div
-                        key={`${track.videoId}-${idx}`}
-                        className={`fs-fs-queue-item ${idx === queueIndex ? 'playing' : ''}`}
-                        onClick={() => playSong(track, queue)}
-                      >
-                        <img
-                          src={track.thumbnail || (track.videoId ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
-                          alt={track.title}
-                          className="fs-fs-queue-thumb"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="fs-fs-queue-meta">
-                          <span className="fs-fs-queue-title truncate">{track.title}</span>
-                          <span className="fs-fs-queue-artist truncate">{track.artist}</span>
-                        </div>
-                        {idx === queueIndex && (
-                          <div className="fs-fs-playing-indicator">
-                            <span />
-                            <span />
-                            <span />
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+              <div className="fs-fs-track-info">
+                <div className="fs-fs-text-group">
+                  <h2 className="fs-fs-song-name truncate">{currentSong.title}</h2>
+                  <p className="fs-fs-song-artist truncate">{currentSong.artist}</p>
                 </div>
-              ) : (
-                <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
-                  {lyricsData.loading && (
-                    <div className="fs-lyrics-loading">
-                      <Loader2 size={32} className="spin text-brand" />
-                      <span>Syncing lyrics...</span>
-                    </div>
-                  )}
+                <button
+                  className={`btn-icon fs-fs-like-btn ${liked ? 'liked' : ''}`}
+                  onClick={() => toggleLike(currentSong)}
+                  aria-label={liked ? 'Unlike track' : 'Like track'}
+                >
+                  <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
+                </button>
+              </div>
 
-                  {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
-                    <div className="fs-synced-lyrics-text">
-                      {lyricsData.syncedLyrics.map((line, idx) => {
-                        const isActive = idx === activeLyricIndex;
-                        const isPassed = idx < activeLyricIndex;
-                        return (
-                          <p
-                            key={idx}
-                            className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
-                            onClick={() => seekTo(line.time)}
-                          >
-                            {line.text}
-                          </p>
-                        );
-                      })}
-                    </div>
-                  )}
+              {/* Quick Actions Bar (Radio, Playlist, Sleep Timer, Share, Options) */}
+              <div className="fs-fs-quick-actions">
+                <button
+                  className="fs-fs-action-chip"
+                  onClick={handleStartRadio}
+                  title="Start Radio"
+                >
+                  <Radio size={16} />
+                  <span>Radio</span>
+                </button>
 
-                  {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
-                    <div className="fs-plain-lyrics-text">
-                      {lyricsData.plainLyrics}
-                    </div>
-                  )}
+                <button
+                  className="fs-fs-action-chip"
+                  onClick={handleOpenPlaylistMenu}
+                  title="Add to Playlist"
+                >
+                  <FolderPlus size={16} />
+                  <span>Playlist</span>
+                </button>
 
-                  {!lyricsData.loading && lyricsData.notFound && (
-                    <div className="fs-lyrics-not-found">
-                      <Mic2 size={44} className="fs-lyrics-not-found-icon" />
-                      <p>Looks like we don't have synchronized lyrics for this song yet.</p>
-                      <span>Enjoy the high-fidelity audio stream!</span>
-                    </div>
-                  )}
+                <button
+                  className={`fs-fs-action-chip ${sleepTimer ? 'active-timer' : ''}`}
+                  onClick={handleOpenSleepTimerMenu}
+                  title="Sleep Timer"
+                >
+                  <Moon size={16} />
+                  <span>{sleepTimer ? sleepTimer.label : 'Timer'}</span>
+                </button>
+
+                <button
+                  className="fs-fs-action-chip"
+                  onClick={handleShare}
+                  title="Share"
+                >
+                  <Share2 size={16} />
+                  <span>Share</span>
+                </button>
+
+                <button
+                  className="fs-fs-action-chip"
+                  onClick={(e) => openMenu(currentSong, e)}
+                  title="All Options"
+                >
+                  <MoreVertical size={16} />
+                  <span>More</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Right Column: Up Next & Synced Lyrics (Shown on Desktop OR in 'lyrics'/'upnext' on Mobile) ── */}
+          {(!isMobile || mobileMode !== 'song') && (
+            <div className={`fs-fs-side-col ${isMobile ? 'mobile-full' : ''}`}>
+              {/* Desktop Tabs Header */}
+              {!isMobile && (
+                <div className="fs-fs-tabs">
+                  <button
+                    className={`fs-fs-tab-btn ${activeTab === 'upnext' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('upnext')}
+                  >
+                    <ListMusic size={16} />
+                    <span>UP NEXT ({queue.length})</span>
+                  </button>
+                  <button
+                    className={`fs-fs-tab-btn ${activeTab === 'lyrics' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('lyrics')}
+                  >
+                    <FileText size={16} />
+                    <span>LYRICS</span>
+                  </button>
                 </div>
               )}
+
+              <div className="fs-fs-tab-content">
+                {/* Up Next List */}
+                {((!isMobile && activeTab === 'upnext') || (isMobile && mobileMode === 'upnext')) && (
+                  <div className="fs-fs-queue-list">
+                    {queue.length === 0 ? (
+                      <div className="fs-empty-queue">Queue is empty</div>
+                    ) : (
+                      queue.map((track, idx) => (
+                        <div
+                          key={`${track.videoId}-${idx}`}
+                          className={`fs-fs-queue-item ${idx === queueIndex ? 'playing' : ''}`}
+                          onClick={() => playSong(track, queue)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openMenu(track, e);
+                          }}
+                        >
+                          <img
+                            src={
+                              track.thumbnail ||
+                              (track.videoId
+                                ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
+                                : '/images/freesonglogowebp.webp')
+                            }
+                            alt={track.title}
+                            className="fs-fs-queue-thumb"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const currentSrc = e.currentTarget.src || '';
+                              if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
+                                e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
+                              } else {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = getArtworkFallback(track.title);
+                              }
+                            }}
+                          />
+                          <div className="fs-fs-queue-meta">
+                            <span className="fs-fs-queue-title truncate">{track.title}</span>
+                            <span className="fs-fs-queue-artist truncate">{track.artist}</span>
+                          </div>
+
+                          {idx === queueIndex && (
+                            <div className="fs-fs-playing-indicator">
+                              <span />
+                              <span />
+                              <span />
+                            </div>
+                          )}
+
+                          <button
+                            className="btn-icon fs-fs-queue-more"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMenu(track, e);
+                            }}
+                            title="Track options"
+                            aria-label="Track options"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Lyrics Panel */}
+                {((!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics')) && (
+                  <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
+                    {lyricsData.loading && (
+                      <div className="fs-lyrics-loading">
+                        <Loader2 size={32} className="spin text-brand" />
+                        <span>Syncing lyrics...</span>
+                      </div>
+                    )}
+
+                    {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
+                      <div className="fs-synced-lyrics-text">
+                        {lyricsData.syncedLyrics.map((line, idx) => {
+                          const isActive = idx === activeLyricIndex;
+                          const isPassed = idx < activeLyricIndex;
+                          return (
+                            <p
+                              key={idx}
+                              className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
+                              onClick={() => seekTo(line.time)}
+                            >
+                              {line.text}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
+                      <div className="fs-plain-lyrics-text">
+                        {lyricsData.plainLyrics}
+                      </div>
+                    )}
+
+                    {!lyricsData.loading && lyricsData.notFound && (
+                      <div className="fs-lyrics-not-found">
+                        <Mic2 size={44} className="fs-lyrics-not-found-icon" />
+                        <p>No synced lyrics found for this song</p>
+                        <span>Enjoy the high-fidelity audio stream!</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Bottom: Scrubber & Controls */}
+        {/* ── Bottom Controls & Scrubber ── */}
         <div className="fs-fs-controls-section">
           {/* Progress Slider */}
           <div className="fs-fs-scrubber-row">
@@ -346,18 +567,25 @@ export function FullScreenPlayer() {
             <button
               className={`btn-icon ${isShuffle ? 'text-brand' : ''}`}
               onClick={toggleShuffle}
+              title="Shuffle"
               aria-label="Shuffle"
             >
               <Shuffle size={20} />
             </button>
 
-            <button className="btn-icon" onClick={prevSong} aria-label="Previous">
+            <button
+              className="btn-icon"
+              onClick={prevSong}
+              title="Previous"
+              aria-label="Previous"
+            >
               <SkipBack size={26} />
             </button>
 
             <button
               className="btn-play-circle fs-fs-big-play"
               onClick={togglePlay}
+              title={isPlaying ? 'Pause' : 'Play'}
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               {isLoading ? (
@@ -369,22 +597,33 @@ export function FullScreenPlayer() {
               )}
             </button>
 
-            <button className="btn-icon" onClick={nextSong} aria-label="Next">
+            <button
+              className="btn-icon"
+              onClick={nextSong}
+              title="Next"
+              aria-label="Next"
+            >
               <SkipForward size={26} />
             </button>
 
             <button
               className={`btn-icon ${repeatMode !== 'off' ? 'text-brand' : ''}`}
               onClick={toggleRepeat}
-              aria-label="Repeat"
+              title={`Repeat: ${repeatMode}`}
+              aria-label={`Repeat: ${repeatMode}`}
             >
               {repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
             </button>
           </div>
 
-          {/* Volume Row */}
+          {/* Volume Row (Hidden on small mobile screens to keep layout super clean) */}
           <div className="fs-fs-volume-row">
-            <button className="btn-icon" onClick={toggleMute} aria-label="Toggle Mute">
+            <button
+              className="btn-icon"
+              onClick={toggleMute}
+              title={isMuted ? 'Unmute' : 'Mute'}
+              aria-label="Toggle Mute"
+            >
               {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
             <input

@@ -33,6 +33,19 @@ export const api = {
     }
   },
 
+  async getSearchSuggestions(query) {
+    if (!query || !query.trim()) return [];
+    try {
+      const res = await fetch(`${API_BASE}/search/suggestions?q=${encodeURIComponent(query.trim())}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.suggestions || [];
+    } catch (err) {
+      console.warn('Search suggestions error:', err);
+      return [];
+    }
+  },
+
   async getExploreFeed() {
     try {
       const res = await fetch(`${API_BASE}/explore`);
@@ -55,9 +68,11 @@ export const api = {
     }
   },
 
-  async getAlbum(id) {
+  async getAlbum(id, name = '') {
     try {
-      const res = await fetch(`${API_BASE}/album/${id}`);
+      let url = `${API_BASE}/album/${id}`;
+      if (name) url += `?name=${encodeURIComponent(name)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       return await res.json();
     } catch (err) {

@@ -85,10 +85,60 @@
   gap: 4px;
 }
 
+.fs-album-track-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.fs-album-track-num {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.fs-album-track-card-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
 .fs-album-empty {
   padding: 40px;
   text-align: center;
   color: var(--color-text-secondary);
+}
+
+.fs-album-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 380px;
+  text-align: center;
+  gap: 12px;
+  color: var(--color-text-secondary);
+}
+
+.fs-album-error-state h3 {
+  font-size: 1.3rem;
+  color: var(--color-text-primary);
+  margin-top: 4px;
+}
+
+.fs-album-error-state p {
+  font-size: 0.9rem;
+  max-width: 400px;
+}
+
+.fs-album-error-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 @media (max-width: 768px) {

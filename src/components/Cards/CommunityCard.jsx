@@ -1,13 +1,21 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { Play, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
+import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './CommunityCard.css';
 
 export function CommunityCard({ item }) {
   const { playSong } = usePlayer();
+  const { openMenu } = useContextMenu();
   const navigate = useNavigate();
+
+  const targetSong = item.videoId
+    ? item
+    : item.songs && item.songs[0]
+    ? item.songs[0]
+    : null;
 
   const handlePlayClick = (e) => {
     e.stopPropagation();
@@ -28,8 +36,27 @@ export function CommunityCard({ item }) {
     }
   };
 
+  const handleMoreClick = (e) => {
+    e.stopPropagation();
+    if (targetSong) {
+      openMenu(targetSong, e);
+    }
+  };
+
+  const handleContextMenu = (e) => {
+    if (targetSong) {
+      e.preventDefault();
+      e.stopPropagation();
+      openMenu(targetSong, e);
+    }
+  };
+
   return (
-    <div className="fs-comm-card" onClick={handleCardClick}>
+    <div
+      className="fs-comm-card"
+      onClick={handleCardClick}
+      onContextMenu={handleContextMenu}
+    >
       {/* Artwork container */}
       <div className="fs-comm-art-wrap">
         <img
@@ -53,6 +80,18 @@ export function CommunityCard({ item }) {
         <div className="fs-comm-avatar-badge" title={item.creator || item.artist}>
           <span>{item.badge || (item.creator ? item.creator[0] : item.artist ? item.artist[0] : 'F').toUpperCase()}</span>
         </div>
+
+        {/* More options button on top-right */}
+        {targetSong && (
+          <button
+            className="fs-comm-more-btn"
+            onClick={handleMoreClick}
+            aria-label="Options"
+            title="Options"
+          >
+            <MoreVertical size={16} />
+          </button>
+        )}
 
         {/* Hover play button */}
         <button

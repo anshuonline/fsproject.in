@@ -6,6 +6,8 @@ import { MobileNav } from '../components/Navigation/MobileNav';
 import { GlobalPlayer } from '../components/Player/GlobalPlayer';
 import { FullScreenPlayer } from '../components/Player/FullScreenPlayer';
 import { QueueDrawer } from '../components/Player/QueueDrawer';
+import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
+import { Toast } from '../components/Common/Toast';
 import { usePlayer } from '../context/PlayerContext';
 import './MainLayout.css';
 
@@ -63,6 +65,8 @@ export function MainLayout() {
       <FullScreenPlayer />
       <QueueDrawer />
       <MobileNav />
+      <GlobalContextMenu />
+      <Toast />
     </div>
   );
 }

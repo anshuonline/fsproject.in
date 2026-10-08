@@ -87,6 +87,15 @@
   color: var(--color-primary);
 }
 
+.fs-player-more-btn {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.fs-player-more-btn:hover {
+  color: var(--color-white);
+}
+
 /* Center Section */
 .fs-player-center {
   display: flex;

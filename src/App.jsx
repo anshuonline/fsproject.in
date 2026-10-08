@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PlayerProvider } from './context/PlayerContext';
 import { LibraryProvider } from './context/LibraryContext';
+import { ContextMenuProvider } from './context/ContextMenuContext';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
@@ -25,7 +26,8 @@ export default function App() {
     <BrowserRouter>
       <PlayerProvider>
         <LibraryProvider>
-          <Routes>
+          <ContextMenuProvider>
+            <Routes>
             {/* Main Application with Sidebar, Header, and Player */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Home />} />
@@ -50,8 +52,9 @@ export default function App() {
             {/* Fallback to Home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </LibraryProvider>
-      </PlayerProvider>
+        </ContextMenuProvider>
+      </LibraryProvider>
+    </PlayerProvider>
     </BrowserRouter>
   );
 }
