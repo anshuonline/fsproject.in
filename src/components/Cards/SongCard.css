@@ -220,6 +220,21 @@
   transform: scale(1.08);
 }
 
+.fs-song-actions.has-playlist {
+  width: 104px;
+  min-width: 104px;
+}
+
+.fs-song-remove-btn {
+  color: var(--color-text-muted);
+}
+
+.fs-song-remove-btn:hover {
+  color: #ff5252 !important;
+  background-color: rgba(255, 82, 82, 0.12);
+  transform: scale(1.08);
+}
+
 .fs-song-btn.liked {
   color: var(--color-primary);
   opacity: 1;
