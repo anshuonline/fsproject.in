@@ -1,0 +1,62 @@
+:root {
+  /* FreeSong.in Official Color Palette */
+  --color-primary: #00C853;
+  --color-primary-hover: #00E676;
+  --color-accent: #76FF03;
+  --color-white: #FFFFFF;
+
+  /* AMOLED Black Architecture */
+  --color-bg-main: #000000;
+  --color-bg-secondary: #080808;
+  --color-card: #111111;
+  --color-card-hover: #181818;
+  --color-card-active: #222222;
+  --color-border: #222222;
+  --color-border-subtle: #1a1a1a;
+
+  /* Typography Colors */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #AFAFAF;
+  --color-text-muted: #707070;
+
+  /* Layout Dimensions */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
+  --player-height: 80px;
+  --mobile-nav-height: 60px;
+
+  /* Radius & Curves */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing System */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Shadows (Minimal, Subtle) */
+  --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 20px rgba(0, 200, 83, 0.25);
+
+  /* Z-Index Hierarchy */
+  --z-base: 1;
+  --z-header: 100;
+  --z-sidebar: 105;
+  --z-player: 200;
+  --z-drawer: 300;
+  --z-modal: 400;
+  --z-fullscreen-player: 500;
+}

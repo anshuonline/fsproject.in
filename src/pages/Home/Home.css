@@ -1,0 +1,173 @@
+.fs-home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.fs-home-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 16px;
+  color: var(--color-text-secondary);
+}
+
+/* Shelf styling */
+.fs-shelf {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.fs-shelf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.fs-shelf-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fs-shelf-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.fs-shelf-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--color-white);
+  letter-spacing: -0.02em;
+}
+
+.fs-shelf-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-carousel-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.fs-carousel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.fs-more-btn {
+  margin-right: 4px;
+}
+
+/* Horizontal Row of cards */
+.fs-shelf-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+  padding: 4px 4px 12px 4px;
+}
+
+.fs-shelf-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Responsive Card Column Widths */
+.fs-shelf-col {
+  flex: 0 0 calc((100% - (5 * 16px)) / 6); /* 6 cards per row on large screens */
+  min-width: 180px;
+  max-width: 240px;
+}
+
+/* Horizontal scroll indicator bar */
+.fs-scroll-bar-indicator {
+  width: 100%;
+  max-width: 500px;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 8px;
+  margin-left: 4px;
+  overflow: hidden;
+}
+
+.fs-scroll-bar-thumb {
+  width: 35%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+/* Quick picks grid */
+.fs-quickpicks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1300px) {
+  .fs-shelf-col {
+    flex: 0 0 calc((100% - (4 * 16px)) / 5);
+  }
+}
+
+@media (max-width: 1050px) {
+  .fs-shelf-col {
+    flex: 0 0 calc((100% - (3 * 16px)) / 4);
+    min-width: 170px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fs-home-page {
+    gap: 36px;
+  }
+
+  .fs-shelf-title {
+    font-size: 1.35rem;
+  }
+
+  .fs-shelf-col {
+    flex: 0 0 calc((100% - 16px) / 2.3);
+    min-width: 150px;
+  }
+
+  .fs-quickpicks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-scroll-bar-indicator {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-shelf-col {
+    flex: 0 0 calc((100% - 12px) / 2.15);
+    min-width: 140px;
+  }
+}

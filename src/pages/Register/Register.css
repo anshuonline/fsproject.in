@@ -1,0 +1,82 @@
+.fs-auth-box {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-elevated);
+}
+
+.fs-auth-title {
+  font-size: 1.6rem;
+  text-align: center;
+}
+
+.fs-auth-sub {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-top: -12px;
+}
+
+.fs-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fs-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fs-form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.fs-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fs-input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--color-text-muted);
+}
+
+.fs-input-field {
+  width: 100%;
+  height: 44px;
+  background-color: #161616;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0 16px 0 44px;
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  transition: border-color var(--transition-fast);
+}
+
+.fs-input-field:focus {
+  border-color: var(--color-primary);
+}
+
+.fs-auth-submit {
+  height: 44px;
+  font-size: 0.9375rem;
+  margin-top: 8px;
+}
+
+.fs-auth-switch {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}

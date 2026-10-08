@@ -1,0 +1,44 @@
+.fs-auth-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: var(--color-bg-main);
+  padding: 24px;
+}
+
+.fs-auth-header {
+  display: flex;
+  justify-content: center;
+}
+
+.fs-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-auth-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.fs-auth-brand-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-white);
+}
+
+.fs-auth-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.fs-auth-footer {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}

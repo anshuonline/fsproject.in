@@ -1,0 +1,40 @@
+.fs-app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg-main);
+  position: relative;
+}
+
+.fs-layout-body {
+  display: flex;
+  flex: 1;
+  padding-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.fs-main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-width: 0;
+  padding: 24px 32px 120px 32px;
+  background-color: var(--color-bg-main);
+  transition: margin-left var(--transition-smooth);
+}
+
+.fs-app-layout.has-player .fs-main-content {
+  padding-bottom: calc(var(--player-height) + 40px);
+}
+
+@media (max-width: 900px) {
+  .fs-main-content {
+    margin-left: 0;
+    padding: 16px 16px 120px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fs-app-layout.has-player .fs-main-content {
+    padding-bottom: calc(var(--player-height) + var(--mobile-nav-height) + 24px);
+  }
+}

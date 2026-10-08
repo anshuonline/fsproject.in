@@ -1,0 +1,280 @@
+.fs-global-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--player-height);
+  background-color: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  z-index: var(--z-player);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+.fs-player-micro-progress {
+  display: none;
+  width: 100%;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.fs-micro-progress-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.fs-player-inner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+/* Left Section */
+.fs-player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 30%;
+  min-width: 180px;
+  cursor: pointer;
+}
+
+.fs-player-artwork-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background-color: var(--color-card);
+  flex-shrink: 0;
+}
+
+.fs-player-artwork {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fs-player-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 220px;
+}
+
+.fs-player-song-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.fs-player-song-artist {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.fs-player-like-btn {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.fs-player-like-btn.liked {
+  color: var(--color-primary);
+}
+
+/* Center Section */
+.fs-player-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  max-width: 650px;
+}
+
+.fs-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fs-ctrl-btn {
+  color: var(--color-text-secondary);
+  width: 34px;
+  height: 34px;
+}
+
+.fs-ctrl-btn:hover {
+  color: var(--color-white);
+}
+
+.fs-ctrl-btn.active {
+  color: var(--color-primary);
+}
+
+.fs-main-play-btn {
+  width: 38px;
+  height: 38px;
+}
+
+.fs-player-scrubber-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.fs-time-text {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  min-width: 32px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-scrubber-track-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.fs-scrubber-input {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+
+.fs-scrubber-input:hover {
+  height: 6px;
+}
+
+.fs-scrubber-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-white);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.fs-scrubber-input:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* Right Section */
+.fs-player-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 25%;
+  min-width: 150px;
+}
+
+.fs-player-volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-volume-input {
+  width: 80px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.fs-volume-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-white);
+  cursor: pointer;
+}
+
+.fs-queue-btn {
+  position: relative;
+}
+
+.fs-queue-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.65rem;
+  background-color: var(--color-primary);
+  color: #000;
+  font-weight: 800;
+  border-radius: 10px;
+  padding: 1px 4px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Mobile responsive bottom mini-player */
+@media (max-width: 768px) {
+  .fs-global-player {
+    bottom: var(--mobile-nav-height);
+    height: 56px;
+    background-color: #121212;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .fs-player-micro-progress {
+    display: block;
+  }
+
+  .fs-player-center .fs-player-scrubber-row,
+  .fs-player-center .fs-ctrl-btn,
+  .fs-player-right {
+    display: none;
+  }
+
+  .fs-player-inner {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .fs-player-left {
+    flex: 1;
+    width: auto;
+  }
+
+  .fs-player-artwork-wrap {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fs-player-center {
+    flex: 0;
+  }
+
+  .fs-main-play-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
