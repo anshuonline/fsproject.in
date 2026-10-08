@@ -22,6 +22,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
+import { PlaylistCover } from './PlaylistCover';
 import './GlobalContextMenu.css';
 
 export function GlobalContextMenu() {
@@ -205,6 +206,14 @@ export function GlobalContextMenu() {
     }
   };
 
+  const handleRemoveFromCurrentPlaylist = () => {
+    if (song && song._playlistId) {
+      removeSongFromPlaylist(song._playlistId, song.videoId);
+      showToast(`Removed "${song.title}" from playlist`, 'info');
+      closeMenu();
+    }
+  };
+
   // Action handlers
   const handleStartRadio = () => {
     startRadio(song);
@@ -338,18 +347,7 @@ export function GlobalContextMenu() {
         {targetType === 'playlist' && playlist && (
           <>
             <div className="fs-context-header">
-              {playlist.coverImage ? (
-                <img
-                  src={playlist.coverImage}
-                  alt={playlist.name || playlist.title}
-                  className="fs-context-thumb"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="fs-context-thumb fs-pl-thumb-fallback">
-                  <ListMusic size={22} className="text-brand" />
-                </div>
-              )}
+              <PlaylistCover playlist={playlist} size="thumb" className="fs-context-thumb" />
               <div className="fs-context-meta">
                 <span className="fs-context-title truncate">
                   {playlist.name || playlist.title || 'Playlist'}
