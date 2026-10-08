@@ -11,17 +11,46 @@ import './MainLayout.css';
 
 export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('fs_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const { currentSong } = usePlayer();
 
+  const handleToggleSidebar = () => {
+    if (window.innerWidth >= 900) {
+      setIsSidebarCollapsed(prev => {
+        const next = !prev;
+        try {
+          localStorage.setItem('fs_sidebar_collapsed', String(next));
+        } catch {}
+        return next;
+      });
+    } else {
+      setSidebarOpen(prev => !prev);
+    }
+  };
+
   return (
-    <div className={`fs-app-layout ${currentSong ? 'has-player' : ''}`}>
+    <div
+      className={`fs-app-layout ${currentSong ? 'has-player' : ''} ${
+        isSidebarCollapsed ? 'sidebar-collapsed' : ''
+      }`}
+    >
       {/* Header */}
-      <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+      <Header onToggleSidebar={handleToggleSidebar} />
 
       {/* Main Body */}
       <div className="fs-layout-body">
         {/* Sidebar */}
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          isCollapsed={isSidebarCollapsed}
+        />
 
         {/* Page Content Outlet */}
         <main className="fs-main-content">

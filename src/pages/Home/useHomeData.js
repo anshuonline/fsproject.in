@@ -4,9 +4,7 @@ import { storage } from '../../services/storage';
 
 export function useHomeData() {
   const [data, setData] = useState({
-    community: [],
-    library: [],
-    quickPicks: []
+    sections: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,8 +13,9 @@ export function useHomeData() {
     try {
       setLoading(true);
       const prefs = customPrefs || storage.getPreferences();
-      const res = await api.getHomeFeed(prefs);
-      setData(res);
+      const history = storage.getHistory() || [];
+      const res = await api.getHomeFeed(prefs, history);
+      setData(res || { sections: [] });
       setError(null);
     } catch (err) {
       console.error('Home feed fetch failed:', err);

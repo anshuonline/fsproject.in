@@ -2,6 +2,7 @@ import React from 'react';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
+import { getArtworkFallback } from '../../utils/imageFallback';
 import './LibraryCard.css';
 
 export function LibraryCard({ item }) {
@@ -29,6 +30,10 @@ export function LibraryCard({ item }) {
           alt={item.title}
           className="fs-lib-artwork"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = getArtworkFallback(item.title);
+          }}
         />
         <button
           className="fs-lib-play-btn"

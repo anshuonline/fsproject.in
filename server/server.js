@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import YTMusic from 'ytmusic-api';
+import { buildAlgorithmicFeed } from './recommendationEngine.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,32 +39,16 @@ async function getYTMusic() {
   return ytmusicInstance;
 }
 
-// Helper to upgrade thumbnails to HD
+// Helper to upgrade thumbnails to HD safely
 function toHDUrl(url) {
   if (!url) return '';
   let u = url;
-  if (u.includes('googleusercontent.com') || u.includes('ggpht.com')) {
-    if (/=w\d+-h\d+/i.test(u)) {
-      u = u.replace(/=w\d+-h\d+[^=]*/i, '=w544-h544-l90-rj');
-    } else if (/-w\d+-h\d+/i.test(u)) {
-      u = u.replace(/-w\d+-h\d+[^=]*/i, '-w544-h544-l90-rj');
-    } else if (/=s\d+/i.test(u)) {
-      u = u.replace(/=s\d+(-[a-zA-Z0-9_-]*)?/i, '=s544-c-k-c0x00ffffff-no-rj');
-    } else if (/-s\d+/i.test(u)) {
-      u = u.replace(/-s\d+(-[a-zA-Z0-9_-]*)?/i, '-s544-c-k-c0x00ffffff-no-rj');
-    } else if (/\/s\d+\//i.test(u)) {
-      u = u.replace(/\/s\d+\//i, '/s544/');
-    } else if (!u.includes('=')) {
-      u = u + '=w544-h544-l90-rj';
-    }
-    return u;
-  }
+  if (u.startsWith('//')) u = 'https:' + u;
+  // If standard YouTube thumbnail has low-res default, upgrade to hqdefault
   if (u.includes('ytimg.com') || u.includes('youtube.com')) {
-    let clean = u.split('?')[0];
-    if (clean.includes('/default.jpg') || clean.includes('/mqdefault.jpg') || clean.includes('/sddefault.jpg')) {
-      return clean.replace(/\/(default|mqdefault|sddefault)\.jpg$/i, '/hqdefault.jpg');
+    if (u.includes('/default.jpg') || u.includes('/mqdefault.jpg')) {
+      return u.replace(/\/(default|mqdefault)\.jpg/i, '/hqdefault.jpg');
     }
-    return clean;
   }
   return u;
 }
@@ -89,98 +74,30 @@ app.get('/api/health', (req, res) => {
 app.get('/api/home', async (req, res) => {
   const userGenres = req.query.genres ? req.query.genres.split(',').filter(Boolean) : [];
   const userArtists = req.query.artists ? req.query.artists.split(',').filter(Boolean) : [];
+  let userHistory = [];
+  try {
+    if (req.query.history) {
+      userHistory = JSON.parse(req.query.history);
+    }
+  } catch {}
 
-  const cacheKey = `home_feed_${userGenres.slice(0, 3).sort().join('_')}_${userArtists.slice(0, 3).sort().join('_')}`;
+  const historyKey = (userHistory[0]?.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cacheKey = `home_algo_${userGenres.slice(0, 3).sort().join('_')}_${userArtists.slice(0, 3).sort().join('_')}_${historyKey}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     const yt = await getYTMusic();
+    const feed = await buildAlgorithmicFeed(
+      yt,
+      { artists: userArtists, genres: userGenres },
+      userHistory,
+      getCached,
+      setCache
+    );
 
-    // Determine target search queries based on user preferences
-    const genre1 = userGenres[0] || 'chill';
-    const genre2 = userGenres[1] || 'bollywood';
-    const artist1 = userArtists[0] || 'Arijit Singh';
-    const artist2 = userArtists[1] || (userArtists[0] ? userArtists[0] : 'Taylor Swift');
-    const artist3 = userArtists[2] || (userArtists[1] || 'Diljit Dosanjh');
-
-    const [communityPlaylists, genrePlaylists, librarySuggestions, quickPicks1, quickPicks2, quickPicks3] = await Promise.all([
-      yt.searchPlaylists(`${genre1} mix playlist`).catch(() => []),
-      yt.searchPlaylists(`${genre2} songs playlist`).catch(() => []),
-      yt.searchPlaylists(`${artist1} songs`).catch(() => []),
-      yt.searchSongs(`${artist1} top`).catch(() => []),
-      yt.searchSongs(`${artist2} top`).catch(() => []),
-      yt.searchSongs(`${artist3} top`).catch(() => [])
-    ]);
-
-    // Format community items matching screenshot
-    const communityItems = [...communityPlaylists, ...genrePlaylists].slice(0, 10).map((p, index) => {
-      const thumbs = p.thumbnails || [];
-      const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '';
-      return {
-        id: p.playlistId || `comm-${index}`,
-        title: p.name || `${genre1} Playlist`,
-        creator: p.artist?.name || 'Community Curator',
-        views: `${Math.floor(Math.random() * 450 + 50)}k views`,
-        thumbnail: toHDUrl(bestThumb),
-        type: 'playlist',
-        badge: (p.artist?.name || p.name || 'C')[0].toUpperCase(),
-        thumbnails: thumbs.map(t => toHDUrl(t.url))
-      };
-    });
-
-    // Format library items matching screenshot
-    const libraryItems = librarySuggestions.slice(0, 10).map((p, index) => {
-      const thumbs = p.thumbnails || [];
-      const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '';
-      return {
-        id: p.playlistId || `lib-${index}`,
-        title: p.name || `${artist1} Collection`,
-        subtitle: `${p.artist?.name || artist1} • ${Math.floor(Math.random() * 20 + 8)} tracks`,
-        thumbnail: toHDUrl(bestThumb),
-        type: 'playlist'
-      };
-    });
-
-    // Combine and interleave quick picks for variety
-    const rawQuickPicks = [];
-    const maxLen = Math.max(quickPicks1.length, quickPicks2.length, quickPicks3.length);
-    for (let i = 0; i < maxLen; i++) {
-      if (quickPicks1[i]) rawQuickPicks.push(quickPicks1[i]);
-      if (quickPicks2[i]) rawQuickPicks.push(quickPicks2[i]);
-      if (quickPicks3[i]) rawQuickPicks.push(quickPicks3[i]);
-    }
-
-    const seenIds = new Set();
-    const quickPickSongs = rawQuickPicks
-      .filter(s => {
-        if (!s || !s.videoId || seenIds.has(s.videoId)) return false;
-        seenIds.add(s.videoId);
-        return true;
-      })
-      .slice(0, 18)
-      .map(s => {
-        const thumbs = s.thumbnails || [];
-        return {
-          videoId: s.videoId,
-          title: s.name,
-          artist: s.artist?.name || (typeof s.artist === 'string' ? s.artist : 'Artist'),
-          album: s.album?.name || '',
-          duration: parseDuration(s.duration),
-          durationText: typeof s.duration === 'string' ? s.duration : `${Math.floor(s.duration / 60)}:${(s.duration % 60).toString().padStart(2, '0')}`,
-          thumbnail: toHDUrl(thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || '')
-        };
-      });
-
-    const result = {
-      community: communityItems,
-      library: libraryItems,
-      quickPicks: quickPickSongs,
-      preferencesApplied: userGenres.length > 0 || userArtists.length > 0
-    };
-
-    setCache(cacheKey, result);
-    res.json(result);
+    setCache(cacheKey, feed, 10 * 60 * 1000); // 10 min cache
+    res.json(feed);
   } catch (err) {
     console.error('Error fetching home feed:', err);
     res.status(500).json({ error: 'Failed to fetch home feeds' });

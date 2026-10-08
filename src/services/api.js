@@ -1,21 +1,23 @@
 const API_BASE = '/api';
 
 export const api = {
-  async getHomeFeed(prefs = null) {
+  async getHomeFeed(prefs = null, history = null) {
     try {
       let url = `${API_BASE}/home`;
-      if (prefs) {
-        const params = new URLSearchParams();
-        if (prefs.genres?.length) params.set('genres', prefs.genres.join(','));
-        if (prefs.artists?.length) params.set('artists', prefs.artists.map(a => typeof a === 'string' ? a : a.name).join(','));
-        url += `?${params.toString()}`;
-      }
+      const params = new URLSearchParams();
+      if (prefs?.genres?.length) params.set('genres', prefs.genres.join(','));
+      if (prefs?.artists?.length) params.set('artists', prefs.artists.map(a => typeof a === 'string' ? a : a.name).join(','));
+      if (history?.length) params.set('history', JSON.stringify(history.slice(0, 5)));
+
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
+
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       return await res.json();
     } catch (err) {
-      console.warn('API error, using cached fallback:', err);
-      return getFallbackHomeData();
+      console.warn('API error, using fallback:', err);
+      return { sections: [] };
     }
   },
 

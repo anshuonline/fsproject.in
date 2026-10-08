@@ -12,16 +12,7 @@ const DEFAULT_SETTINGS = {
   volume: 0.8
 };
 
-const DEFAULT_PLAYLISTS = [
-  { id: 'pl-stillhere', name: 'Still Here', tracksCount: 14, updatedAt: 'Recent' },
-  { id: 'pl-eng65', name: 'eng65', tracksCount: 65, updatedAt: 'Recent' },
-  { id: 'pl-latesthindi', name: 'latest hindi 1', tracksCount: 28, updatedAt: 'Recent' },
-  { id: 'pl-tamilsec1', name: 'tamil sec1', tracksCount: 12, updatedAt: 'Recent' },
-  { id: 'pl-tollywood', name: 'Tollywood Hits', tracksCount: 45, updatedAt: 'Recent' },
-  { id: 'pl-kollywood', name: 'Kollywood Hits', tracksCount: 38, updatedAt: 'Recent' },
-  { id: 'pl-pumped', name: 'Pumped Up', tracksCount: 22, updatedAt: 'Recent' },
-  { id: 'pl-bollywood', name: 'Bollywood Romance', tracksCount: 50, updatedAt: 'Recent' }
-];
+const DEFAULT_PLAYLISTS = [];
 
 export const storage = {
   getLikedSongs() {

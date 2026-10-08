@@ -282,22 +282,46 @@
   box-shadow: 0 0 20px rgba(0, 200, 83, 0.35);
 }
 
+/* Responsive Mobile Adjustments */
 @media (max-width: 650px) {
+  .fs-onboarding-backdrop {
+    padding: 8px;
+  }
+
   .fs-onboarding-modal {
-    height: 96vh;
-    border-radius: var(--radius-md);
+    height: 94vh;
+    max-height: 94vh;
+    border-radius: var(--radius-lg);
   }
 
   .fs-onboarding-header {
-    padding: 16px;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .fs-onboarding-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .fs-onboarding-step-badge {
+    font-size: 0.65rem;
   }
 
   .fs-onboarding-title {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
+  }
+
+  .fs-onboarding-subtitle {
+    font-size: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .fs-onboarding-body {
-    padding: 16px;
+    padding: 12px 14px;
   }
 
   .fs-onboarding-genres-grid {
@@ -306,21 +330,84 @@
   }
 
   .fs-genre-select-card {
-    padding: 10px 12px;
-    font-size: 0.8125rem;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    gap: 8px;
+  }
+
+  .fs-artists-toolbar {
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+
+  .fs-artists-cat-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .fs-artists-cat-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chip {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    padding: 4px 10px;
   }
 
   .fs-artists-circle-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px 6px;
+    gap: 12px 6px;
   }
 
   .fs-artist-circle-wrap {
-    width: 72px;
-    height: 72px;
+    width: 64px;
+    height: 64px;
+  }
+
+  .fs-artist-circle-name {
+    font-size: 0.75rem;
+  }
+
+  .fs-artist-circle-genre {
+    font-size: 0.68rem;
   }
 
   .fs-onboarding-footer {
-    padding: 14px 16px;
+    padding: 12px 14px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fs-onboarding-stats {
+    font-size: 0.78rem;
+    align-self: center;
+  }
+
+  .fs-onboarding-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .fs-onboarding-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .fs-artists-circle-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 4px;
+  }
+
+  .fs-artist-circle-wrap {
+    width: 56px;
+    height: 56px;
   }
 }

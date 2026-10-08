@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Pause, Heart, Plus, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongCard.css';
 
 export function SongCard({ song, queueContext = [] }) {
@@ -33,6 +34,10 @@ export function SongCard({ song, queueContext = [] }) {
           alt={song.title}
           className="fs-song-thumb"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = getArtworkFallback(song.title);
+          }}
         />
         <div className={`fs-song-play-icon ${isCurrent ? 'show' : ''}`}>
           {isCurrent && isPlaying ? (

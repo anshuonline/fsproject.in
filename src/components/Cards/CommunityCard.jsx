@@ -2,6 +2,7 @@ import React from 'react';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
+import { getArtworkFallback } from '../../utils/imageFallback';
 import './CommunityCard.css';
 
 export function CommunityCard({ item }) {
@@ -10,7 +11,9 @@ export function CommunityCard({ item }) {
 
   const handlePlayClick = (e) => {
     e.stopPropagation();
-    if (item.songs && item.songs.length > 0) {
+    if (item.videoId) {
+      playSong(item, [item]);
+    } else if (item.songs && item.songs.length > 0) {
       playSong(item.songs[0], item.songs);
     } else {
       navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
@@ -18,7 +21,11 @@ export function CommunityCard({ item }) {
   };
 
   const handleCardClick = () => {
-    navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
+    if (item.videoId) {
+      playSong(item, [item]);
+    } else {
+      navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
+    }
   };
 
   return (
@@ -30,11 +37,15 @@ export function CommunityCard({ item }) {
           alt={item.title}
           className="fs-comm-artwork"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = getArtworkFallback(item.title);
+          }}
         />
 
         {/* Creator avatar badge on bottom-left */}
-        <div className="fs-comm-avatar-badge" title={item.creator}>
-          <span>{item.badge || (item.creator ? item.creator[0].toUpperCase() : 'C')}</span>
+        <div className="fs-comm-avatar-badge" title={item.creator || item.artist}>
+          <span>{item.badge || (item.creator ? item.creator[0] : item.artist ? item.artist[0] : 'F').toUpperCase()}</span>
         </div>
 
         {/* Hover play button */}
@@ -53,7 +64,7 @@ export function CommunityCard({ item }) {
           {item.title}
         </h4>
         <p className="fs-comm-subtitle truncate">
-          {item.creator} • {item.views}
+          {item.creator || item.artist} • {item.views || item.durationText || 'FreeSong'}
         </p>
       </div>
     </div>

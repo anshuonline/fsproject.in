@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { TOP_100_ARTISTS, GENRES_LIST } from '../../data/artistsData';
 import { storage } from '../../services/storage';
+import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './OnboardingModal.css';
 
 export function OnboardingModal({ isOpen, onComplete, onClose }) {
@@ -153,6 +154,10 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
                           alt={artist.name}
                           className="fs-artist-circle-img"
                           loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = getArtistAvatarFallback(artist.name);
+                          }}
                         />
                         {isSelected && (
                           <div className="fs-artist-circle-badge">

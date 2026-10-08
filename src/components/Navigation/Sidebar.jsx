@@ -4,7 +4,7 @@ import { Home, Compass, Bookmark, Sparkles, Plus, Heart, Music, ListMusic, X } f
 import { useLibrary } from '../../context/LibraryContext';
 import './Sidebar.css';
 
-export function Sidebar({ isOpen, onClose }) {
+export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
   const { playlists, createPlaylist } = useLibrary();
   const [showModal, setShowModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -24,7 +24,7 @@ export function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      <aside className={`fs-sidebar ${isOpen ? 'open' : ''}`}>
+      <aside className={`fs-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Mobile close button */}
         <div className="fs-sidebar-mobile-header">
           <div className="fs-sidebar-brand">

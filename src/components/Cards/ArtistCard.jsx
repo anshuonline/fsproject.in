@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './ArtistCard.css';
 
 export function ArtistCard({ artist }) {
@@ -18,6 +19,10 @@ export function ArtistCard({ artist }) {
           alt={artist.name}
           className="fs-artist-avatar-img"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = getArtistAvatarFallback(artist.name);
+          }}
         />
         <button
           className="fs-artist-play-btn"

@@ -28,6 +28,10 @@
   overflow-x: hidden;
 }
 
+.fs-app-layout.sidebar-collapsed .fs-main-content {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
 .fs-app-layout.has-player .fs-main-content {
   padding-bottom: calc(var(--player-height) + 40px);
 }
