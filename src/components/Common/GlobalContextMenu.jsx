@@ -543,6 +543,18 @@ export function GlobalContextMenu() {
                 </span>
                 <span className="fs-context-item-label">Share song</span>
               </button>
+
+              {song._playlistId && (
+                <>
+                  <div className="fs-context-divider" />
+                  <button className="fs-context-item fs-context-item-danger" onClick={handleRemoveFromCurrentPlaylist}>
+                    <span className="fs-context-item-icon text-danger">
+                      <Trash2 size={18} />
+                    </span>
+                    <span className="fs-context-item-label text-danger">Remove from this playlist</span>
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
