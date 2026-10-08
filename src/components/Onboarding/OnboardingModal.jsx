@@ -10,13 +10,15 @@ import {
 } from 'lucide-react';
 import { TOP_100_ARTISTS, GENRES_LIST } from '../../data/artistsData';
 import { storage } from '../../services/storage';
+import { useToast } from '../../context/ContextMenuContext';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './OnboardingModal.css';
 
 export function OnboardingModal({ isOpen, onComplete, onClose }) {
+  const { showToast } = useToast();
   const [step, setStep] = useState(1); // 1 = Genres, 2 = Artists
-  const [selectedGenres, setSelectedGenres] = useState(() => storage.getPreferences()?.genres || ['bollywood', 'lofi', 'punjabi']);
-  const [selectedArtists, setSelectedArtists] = useState(() => storage.getPreferences()?.artists || ['Arijit Singh', 'Taylor Swift', 'Diljit Dosanjh']);
+  const [selectedGenres, setSelectedGenres] = useState(() => storage.getPreferences()?.genres || []);
+  const [selectedArtists, setSelectedArtists] = useState(() => storage.getPreferences()?.artists || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
@@ -24,8 +26,8 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
   useEffect(() => {
     if (isOpen) {
       const current = storage.getPreferences();
-      if (current?.genres?.length) setSelectedGenres(current.genres);
-      if (current?.artists?.length) setSelectedArtists(current.artists);
+      setSelectedGenres(current?.genres || []);
+      setSelectedArtists(current?.artists || []);
       setStep(1);
       setSearchQuery('');
     }
@@ -45,13 +47,32 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
     );
   };
 
+  const handleContinueToArtists = () => {
+    if (selectedGenres.length === 0) {
+      showToast('Please select at least 1 genre to continue', 'error');
+      return;
+    }
+    setStep(2);
+  };
+
   const handleFinish = () => {
+    if (selectedGenres.length === 0) {
+      showToast('Please select at least 1 genre', 'error');
+      setStep(1);
+      return;
+    }
+    if (selectedArtists.length === 0) {
+      showToast('Please select at least 1 artist to start listening', 'error');
+      return;
+    }
+
     const preferences = {
       genres: selectedGenres,
       artists: selectedArtists,
       updatedAt: new Date().toISOString()
     };
     storage.savePreferences(preferences);
+    showToast('Taste profile personalized successfully!', 'success');
     if (onComplete) onComplete(preferences);
   };
 
@@ -227,8 +248,7 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
             {step === 1 ? (
               <button
                 className="btn btn-primary"
-                onClick={() => setStep(2)}
-                disabled={selectedGenres.length === 0}
+                onClick={handleContinueToArtists}
               >
                 <span>Continue to Artists</span>
                 <ArrowRight size={16} />
@@ -237,7 +257,6 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
               <button
                 className="btn btn-primary fs-finish-btn"
                 onClick={handleFinish}
-                disabled={selectedArtists.length === 0}
               >
                 <Sparkles size={16} />
                 <span>Start Listening & Personalize</span>

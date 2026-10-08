@@ -485,6 +485,66 @@ app.get('/api/album/:id', async (req, res) => {
       }
     }
 
+    const originalCount = songs.length;
+    const isSingle = originalCount <= 2;
+
+    // If album has only 1 or 2 tracks (Single or OST release), enrich with soundtrack / related songs
+    if (isSingle) {
+      try {
+        const albumName = album.name || album.title || req.query.name || '';
+        const artistName = album.artist?.name || (typeof album.artist === 'string' ? album.artist : '');
+
+        let extraSongs = [];
+
+        // 1. Check if it's from a film / movie soundtrack: (From "Movie") or From 'Movie'
+        const fromMatch = albumName.match(/\(From [\"']?(.*?)[\"']?\)/i) || albumName.match(/From [\"']?(.*?)[\"']?/i);
+        if (fromMatch && fromMatch[1]) {
+          const movie = fromMatch[1].replace(/[\"']/g, '').trim();
+          if (movie) {
+            const movieRes = await yt.searchSongs(`${movie} soundtrack songs`).catch(() => []);
+            extraSongs = [...extraSongs, ...movieRes.map(formatSong).filter(Boolean)];
+          }
+        }
+
+        // 2. Fetch more songs by the artist / release if fewer than 8
+        if (extraSongs.length < 8 && artistName) {
+          const artistRes = await yt.searchSongs(`${artistName} ${albumName} songs`).catch(() => []);
+          extraSongs = [...extraSongs, ...artistRes.map(formatSong).filter(Boolean)];
+        }
+
+        // 3. Fallback: getUpNexts if still needed
+        if (extraSongs.length < 6 && songs[0]?.videoId) {
+          const upNexts = await yt.getUpNexts(songs[0].videoId).catch(() => []);
+          if (Array.isArray(upNexts)) {
+            extraSongs = [...extraSongs, ...upNexts.map(item => {
+              const rawThumb = item.thumbnail || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '');
+              return {
+                videoId: item.videoId,
+                title: item.title || 'Unknown Title',
+                artist: item.artists || artistName || 'Unknown Artist',
+                durationText: item.duration || '3:30',
+                duration: parseDuration(item.duration),
+                thumbnail: toHDUrl(rawThumb, item.videoId),
+                type: 'song'
+              };
+            })];
+          }
+        }
+
+        // Deduplicate songs, preserving original songs at the top
+        const seen = new Set(songs.map(s => s.videoId));
+        for (const extra of extraSongs) {
+          if (extra && extra.videoId && !seen.has(extra.videoId)) {
+            seen.add(extra.videoId);
+            songs.push(extra);
+            if (songs.length >= 15) break;
+          }
+        }
+      } catch (enrichErr) {
+        console.warn(`Album enrichment failed for ${id}:`, enrichErr.message);
+      }
+    }
+
     const thumbs = album.thumbnails || [];
     const bestCover = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || (songs[0]?.thumbnail || '');
 
@@ -495,7 +555,9 @@ app.get('/api/album/:id', async (req, res) => {
       year: album.year || '',
       coverImage: toHDUrl(bestCover),
       songs,
-      trackCount: songs.length
+      trackCount: songs.length,
+      originalCount,
+      isSingle
     };
 
     setCache(cacheKey, result);

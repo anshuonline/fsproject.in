@@ -95,3 +95,15 @@ export function useContextMenu() {
   }
   return context;
 }
+
+export function useToast() {
+  const context = useContext(ContextMenuContext);
+  if (!context) {
+    throw new Error('useToast must be used within a ContextMenuProvider');
+  }
+  return {
+    showToast: context.showToast,
+    removeToast: context.removeToast,
+    toasts: context.toasts
+  };
+}

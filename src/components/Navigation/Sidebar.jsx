@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Bookmark, Sparkles, Plus, Heart, Music, ListMusic, X } from 'lucide-react';
+import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import './Sidebar.css';
 
@@ -64,15 +64,6 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
           >
             <Bookmark size={22} className="fs-nav-icon" />
             <span>Library</span>
-          </NavLink>
-
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => `fs-nav-item ${isActive ? 'active' : ''}`}
-            onClick={onClose}
-          >
-            <Sparkles size={22} className="fs-nav-icon" />
-            <span>Upgrade</span>
           </NavLink>
         </nav>
 

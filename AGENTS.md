@@ -79,13 +79,24 @@ Use these CSS variables exclusively across all styles:
 - **Muted Text**: `#707070` (`--color-text-muted`)
 
 ## 5. UI/UX Rules (YouTube Music Aesthetic)
-- **Home Layout**: "From the community" and "From your library" shelves with 2x2 collage artwork or custom cover art, creator avatar badges, view counts, and hover play actions. No generic top trending banners on Home.
-- **Left Sidebar**: Home, Explore, Library, Upgrade links + `+ New playlist` button + Liked music and custom playlists list.
-- **Header**: Hamburger menu, FreeSong logo (`/images/freesonglogowebp.webp`), center pill search input, cast/profile icons.
-- **Persistent Player**: Bottom player bar never resets on page navigation; full-screen player available on mobile & desktop expand.
+- **Home Layout**: Dynamic algorithmic shelves with personalized artist specials, quick picks, latest releases, latest hits, and mood shelves.
+- **Left Sidebar**: Home, Explore, Library links + `+ New playlist` button + Liked music and custom playlists list. **No "Upgrade" button** in sidebar.
+- **Header**: Hamburger menu, FreeSong logo (`/images/freesonglogowebp.webp`), center pill search input, profile icons.
+- **Persistent Player**: Bottom player bar never resets on page navigation; full-screen player available on mobile & desktop expand with segmented mode switcher (`Song`, `Lyrics`, `Up Next`).
 - **Mobile First**: Fluid responsiveness across phones (375px+), tablets (768px+), and desktops (1024px+).
 
-## 6. Security & Engineering Rules
+## 6. Album & Soundtrack Handling
+- **Single & Sparse Album Enrichment**: Whenever an album fetched from `ytmusic-api` contains only 1–2 tracks (such as singles or movie soundtrack singles like `(From "Lupt")`), the server pipeline automatically enriches the release with the full movie soundtrack and related tracks by the artist. In `AlbumDetail`, releases with 1–2 original tracks are designated as `SINGLE / SOUNDTRACK` with full soundtrack collections so users are never left with a 1-song dead end.
+
+## 7. Onboarding & Validation Rules
+- **Mandatory Selection**: During onboarding taste personalization, users must select **at least 1 genre** to proceed to artists, and **at least 1 artist** to complete setup.
+- **Error Feedback**: If a user attempts to continue or finish without selecting the minimum requirements, display an error toast using `useToast().showToast(message, 'error')`.
+
+## 8. Centralized UI Systems
+- **Unified Toast Engine**: Reusable `<Toast />` component mounted in `MainLayout` and accessed via `useToast()` from `ContextMenuContext.jsx`. Must be used consistently application-wide for success, info, and error notifications.
+- **Global Context Menu**: Universal context menu with desktop popover and mobile slide-up bottom sheet, accessible via right-click (`onContextMenu`) and three-dots (`...`) across all cards and player components.
+
+## 9. Security & Engineering Rules
 - **No Push Without Explicit Approval**: Never run `git push`, never push to remote branches, never create remote PRs without explicit confirmation from the user.
 - **Strict Input Validation**: Sanitize all search queries, playlist IDs, and user inputs before passing to `ytmusic-api`.
 - **Never Expose Secrets**: Keep environment variables safe; never commit API keys or credentials.

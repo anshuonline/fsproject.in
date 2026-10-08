@@ -90,10 +90,10 @@ export function AlbumDetail() {
         </div>
 
         <div className="fs-album-meta">
-          <span className="fs-album-type">ALBUM</span>
+          <span className="fs-album-type">{album?.isSingle ? 'SINGLE / SOUNDTRACK' : 'ALBUM'}</span>
           <h1 className="fs-album-title">{album?.title}</h1>
           <p className="fs-album-sub">
-            {album?.artist} • {album?.year || 'Release'} • {album?.songs?.length || 0} tracks
+            {album?.artist} • {album?.year || 'Release'} • {album?.isSingle ? `${album?.songs?.length || 0} tracks (Soundtrack Collection)` : `${album?.songs?.length || 0} tracks`}
           </p>
 
           <div className="fs-album-actions">

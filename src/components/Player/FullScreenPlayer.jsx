@@ -16,7 +16,8 @@ import {
   MoreVertical,
   BookmarkPlus,
   Moon,
-  Sparkles
+  Sparkles,
+  ListPlus
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
@@ -81,7 +82,8 @@ export function FullScreenPlayer() {
     toggleMute,
     toggleShuffle,
     toggleRepeat,
-    playSong
+    playSong,
+    addToQueue
   } = usePlayer();
 
   const { isLiked, toggleLike } = useLibrary();
@@ -549,6 +551,29 @@ export function FullScreenPlayer() {
               {/* TAB 3: RELATED */}
               {((!isMobile && activeTab === 'related') || (isMobile && mobileMode === 'related')) && (
                 <div className="fs-fs-related-panel">
+                  {/* Related Header */}
+                  <div className="fs-fs-queue-subheader">
+                    <div className="fs-fs-source-meta">
+                      <span className="fs-fs-playing-from">YOU MIGHT ALSO LIKE</span>
+                      <span className="fs-fs-source-name truncate">
+                        Similar to "{currentSong.title}"
+                      </span>
+                    </div>
+                    {relatedSongs.length > 0 && (
+                      <button
+                        className="fs-fs-save-btn"
+                        onClick={() => {
+                          relatedSongs.forEach(song => addToQueue(song));
+                          showToast(`Added ${relatedSongs.length} songs to queue`);
+                        }}
+                        title="Add all to queue"
+                      >
+                        <ListPlus size={16} />
+                        <span>Add all</span>
+                      </button>
+                    )}
+                  </div>
+
                   {loadingRelated ? (
                     <div className="fs-lyrics-loading">
                       <Loader2 size={32} className="spin text-brand" />
@@ -566,13 +591,34 @@ export function FullScreenPlayer() {
                           key={`rel-${track.videoId}-${idx}`}
                           className="fs-fs-queue-item"
                           onClick={() => playSong(track)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openMenu(track, e);
+                          }}
                         >
-                          <img
-                            src={track.thumbnail || `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`}
-                            alt={track.title}
-                            className="fs-fs-queue-thumb"
-                            referrerPolicy="no-referrer"
-                          />
+                          <div className="fs-fs-queue-thumb-wrap">
+                            <img
+                              src={
+                                track.thumbnail ||
+                                (track.videoId
+                                  ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
+                                  : '/images/freesonglogowebp.webp')
+                              }
+                              alt={track.title}
+                              className="fs-fs-queue-thumb"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const currentSrc = e.currentTarget.src || '';
+                                if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
+                                  e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
+                                } else {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = getArtworkFallback(track.title);
+                                }
+                              }}
+                            />
+                          </div>
                           <div className="fs-fs-queue-meta">
                             <span className="fs-fs-queue-title truncate">{track.title}</span>
                             <span className="fs-fs-queue-artist truncate">{track.artist}</span>
@@ -586,6 +632,8 @@ export function FullScreenPlayer() {
                               e.stopPropagation();
                               openMenu(track, e);
                             }}
+                            title="Track options"
+                            aria-label="Track options"
                           >
                             <MoreVertical size={16} />
                           </button>
