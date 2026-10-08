@@ -1,0 +1,243 @@
+/* ==========================================================================
+   Footer.css — GanaTube-Style High-Authority AMOLED Footer
+   ========================================================================== */
+
+.fs-footer {
+  width: 100%;
+  background: #080808;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 60px;
+  padding: 56px 32px 32px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.fs-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 200, 83, 0.35), transparent);
+}
+
+.fs-footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* ─── Top Brand Row ─── */
+.fs-footer-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.fs-footer-brand-col {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fs-footer-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #000000;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fs-footer-brand-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.fs-footer-brand-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.fs-footer-brand-name span {
+  color: var(--color-primary, #00c853);
+}
+
+.fs-footer-tagline {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #afafaf);
+  margin-top: 2px;
+}
+
+.fs-footer-badges {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fs-footer-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--color-text-secondary, #afafaf);
+  font-size: 0.75rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.fs-footer-pill-badge.green {
+  background: rgba(0, 200, 83, 0.1);
+  border-color: rgba(0, 200, 83, 0.35);
+  color: var(--color-primary, #00c853);
+}
+
+/* ─── 5 Columns Grid (GanaTube Style) ─── */
+.fs-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 32px;
+}
+
+.fs-footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fs-footer-col-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-footer-col-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: var(--color-primary, #00c853);
+  border-radius: 2px;
+}
+
+.fs-footer-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fs-footer-link {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #afafaf);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  display: inline-block;
+}
+
+.fs-footer-link:hover {
+  color: var(--color-primary, #00c853);
+  transform: translateX(3px);
+}
+
+/* ─── Bottom Bar ─── */
+.fs-footer-bottom-bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #707070);
+}
+
+.fs-footer-copyright {
+  color: var(--color-text-secondary, #afafaf);
+}
+
+.fs-footer-disclaimer-text {
+  max-width: 600px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.fs-footer-bottom-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fs-footer-bottom-links a {
+  color: var(--color-text-muted, #707070);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.fs-footer-bottom-links a:hover {
+  color: var(--color-primary, #00c853);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .fs-footer-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fs-footer {
+    padding: 36px 18px 24px;
+    margin-top: 40px;
+  }
+
+  .fs-footer-brand-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fs-footer-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .fs-footer-bottom-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .fs-footer-disclaimer-text {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

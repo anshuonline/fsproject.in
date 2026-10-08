@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /explore
+Allow: /search
+Allow: /privacy
+Allow: /terms
+Allow: /dmca
+Allow: /about
+Allow: /contact
+
+Sitemap: https://freesong.in/sitemap.xml

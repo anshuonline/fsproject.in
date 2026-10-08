@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Play, Shuffle, Disc, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Play, Shuffle, Disc, Loader2, ArrowLeft, RefreshCw, Clock } from 'lucide-react';
 import { api } from '../../services/api';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
@@ -58,7 +58,7 @@ export function AlbumDetail() {
             <ArrowLeft size={16} /> Back
           </button>
           <button className="btn btn-primary" onClick={loadAlbum}>
-            <RefreshCw size={16} /> Retry
+            <RefreshCw size={16} /> Try Again
           </button>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function AlbumDetail() {
               <span>Play All</span>
             </button>
             <button
-              className="btn btn-secondary"
+              className="btn btn-secondary fs-album-shuffle-btn"
               onClick={handleShufflePlay}
               disabled={!album?.songs?.length}
             >
@@ -117,19 +117,34 @@ export function AlbumDetail() {
         </div>
       </div>
 
-      <div className="fs-album-tracklist">
-        {album?.songs?.length === 0 ? (
-          <div className="fs-album-empty">No tracks available for this album.</div>
-        ) : (
-          album?.songs?.map((song, index) => (
-            <div key={song.videoId || index} className="fs-album-track-row">
-              <span className="fs-album-track-num">{index + 1}</span>
-              <div className="fs-album-track-card-wrap">
-                <SongCard song={song} queueContext={album.songs} />
-              </div>
-            </div>
-          ))
+      {/* Spotify-Style Track List Container */}
+      <div className="fs-album-tracks-container">
+        {album?.songs?.length > 0 && (
+          <div className="fs-pl-table-header">
+            <span className="fs-pl-th fs-pl-th-num">#</span>
+            <span className="fs-pl-th fs-pl-th-title">TITLE</span>
+            <span className="fs-pl-th fs-pl-th-album">ALBUM</span>
+            <span className="fs-pl-th fs-pl-th-time">
+              <Clock size={16} />
+            </span>
+          </div>
         )}
+
+        <div className="fs-album-tracklist">
+          {album?.songs?.length === 0 ? (
+            <div className="fs-album-empty">No tracks available for this album.</div>
+          ) : (
+            album?.songs?.map((song, index) => (
+              <SongCard
+                key={song.videoId || index}
+                song={song}
+                queueContext={album.songs}
+                index={index}
+                showAlbum={true}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

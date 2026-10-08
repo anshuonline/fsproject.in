@@ -103,3 +103,11 @@ Use these CSS variables exclusively across all styles:
 - **Error Handling**: Provide graceful empty, error, and loading states for every network request.
 - **Single Audio Player Instance**: Centralized state management via `PlayerContext` to avoid multiple concurrent playing instances.
 - **Logo Preservation**: Always reuse `/images/freesonglogowebp.webp`. Never regenerate or duplicate the logo.
+
+## 10. Recommendation & Trending Architecture Rules
+- **Dynamic System Year**: Always use `new Date().getFullYear()` (`SYSTEM_YEAR`) for year calculations and labels. Never hardcode static year strings (e.g. `2024`, `2025`) in queries or templates.
+- **Zero Year Pollution in Search Queries**: Never append year numbers into text search queries. Keyword stuffing years causes YouTube to return 10-year-old amateur mashups. Use smart natural queries (`new bollywood songs`, `trending punjabi songs`, `${artist} new songs`).
+- **Live Official Chart APIs**: Fetch live trending songs directly via YouTube Music's official chart endpoints (`FEmusic_charts` and browse IDs: `VLOLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40` for India Trending, `VLPL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX` for Hindi, etc.).
+- **Live Song Radio via `getUpNexts`**: For "Songs like {song}", always query YouTube Music's algorithmic radio queue via `yt.getUpNexts(videoId)`. Never use community playlist text search.
+- **Strict Anti-Spam Filtering**: All songs must pass `isSpamOrJunkSong()` to reject mashups, non-stop jukeboxes, and audio clips over 12 minutes or under 45 seconds.
+

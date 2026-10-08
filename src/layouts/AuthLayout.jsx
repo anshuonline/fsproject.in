@@ -17,7 +17,7 @@ export function AuthLayout() {
       </div>
 
       <div className="fs-auth-footer">
-        <p>© 2026 FreeSong.in • Modern AMOLED Music Streaming</p>
+        <p>© {new Date().getFullYear()} FreeSong.in • Modern AMOLED Music Streaming</p>
       </div>
     </div>
   );

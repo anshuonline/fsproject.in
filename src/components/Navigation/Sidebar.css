@@ -116,6 +116,36 @@
   color: var(--color-primary);
 }
 
+/* Install App Nav Button */
+.fs-nav-install-btn {
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.fs-nav-install-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--color-primary);
+}
+
+.fs-nav-install-btn:hover .fs-install-icon {
+  color: var(--color-primary);
+  transform: translateY(1px);
+}
+
+.fs-install-icon {
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
 .fs-sidebar-divider {
   height: 1px;
   background-color: var(--color-border);

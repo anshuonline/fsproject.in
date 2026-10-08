@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Play, Shuffle, ListMusic, Loader2 } from 'lucide-react';
+import { Play, Shuffle, ListMusic, Loader2, Clock } from 'lucide-react';
 import { api } from '../../services/api';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
@@ -102,7 +102,7 @@ export function PlaylistDetail() {
               <span>Play All</span>
             </button>
             <button
-              className="btn btn-secondary"
+              className="btn btn-secondary fs-pl-shuffle-btn"
               onClick={handleShufflePlay}
               disabled={!playlist?.songs?.length}
             >
@@ -113,17 +113,36 @@ export function PlaylistDetail() {
         </div>
       </div>
 
-      {/* Track list */}
-      <div className="fs-pl-tracks-list">
-        {playlist?.songs?.length === 0 ? (
-          <div className="fs-pl-empty">
-            <p>No songs found in this playlist.</p>
+      {/* Spotify-Style Track List Container */}
+      <div className="fs-pl-tracks-container">
+        {playlist?.songs?.length > 0 && (
+          <div className="fs-pl-table-header">
+            <span className="fs-pl-th fs-pl-th-num">#</span>
+            <span className="fs-pl-th fs-pl-th-title">TITLE</span>
+            <span className="fs-pl-th fs-pl-th-album">ALBUM</span>
+            <span className="fs-pl-th fs-pl-th-time">
+              <Clock size={16} />
+            </span>
           </div>
-        ) : (
-          playlist?.songs?.map((song) => (
-            <SongCard key={song.videoId} song={song} queueContext={playlist.songs} />
-          ))
         )}
+
+        <div className="fs-pl-tracks-list">
+          {playlist?.songs?.length === 0 ? (
+            <div className="fs-pl-empty">
+              <p>No songs found in this playlist.</p>
+            </div>
+          ) : (
+            playlist?.songs?.map((song, idx) => (
+              <SongCard
+                key={song.videoId || idx}
+                song={song}
+                queueContext={playlist.songs}
+                index={idx}
+                showAlbum={true}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

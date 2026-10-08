@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PlayerProvider } from './context/PlayerContext';
 import { LibraryProvider } from './context/LibraryContext';
 import { ContextMenuProvider } from './context/ContextMenuContext';
+import { PWAProvider } from './context/PWAContext';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
@@ -20,6 +21,7 @@ import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
+import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
 
 export default function App() {
   return (
@@ -27,7 +29,8 @@ export default function App() {
       <PlayerProvider>
         <LibraryProvider>
           <ContextMenuProvider>
-            <Routes>
+            <PWAProvider>
+              <Routes>
             {/* Main Application with Sidebar, Header, and Player */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Home />} />
@@ -41,6 +44,14 @@ export default function App() {
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+
+              {/* Legal, AdSense & Policy Routes */}
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/dmca" element={<DmcaDisclaimer />} />
+              <Route path="/copyright" element={<Navigate to="/dmca" replace />} />
+              <Route path="/about" element={<AboutUs />} />
+              <Route path="/contact" element={<ContactUs />} />
             </Route>
 
             {/* Auth Pages */}
@@ -52,9 +63,10 @@ export default function App() {
             {/* Fallback to Home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </ContextMenuProvider>
-      </LibraryProvider>
-    </PlayerProvider>
+        </PWAProvider>
+      </ContextMenuProvider>
+    </LibraryProvider>
+  </PlayerProvider>
     </BrowserRouter>
   );
 }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from '../components/Navigation/Header';
 import { Sidebar } from '../components/Navigation/Sidebar';
 import { MobileNav } from '../components/Navigation/MobileNav';
@@ -8,11 +8,13 @@ import { FullScreenPlayer } from '../components/Player/FullScreenPlayer';
 import { QueueDrawer } from '../components/Player/QueueDrawer';
 import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
 import { Toast } from '../components/Common/Toast';
+import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
 import './MainLayout.css';
 
 export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('fs_sidebar_collapsed') === 'true';
@@ -21,6 +23,11 @@ export function MainLayout() {
     }
   });
   const { currentSong } = usePlayer();
+
+  // Scroll to top on navigation so user lands at top of legal/feature pages
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth >= 900) {
@@ -54,9 +61,10 @@ export function MainLayout() {
           isCollapsed={isSidebarCollapsed}
         />
 
-        {/* Page Content Outlet */}
+        {/* Page Content Outlet & Footer */}
         <main className="fs-main-content">
           <Outlet />
+          <Footer />
         </main>
       </div>
 

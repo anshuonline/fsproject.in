@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X } from 'lucide-react';
+import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { usePWA } from '../../context/PWAContext';
 import './Sidebar.css';
 
 export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
   const { playlists, createPlaylist } = useLibrary();
+  const { isInstalled, installApp } = usePWA();
   const [showModal, setShowModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const navigate = useNavigate();
@@ -65,6 +67,21 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
             <Bookmark size={22} className="fs-nav-icon" />
             <span>Library</span>
           </NavLink>
+
+          {!isInstalled && (
+            <button
+              type="button"
+              className="fs-nav-item fs-nav-install-btn"
+              onClick={() => {
+                installApp();
+                if (onClose) onClose();
+              }}
+              title="Install FreeSong App"
+            >
+              <ArrowDownToLine size={22} className="fs-nav-icon fs-install-icon" />
+              <span>{isCollapsed ? 'Install' : 'Install app'}</span>
+            </button>
+          )}
         </nav>
 
         <div className="fs-sidebar-divider" />

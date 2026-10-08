@@ -6,6 +6,7 @@ import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { SongCard } from '../../components/Cards/SongCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
 import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
+import { SeoContentSection } from '../../components/Common/SeoContentSection';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
 import './Home.css';
@@ -198,13 +199,16 @@ export function Home() {
             <div className="fs-shelf-row" id={rowId}>
               {section.items.map((item) => (
                 <div key={item.id || item.videoId} className="fs-shelf-col">
-                  <CommunityCard item={item} />
+                  <CommunityCard item={item} queueContext={section.items} />
                 </div>
               ))}
             </div>
           </section>
         );
       })}
+
+      {/* ─── SEO Discovery & Why FreeSong Section ──────────────────────── */}
+      <SeoContentSection />
 
       {/* ─── Onboarding Modal ─────────────────────────────────────────── */}
       <OnboardingModal

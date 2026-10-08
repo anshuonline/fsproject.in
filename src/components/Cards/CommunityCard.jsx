@@ -6,7 +6,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './CommunityCard.css';
 
-export function CommunityCard({ item }) {
+export function CommunityCard({ item, queueContext = null }) {
   const { playSong } = usePlayer();
   const { openMenu } = useContextMenu();
   const navigate = useNavigate();
@@ -17,12 +17,17 @@ export function CommunityCard({ item }) {
     ? item.songs[0]
     : null;
 
+  const isAlbum = item.type === 'album' || Boolean(item.albumId);
+  const effectiveQueue = (queueContext && queueContext.length > 0) ? queueContext : [item];
+
   const handlePlayClick = (e) => {
     e.stopPropagation();
     if (item.videoId) {
-      playSong(item, [item]);
+      playSong(item, effectiveQueue);
     } else if (item.songs && item.songs.length > 0) {
       playSong(item.songs[0], item.songs);
+    } else if (isAlbum) {
+      navigate(`/album/${item.albumId || item.id}?name=${encodeURIComponent(item.title)}`);
     } else {
       navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
     }
@@ -30,7 +35,9 @@ export function CommunityCard({ item }) {
 
   const handleCardClick = () => {
     if (item.videoId) {
-      playSong(item, [item]);
+      playSong(item, effectiveQueue);
+    } else if (isAlbum) {
+      navigate(`/album/${item.albumId || item.id}?name=${encodeURIComponent(item.title)}`);
     } else {
       navigate(`/playlist/${item.id}?name=${encodeURIComponent(item.title)}`);
     }
