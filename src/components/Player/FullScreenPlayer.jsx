@@ -542,6 +542,7 @@ export function FullScreenPlayer() {
         </div>
 
         {/* ── Bottom Controls & Scrubber ── */}
+        {/* ── Bottom Controls & Scrubber ── */}
         <div className="fs-fs-controls-section">
           {/* Progress Slider */}
           <div className="fs-fs-scrubber-row">
@@ -562,82 +563,94 @@ export function FullScreenPlayer() {
             <span className="fs-time-text">{formatTime(duration)}</span>
           </div>
 
-          {/* Buttons Row */}
-          <div className="fs-fs-buttons-row">
-            <button
-              className={`btn-icon ${isShuffle ? 'text-brand' : ''}`}
-              onClick={toggleShuffle}
-              title="Shuffle"
-              aria-label="Shuffle"
-            >
-              <Shuffle size={20} />
-            </button>
+          {/* Unified Controls Bar */}
+          <div className="fs-fs-controls-bar">
+            {/* Left Balance Area */}
+            <div className="fs-fs-ctrl-left">
+              <span className="fs-fs-audio-badge">AMOLED HD</span>
+            </div>
 
-            <button
-              className="btn-icon"
-              onClick={prevSong}
-              title="Previous"
-              aria-label="Previous"
-            >
-              <SkipBack size={26} />
-            </button>
+            {/* Center Buttons Row */}
+            <div className="fs-fs-buttons-row">
+              <button
+                className={`btn-icon fs-fs-ctrl-btn ${isShuffle ? 'active' : ''}`}
+                onClick={toggleShuffle}
+                title={isShuffle ? 'Shuffle: On' : 'Shuffle: Off'}
+                aria-label="Shuffle"
+              >
+                <Shuffle size={20} />
+              </button>
 
-            <button
-              className="btn-play-circle fs-fs-big-play"
-              onClick={togglePlay}
-              title={isPlaying ? 'Pause' : 'Play'}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isLoading ? (
-                <Loader2 size={28} className="spin" />
-              ) : isPlaying ? (
-                <Pause size={28} fill="currentColor" />
-              ) : (
-                <Play size={28} fill="currentColor" style={{ marginLeft: 3 }} />
-              )}
-            </button>
+              <button
+                className="btn-icon fs-fs-ctrl-btn"
+                onClick={prevSong}
+                title="Previous Track"
+                aria-label="Previous"
+              >
+                <SkipBack size={26} />
+              </button>
 
-            <button
-              className="btn-icon"
-              onClick={nextSong}
-              title="Next"
-              aria-label="Next"
-            >
-              <SkipForward size={26} />
-            </button>
+              <button
+                className="btn-play-circle fs-fs-big-play"
+                onClick={togglePlay}
+                title={isPlaying ? 'Pause' : 'Play'}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isLoading ? (
+                  <Loader2 size={28} className="spin" />
+                ) : isPlaying ? (
+                  <Pause size={28} fill="currentColor" />
+                ) : (
+                  <Play size={28} fill="currentColor" style={{ marginLeft: 3 }} />
+                )}
+              </button>
 
-            <button
-              className={`btn-icon ${repeatMode !== 'off' ? 'text-brand' : ''}`}
-              onClick={toggleRepeat}
-              title={`Repeat: ${repeatMode}`}
-              aria-label={`Repeat: ${repeatMode}`}
-            >
-              {repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
-            </button>
-          </div>
+              <button
+                className="btn-icon fs-fs-ctrl-btn"
+                onClick={nextSong}
+                title="Next Track"
+                aria-label="Next"
+              >
+                <SkipForward size={26} />
+              </button>
 
-          {/* Volume Row (Hidden on small mobile screens to keep layout super clean) */}
-          <div className="fs-fs-volume-row">
-            <button
-              className="btn-icon"
-              onClick={toggleMute}
-              title={isMuted ? 'Unmute' : 'Mute'}
-              aria-label="Toggle Mute"
-            >
-              {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={isMuted ? 0 : volume}
-              onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
-              className="fs-volume-input fs-fs-vol-slider"
-              style={{
-                background: `linear-gradient(to right, var(--color-white) ${(isMuted ? 0 : volume) * 100}%, #333333 ${(isMuted ? 0 : volume) * 100}%)`
-              }}
-            />
+              <button
+                className={`btn-icon fs-fs-ctrl-btn ${repeatMode !== 'off' ? 'active' : ''}`}
+                onClick={toggleRepeat}
+                title={`Repeat: ${repeatMode.toUpperCase()}`}
+                aria-label={`Repeat: ${repeatMode}`}
+              >
+                {repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+              </button>
+            </div>
+
+            {/* Right: Hover Expandable Volume Control */}
+            <div className="fs-fs-ctrl-right">
+              <div className="fs-fs-volume-wrap">
+                <button
+                  className="btn-icon fs-fs-vol-btn"
+                  onClick={toggleMute}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                  aria-label="Toggle Mute"
+                >
+                  {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </button>
+                <div className="fs-fs-vol-slider-container">
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
+                    className="fs-volume-input fs-fs-vol-slider"
+                    style={{
+                      background: `linear-gradient(to right, var(--color-primary) ${(isMuted ? 0 : volume) * 100}%, #333333 ${(isMuted ? 0 : volume) * 100}%)`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

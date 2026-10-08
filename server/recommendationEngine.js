@@ -1,11 +1,52 @@
 /**
  * FreeSong.in — Smart Recommendation Engine
- * Contains 250+ query templates and dynamic section generators
- * that adapt to user preferences and real-time listening history.
+ * Contains 250+ curated query templates and dynamic section generators
+ * that adapt to user preferences and real-time listening history,
+ * featuring dedicated Latest Releases & Latest Hits pipelines.
  */
 
 // ─── 250+ Curated Query Patterns & Templates ────────────────────────────────
 export const QUERY_TEMPLATES = {
+  // Latest Releases & Fresh Drops patterns (Brand new songs 2024–2025)
+  latestReleases: [
+    'Latest Released {genre} Songs 2024 2025',
+    'New Released {genre} Songs',
+    'Fresh Releases in {genre}',
+    'Brand New {genre} Music 2025',
+    'Just Dropped {genre} Singles',
+    'Latest Released {artist} Songs 2024 2025',
+    '{artist} New Song Latest Release',
+    '{artist} Latest Released Singles',
+    'New Released Songs India 2024 2025',
+    'Latest Bollywood New Releases 2024 2025',
+    'Latest Punjabi Releases 2024 2025',
+    'Latest Tamil Released Songs 2024 2025',
+    'Latest Telugu Released Songs 2024 2025',
+    'Latest Haryanvi Released Songs 2024 2025',
+    'Latest Indian Pop Drops',
+    'Fresh Music Friday {genre}',
+    'New Music Drops 2024 2025'
+  ],
+
+  // Latest Hits & Chartbusters patterns
+  latestHits: [
+    'Latest {genre} Hits 2024 2025',
+    'Top Latest Hits {genre}',
+    'Latest Chartbusters {genre}',
+    'Latest Viral Hits {genre}',
+    'Hot Hits {genre} 2024 2025',
+    'Latest {artist} Hits 2024 2025',
+    '{artist} Latest Hit Songs',
+    'Latest Bollywood Hits 2024 2025',
+    'Latest Punjabi Hits 2024 2025',
+    'Latest Tamil Hits 2024 2025',
+    'Latest Telugu Hits 2024 2025',
+    'Latest Top 50 India Hits',
+    'Trending Latest Songs 2025',
+    'Viral Latest Chartbusters',
+    'Superhit Latest Songs 2025'
+  ],
+
   // Artist-driven patterns
   artistBest: [
     'Best of {artist}',
@@ -145,7 +186,7 @@ function formatPlaylist(p, customTitle) {
   };
 }
 
-// ─── Shelf Plan Generator (Guarantees 20–24 Dynamic Sections) ───────────────
+// ─── Shelf Plan Generator (Generates 24–28 Dynamic Sections) ────────────────
 export function generateShelfPlan(preferences = {}, history = []) {
   const userArtists = (preferences.artists || []).filter(Boolean);
   const userGenres = (preferences.genres || []).filter(Boolean);
@@ -179,7 +220,37 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'picks'
   });
 
-  // 3. Artist Special
+  // 3. LATEST RELEASES & FRESH DROPS (Top Priority: Brand new releases 2024-2025)
+  shelves.push({
+    id: 'shelf-latest-releases-main',
+    eyebrow: 'FRESH DROPS & NEW MUSIC',
+    title: 'Latest Releases & Fresh Drops',
+    searchQuery: `${mainArtist} ${mainGenre} latest released songs 2024 2025 new release`,
+    type: 'songs',
+    category: 'latest'
+  });
+
+  // 4. LATEST HITS & CHARTBUSTERS (Trending hot hits right now)
+  shelves.push({
+    id: 'shelf-latest-hits-main',
+    eyebrow: 'HOT ON THE CHARTS',
+    title: `Latest Hits: ${capGenre} & Trending`,
+    searchQuery: `Latest ${mainGenre} hits 2024 2025 trending chartbusters`,
+    type: 'songs',
+    category: 'hits'
+  });
+
+  // 5. ARTIST'S LATEST RELEASES
+  shelves.push({
+    id: 'shelf-art-latest-main',
+    eyebrow: `NEW FROM ${mainArtist.toUpperCase()}`,
+    title: `${mainArtist} Latest Releases & Singles`,
+    searchQuery: `${mainArtist} latest new songs 2024 2025 release`,
+    type: 'songs',
+    category: 'artist'
+  });
+
+  // 6. Artist Special / Curated Playlists
   shelves.push({
     id: 'shelf-art-special-0',
     eyebrow: `${mainArtist.toUpperCase()} SPOTLIGHT`,
@@ -189,9 +260,19 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'artist'
   });
 
-  // 4. Secondary Artists (if provided) or deeper thematic shelves for main artist
+  // 7. Secondary Artists (if provided) or deeper thematic shelves for main artist
   if (primaryArtists.length > 1) {
     primaryArtists.slice(1, 4).forEach((artist, idx) => {
+      // Latest Releases & Hits for secondary followed artists
+      shelves.push({
+        id: `shelf-art-latest-${idx + 1}`,
+        eyebrow: 'LATEST FROM ' + artist.toUpperCase(),
+        title: `${artist} Latest Releases & Hits`,
+        searchQuery: `${artist} latest new songs 2024 2025`,
+        type: 'songs',
+        category: 'latest'
+      });
+
       shelves.push({
         id: `shelf-art-best-${idx + 1}`,
         eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
@@ -267,27 +348,135 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 5. Genre Shelves (Tailored for regional genres like Tamil, Telugu, Haryanvi, Bengali, etc.)
+  // 8. Genre Shelves (Tailored for regional genres with dedicated Latest Releases & Latest Hits)
   const GENRE_LABELS = {
-    tamil: { name: 'Tamil Kollywood Hits', party: 'Tamil Kuthu & Party', chill: 'Tamil Melodies & Chill', workout: 'Tamil Energy Hits' },
-    telugu: { name: 'Telugu Tollywood Hits', party: 'Telugu Mass Beats', chill: 'Telugu Soulful Melodies', workout: 'Telugu Fast Beats' },
-    haryanvi: { name: 'Haryanvi Ragni & Beats', party: 'Haryanvi Dance Party', chill: 'Haryanvi Desi Chill', workout: 'Haryanvi Power Beats' },
-    bengali: { name: 'Bengali Melodies & Folk', party: 'Bangla Modern Pop', chill: 'Bengali Acoustic & Folk', workout: 'Bengali Energy Hits' },
-    malayalam: { name: 'Malayalam Mollywood', party: 'Malayalam Beats', chill: 'Malayalam Acoustic Chill', workout: 'Malayalam Power Tracks' },
-    kannada: { name: 'Kannada Sandalwood', party: 'Kannada Mass Hits', chill: 'Kannada Melodies', workout: 'Kannada Energy Beats' },
-    bhojpuri: { name: 'Bhojpuri Tadka', party: 'Bhojpuri DJ Dance', chill: 'Bhojpuri Folk Melodies', workout: 'Bhojpuri High Energy' },
-    punjabi: { name: 'Punjabi Beats', party: 'Punjabi Club & Bhangra', chill: 'Punjabi Late Night Chill', workout: 'Punjabi Gym Energy' },
-    bollywood: { name: 'Bollywood Hits', party: 'Bollywood Club Party', chill: 'Bollywood Late Night Chill', workout: 'Bollywood Workout Energy' },
-    lofi: { name: 'Lo-Fi Chill', party: 'Lo-Fi Grooves', chill: 'Lo-Fi Midnight Echoes', workout: 'Lo-Fi Focus Energy' }
+    tamil: { 
+      name: 'Tamil Kollywood Hits', 
+      latest: 'Latest Tamil Releases & Drops',
+      latestHits: 'Latest Tamil Hits 2025',
+      party: 'Tamil Kuthu & Party', 
+      chill: 'Tamil Melodies & Chill', 
+      workout: 'Tamil Energy Hits' 
+    },
+    telugu: { 
+      name: 'Telugu Tollywood Hits', 
+      latest: 'Latest Telugu Releases & Drops',
+      latestHits: 'Latest Telugu Hits 2025',
+      party: 'Telugu Mass Beats', 
+      chill: 'Telugu Soulful Melodies', 
+      workout: 'Telugu Fast Beats' 
+    },
+    haryanvi: { 
+      name: 'Haryanvi Ragni & Beats', 
+      latest: 'Latest Haryanvi Releases',
+      latestHits: 'Latest Haryanvi Hits 2025',
+      party: 'Haryanvi Dance Party', 
+      chill: 'Haryanvi Desi Chill', 
+      workout: 'Haryanvi Power Beats' 
+    },
+    bengali: { 
+      name: 'Bengali Melodies & Folk', 
+      latest: 'Latest Bengali Releases',
+      latestHits: 'Latest Bangla Pop Hits',
+      party: 'Bangla Modern Pop', 
+      chill: 'Bengali Acoustic & Folk', 
+      workout: 'Bengali Energy Hits' 
+    },
+    malayalam: { 
+      name: 'Malayalam Mollywood', 
+      latest: 'Latest Malayalam Releases',
+      latestHits: 'Latest Malayalam Hits',
+      party: 'Malayalam Beats', 
+      chill: 'Malayalam Acoustic Chill', 
+      workout: 'Malayalam Power Tracks' 
+    },
+    kannada: { 
+      name: 'Kannada Sandalwood', 
+      latest: 'Latest Kannada Releases',
+      latestHits: 'Latest Kannada Mass Hits',
+      party: 'Kannada Mass Hits', 
+      chill: 'Kannada Melodies', 
+      workout: 'Kannada Energy Beats' 
+    },
+    bhojpuri: { 
+      name: 'Bhojpuri Tadka', 
+      latest: 'Latest Bhojpuri Releases',
+      latestHits: 'Latest Bhojpuri Superhits',
+      party: 'Bhojpuri DJ Dance', 
+      chill: 'Bhojpuri Folk Melodies', 
+      workout: 'Bhojpuri High Energy' 
+    },
+    punjabi: { 
+      name: 'Punjabi Beats', 
+      latest: 'Latest Punjabi Releases & Fresh Drops',
+      latestHits: 'Latest Punjabi Chartbusters 2025',
+      party: 'Punjabi Club & Bhangra', 
+      chill: 'Punjabi Late Night Chill', 
+      workout: 'Punjabi Gym Energy' 
+    },
+    bollywood: { 
+      name: 'Bollywood Hits', 
+      latest: 'Latest Bollywood Releases',
+      latestHits: 'Latest Bollywood Hits 2025',
+      party: 'Bollywood Club Party', 
+      chill: 'Bollywood Late Night Chill', 
+      workout: 'Bollywood Workout Energy' 
+    },
+    lofi: { 
+      name: 'Lo-Fi Chill', 
+      latest: 'Latest Lo-Fi Releases & Drops',
+      latestHits: 'Latest Chillhop & Lo-Fi Hits',
+      party: 'Lo-Fi Grooves', 
+      chill: 'Lo-Fi Midnight Echoes', 
+      workout: 'Lo-Fi Focus Energy' 
+    },
+    indie: { 
+      name: 'Indian Indie & Pop', 
+      latest: 'Latest Indie Releases & Fresh Drops',
+      latestHits: 'Latest Indian Indie Hits',
+      party: 'Indie Pop Vibes', 
+      chill: 'Acoustic Indie Chill', 
+      workout: 'Indie Wave Energy' 
+    },
+    english: { 
+      name: 'Global Pop & English Hits', 
+      latest: 'Latest International Releases',
+      latestHits: 'Latest Billboard & Global Hits',
+      party: 'Global Dance Hits', 
+      chill: 'Acoustic Pop Chill', 
+      workout: 'Global Workout Hits' 
+    }
   };
 
   primaryGenres.slice(0, 4).forEach((genre, idx) => {
     const meta = GENRE_LABELS[genre.toLowerCase()] || {
       name: genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hits',
+      latest: `Latest ${genre} Releases`,
+      latestHits: `Latest ${genre} Hits`,
       party: `${genre} Party Hits`,
       chill: `${genre} Chill & Lo-Fi`,
       workout: `${genre} Workout Energy`
     };
+
+    // Dedicated Latest Releases for this genre
+    shelves.push({
+      id: `shelf-genre-latest-${idx}`,
+      eyebrow: 'NEW DROPS',
+      title: meta.latest || `Latest ${meta.name} Releases`,
+      searchQuery: `${genre} latest released songs 2024 2025 new songs`,
+      type: 'songs',
+      category: 'latest'
+    });
+
+    // Dedicated Latest Hits for this genre
+    shelves.push({
+      id: `shelf-genre-latest-hits-${idx}`,
+      eyebrow: 'TRENDING HITS',
+      title: meta.latestHits || `Latest ${meta.name} Hits`,
+      searchQuery: `${genre} latest hits songs 2024 2025 trending`,
+      type: 'songs',
+      category: 'hits'
+    });
 
     shelves.push({
       id: `shelf-genre-suggested-${idx}`,
@@ -308,7 +497,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   });
 
-  // 6. Workout & High Energy Genre
+  // 9. Workout & High Energy Genre
   const firstMeta = GENRE_LABELS[mainGenre.toLowerCase()] || { workout: `${capGenre} Workout Energy`, party: `${capGenre} Party Station` };
   shelves.push({
     id: 'shelf-genre-workout',
@@ -319,7 +508,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'genre'
   });
 
-  // 7. Roadtrip & Travel Vibes
+  // 10. Roadtrip & Travel Vibes
   shelves.push({
     id: 'shelf-genre-roadtrip',
     eyebrow: 'ON THE ROAD',
@@ -329,7 +518,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'genre'
   });
 
-  // 8. Party Station
+  // 11. Party Station
   shelves.push({
     id: 'shelf-genre-party',
     eyebrow: 'WEEKEND PARTY',
@@ -339,7 +528,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'genre'
   });
 
-  // 9. Lo-Fi & Ambient
+  // 12. Lo-Fi & Ambient
   shelves.push({
     id: 'shelf-genre-lofi',
     eyebrow: 'RELAX & FOCUS',
@@ -349,7 +538,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'genre'
   });
 
-  // 10. Collaborations / Similar Artists
+  // 13. Collaborations / Similar Artists
   if (primaryArtists.length >= 2) {
     shelves.push({
       id: 'shelf-collab',
@@ -370,27 +559,27 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 11. Desi Hip Hop & Rap Anthems
+  // 14. Desi Hip Hop & Rap Anthems
   shelves.push({
     id: 'shelf-hiphop',
     eyebrow: 'URBAN BEATS',
     title: 'Desi Hip Hop & Rap Anthems',
-    searchQuery: 'Desi Hip Hop top rap songs',
+    searchQuery: 'Desi Hip Hop top rap songs 2024 2025',
     type: 'songs',
     category: 'genre'
   });
 
-  // 12. Indian Indie Discoveries
+  // 15. Indian Indie Discoveries
   shelves.push({
     id: 'shelf-indie',
     eyebrow: 'FRESH DISCOVERIES',
     title: 'Indie & Alternative Wave',
-    searchQuery: 'Indian indie chill acoustic songs',
+    searchQuery: 'Indian indie chill acoustic songs 2024 2025',
     type: 'songs',
     category: 'discovery'
   });
 
-  // 13. Evergreen Retro Nostalgia
+  // 16. Evergreen Retro Nostalgia
   shelves.push({
     id: 'shelf-retro',
     eyebrow: 'TIMELESS CLASSICS',
@@ -400,7 +589,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'nostalgia'
   });
 
-  // 14. Acoustic Coffeehouse Sessions
+  // 17. Acoustic Coffeehouse Sessions
   shelves.push({
     id: 'shelf-coffeehouse',
     eyebrow: 'ACOUSTIC SESSIONS',
@@ -410,27 +599,27 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'mood'
   });
 
-  // 15. Global Trending Hits
+  // 18. Global Trending Hits 2025
   shelves.push({
     id: 'shelf-global',
     eyebrow: 'WORLDWIDE RADAR',
-    title: 'Trending Global Chartbusters',
-    searchQuery: 'Top global pop chartbusters',
+    title: 'Trending Global Chartbusters 2025',
+    searchQuery: 'Top global pop chartbusters 2025',
     type: 'songs',
     category: 'trending'
   });
 
-  // 16. Bollywood Romance & Heartbeats
+  // 19. Bollywood Romance & Heartbeats
   shelves.push({
     id: 'shelf-bollywood-romance',
     eyebrow: 'LOVE ANTHEMS',
     title: 'Bollywood Romantic Melodies',
-    searchQuery: 'Bollywood romantic love songs',
+    searchQuery: 'Bollywood romantic love songs 2024 2025',
     type: 'songs',
     category: 'genre'
   });
 
-  // 17. Real-Time Listening History Driven Shelves
+  // 20. Real-Time Listening History Driven Shelves
   if (history && history.length > 0) {
     const recentItem = history[0];
     if (recentItem?.artist) {
@@ -438,7 +627,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
         id: 'shelf-history-1',
         eyebrow: 'BECAUSE YOU LISTENED TO ' + recentItem.artist.toUpperCase(),
         title: `More from ${recentItem.artist}`,
-        searchQuery: `${recentItem.artist} top songs`,
+        searchQuery: `${recentItem.artist} latest songs`,
         type: 'songs',
         category: 'history'
       });
@@ -454,7 +643,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     }
   }
 
-  // Deduplicate shelf titles and return top 22 shelves
+  // Deduplicate shelf titles and return top 26 unique shelves
   const seenTitles = new Set();
   const uniqueShelves = [];
   for (const s of shelves) {
@@ -464,7 +653,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
     }
   }
 
-  return uniqueShelves.slice(0, 22);
+  return uniqueShelves.slice(0, 26);
 }
 
 // ─── Feed Builder with YTMusic Client ───────────────────────────────────────

@@ -123,7 +123,25 @@
 }
 
 .fs-ctrl-btn.active {
-  color: var(--color-primary);
+  color: var(--color-primary, #00C853) !important;
+  position: relative;
+}
+
+.fs-ctrl-btn.active:hover {
+  color: var(--color-primary-hover, #00E676) !important;
+}
+
+.fs-ctrl-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: var(--color-primary, #00C853);
+  box-shadow: 0 0 6px var(--color-primary, #00C853);
 }
 
 .fs-main-play-btn {

@@ -26,6 +26,42 @@ export function PlayerProvider({ children }) {
   const ytApiReadyRef = useRef(false);
   const isFetchingRelatedRef = useRef(false);
   const fetchedVideoIdsRef = useRef(new Set());
+  const isTransitioningRef = useRef(false);
+
+  // Synchronized refs to prevent stale closures in YouTube Player callbacks
+  const queueRef = useRef(queue);
+  const queueIndexRef = useRef(queueIndex);
+  const isShuffleRef = useRef(isShuffle);
+  const repeatModeRef = useRef(repeatMode);
+  const currentSongRef = useRef(currentSong);
+  const sleepTimerRef = useRef(sleepTimer);
+  const handleSongEndedRef = useRef(null);
+  const nextSongRef = useRef(null);
+
+  // Keep refs synchronized on every update
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
+  useEffect(() => {
+    queueIndexRef.current = queueIndex;
+  }, [queueIndex]);
+
+  useEffect(() => {
+    isShuffleRef.current = isShuffle;
+  }, [isShuffle]);
+
+  useEffect(() => {
+    repeatModeRef.current = repeatMode;
+  }, [repeatMode]);
+
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+  }, [currentSong]);
+
+  useEffect(() => {
+    sleepTimerRef.current = sleepTimer;
+  }, [sleepTimer]);
 
   // Load YouTube IFrame API script once
   useEffect(() => {
@@ -98,6 +134,7 @@ export function PlayerProvider({ children }) {
               if (event.data === 1) {
                 setIsPlaying(true);
                 setIsLoading(false);
+                isTransitioningRef.current = false;
                 if (event.target.getDuration) {
                   setDuration(event.target.getDuration());
                 }
@@ -107,14 +144,20 @@ export function PlayerProvider({ children }) {
               } else if (event.data === 3) {
                 setIsLoading(true);
               } else if (event.data === 0) {
-                handleSongEnded();
+                if (handleSongEndedRef.current) {
+                  handleSongEndedRef.current();
+                }
               }
             },
             onError: (e) => {
               console.warn('YT Player error:', e.data);
               setIsLoading(false);
               // Auto-skip unplayable/restricted track
-              setTimeout(() => nextSong(), 1000);
+              setTimeout(() => {
+                if (nextSongRef.current) {
+                  nextSongRef.current();
+                }
+              }, 1000);
             }
           }
         });
@@ -124,15 +167,26 @@ export function PlayerProvider({ children }) {
     });
   }, [volume]);
 
-  // Track progress ticker
+  // Track progress ticker + fallback threshold detector
   useEffect(() => {
     if (isPlaying) {
       progressTimerRef.current = setInterval(() => {
         if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
           const t = playerRef.current.getCurrentTime();
-          setCurrentTime(t || 0);
           const d = playerRef.current.getDuration();
-          if (d && d > 0) setDuration(d);
+          if (typeof t === 'number') setCurrentTime(t || 0);
+          if (typeof d === 'number' && d > 0) setDuration(d);
+
+          // Fallback autoplay trigger: if track reaches within 0.5s of the end and has not transitioned
+          if (typeof d === 'number' && d > 5 && typeof t === 'number' && t > 0 && (d - t <= 0.6) && !isTransitioningRef.current) {
+            isTransitioningRef.current = true;
+            if (handleSongEndedRef.current) {
+              handleSongEndedRef.current();
+            }
+            setTimeout(() => {
+              isTransitioningRef.current = false;
+            }, 3000);
+          }
         }
       }, 500);
     } else {
@@ -173,6 +227,8 @@ export function PlayerProvider({ children }) {
   const playSong = useCallback((song, customQueue = null) => {
     if (!song || !song.videoId) return;
 
+    isTransitioningRef.current = false;
+    currentSongRef.current = song;
     setCurrentSong(song);
     setIsLoading(true);
     setCurrentTime(0);
@@ -187,9 +243,13 @@ export function PlayerProvider({ children }) {
       initialQueue = customQueue;
       const idx = customQueue.findIndex(s => s.videoId === song.videoId);
       initialIdx = idx !== -1 ? idx : 0;
+      queueRef.current = customQueue;
+      queueIndexRef.current = initialIdx;
       setQueue(customQueue);
       setQueueIndex(initialIdx);
     } else {
+      queueRef.current = [song];
+      queueIndexRef.current = 0;
       setQueue([song]);
       setQueueIndex(0);
     }
@@ -226,28 +286,43 @@ export function PlayerProvider({ children }) {
   }, [isPlaying]);
 
   const nextSong = useCallback(async () => {
-    if (queue.length === 0) return;
+    const currentQ = queueRef.current;
+    const currentIdx = queueIndexRef.current;
+    const currentShuffle = isShuffleRef.current;
+    const currentRepeat = repeatModeRef.current;
 
-    let nextIdx = queueIndex + 1;
-    if (isShuffle) {
-      nextIdx = Math.floor(Math.random() * queue.length);
+    if (!currentQ || currentQ.length === 0) return;
+
+    let nextIdx = currentIdx + 1;
+    if (currentShuffle) {
+      if (currentQ.length > 1) {
+        let randomIdx = Math.floor(Math.random() * currentQ.length);
+        while (randomIdx === currentIdx && currentQ.length > 1) {
+          randomIdx = Math.floor(Math.random() * currentQ.length);
+        }
+        nextIdx = randomIdx;
+      } else {
+        nextIdx = 0;
+      }
     }
 
-    if (nextIdx >= queue.length) {
-      if (repeatMode === 'all') {
+    if (nextIdx >= currentQ.length) {
+      if (currentRepeat === 'all') {
         nextIdx = 0;
       } else {
         // Continuous playback: Attempt fetching more songs or loop to beginning
-        const activeSong = currentSong || queue[queue.length - 1];
+        const activeSong = currentSongRef.current || currentQ[currentQ.length - 1];
         if (activeSong?.videoId && !isFetchingRelatedRef.current) {
           isFetchingRelatedRef.current = true;
           try {
             const res = await api.getRelatedSongs(activeSong.videoId, activeSong.artist);
             if (res && Array.isArray(res.songs) && res.songs.length > 0) {
-              const existingIds = new Set(queue.map(s => s.videoId));
+              const existingIds = new Set(currentQ.map(s => s.videoId));
               const newSongs = res.songs.filter(s => !existingIds.has(s.videoId));
               if (newSongs.length > 0) {
-                const updatedQueue = [...queue, ...newSongs.slice(0, 15)];
+                const updatedQueue = [...currentQ, ...newSongs.slice(0, 15)];
+                queueRef.current = updatedQueue;
+                queueIndexRef.current = nextIdx;
                 setQueue(updatedQueue);
                 setQueueIndex(nextIdx);
                 playSong(updatedQueue[nextIdx], updatedQueue);
@@ -266,23 +341,31 @@ export function PlayerProvider({ children }) {
       }
     }
 
-    const nextTrack = queue[nextIdx];
+    const nextTrack = currentQ[nextIdx];
     if (nextTrack) {
+      queueIndexRef.current = nextIdx;
       setQueueIndex(nextIdx);
-      playSong(nextTrack, queue);
+      playSong(nextTrack, currentQ);
     }
-  }, [queue, queueIndex, isShuffle, repeatMode, currentSong, playSong]);
+  }, [playSong]);
+
+  // Keep nextSongRef updated
+  useEffect(() => {
+    nextSongRef.current = nextSong;
+  }, [nextSong]);
 
   // Handle track ending
   const handleSongEnded = useCallback(() => {
-    if (sleepTimer?.type === 'end_of_song') {
+    const timer = sleepTimerRef.current;
+    if (timer?.type === 'end_of_song') {
       setSleepTimerState(null);
       setIsPlaying(false);
       if (playerRef.current?.pauseVideo) playerRef.current.pauseVideo();
       return;
     }
 
-    if (repeatMode === 'one') {
+    const currentRepeat = repeatModeRef.current;
+    if (currentRepeat === 'one') {
       if (playerRef.current?.seekTo) {
         playerRef.current.seekTo(0);
         playerRef.current.playVideo();
@@ -290,8 +373,15 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    nextSong();
-  }, [repeatMode, nextSong, sleepTimer]);
+    if (nextSongRef.current) {
+      nextSongRef.current();
+    }
+  }, []);
+
+  // Keep handleSongEndedRef updated
+  useEffect(() => {
+    handleSongEndedRef.current = handleSongEnded;
+  }, [handleSongEnded]);
 
   const playNext = useCallback((song) => {
     if (!song || !song.videoId) return;
@@ -356,14 +446,18 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    if (queue.length === 0) return;
-    const prevIdx = queueIndex - 1 >= 0 ? queueIndex - 1 : queue.length - 1;
-    const prevTrack = queue[prevIdx];
+    const currentQ = queueRef.current;
+    const currentIdx = queueIndexRef.current;
+    if (!currentQ || currentQ.length === 0) return;
+
+    const prevIdx = currentIdx - 1 >= 0 ? currentIdx - 1 : currentQ.length - 1;
+    const prevTrack = currentQ[prevIdx];
     if (prevTrack) {
+      queueIndexRef.current = prevIdx;
       setQueueIndex(prevIdx);
-      playSong(prevTrack, queue);
+      playSong(prevTrack, currentQ);
     }
-  }, [currentTime, queue, queueIndex, playSong]);
+  }, [currentTime, playSong]);
 
   const seekTo = useCallback((seconds) => {
     if (playerRef.current && typeof playerRef.current.seekTo === 'function') {

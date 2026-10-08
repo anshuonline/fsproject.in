@@ -467,8 +467,8 @@
 .fs-fs-controls-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 720px;
+  gap: 14px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
   padding-bottom: 12px;
@@ -477,7 +477,7 @@
 .fs-fs-scrubber-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .fs-large-scrubber {
@@ -488,11 +488,75 @@
   height: 8px;
 }
 
+/* Controls Grid Bar: Left spacer / Center buttons / Right hover volume */
+.fs-fs-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+}
+
+.fs-fs-ctrl-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.fs-fs-audio-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted, #707070);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  user-select: none;
+}
+
 .fs-fs-buttons-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 24px;
+}
+
+.fs-fs-ctrl-btn {
+  color: var(--color-text-secondary, #afafaf);
+  width: 44px;
+  height: 44px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.fs-fs-ctrl-btn:hover {
+  color: #FFFFFF;
+  transform: scale(1.08);
+}
+
+/* Active Glowing Green State for Shuffle and Repeat */
+.fs-fs-ctrl-btn.active {
+  color: var(--color-primary, #00C853) !important;
+  text-shadow: 0 0 14px rgba(0, 200, 83, 0.55);
+}
+
+.fs-fs-ctrl-btn.active:hover {
+  color: var(--color-primary-hover, #00E676) !important;
+}
+
+.fs-fs-ctrl-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--color-primary, #00C853);
+  box-shadow: 0 0 8px var(--color-primary, #00C853);
 }
 
 .fs-fs-big-play {
@@ -500,15 +564,64 @@
   height: 58px;
 }
 
-.fs-fs-volume-row {
+/* Right Section: Hover-Expandable Volume Control */
+.fs-fs-ctrl-right {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-end;
+}
+
+.fs-fs-volume-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9999px;
+  padding: 3px 5px;
+  transition: all 0.25s ease;
+}
+
+.fs-fs-volume-wrap:hover,
+.fs-fs-volume-wrap:focus-within {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.fs-fs-vol-btn {
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-secondary, #afafaf);
+  transition: color 0.15s ease;
+}
+
+.fs-fs-vol-btn:hover {
+  color: #FFFFFF;
+}
+
+.fs-fs-vol-slider-container {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, margin 0.25s ease;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
+}
+
+.fs-fs-volume-wrap:hover .fs-fs-vol-slider-container,
+.fs-fs-volume-wrap:focus-within .fs-fs-vol-slider-container {
+  max-width: 120px;
+  opacity: 1;
+  margin-right: 8px;
+  margin-left: 4px;
 }
 
 .fs-fs-vol-slider {
-  width: 120px;
+  width: 90px;
+  height: 4px;
+  cursor: pointer;
 }
 
 /* ─── Responsive Clean Styling (Fixes squishing completely) ─── */
@@ -579,11 +692,24 @@
     font-size: 1.32rem;
   }
 
-  .fs-fs-buttons-row {
-    gap: 20px;
+  .fs-fs-ctrl-left,
+  .fs-fs-ctrl-right {
+    display: none;
   }
 
-  .fs-fs-volume-row {
-    display: none;
+  .fs-fs-controls-bar {
+    justify-content: center;
+  }
+
+  .fs-fs-buttons-row {
+    width: 100%;
+    max-width: 340px;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .fs-fs-ctrl-btn {
+    width: 40px;
+    height: 40px;
   }
 }
