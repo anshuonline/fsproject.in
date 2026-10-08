@@ -2,7 +2,8 @@ const KEYS = {
   LIKED_SONGS: 'fs_liked_songs',
   PLAYLISTS: 'fs_playlists',
   HISTORY: 'fs_history',
-  SETTINGS: 'fs_settings'
+  SETTINGS: 'fs_settings',
+  AUTH_USER: 'fs_auth_user'
 };
 
 const DEFAULT_SETTINGS = {
@@ -130,6 +131,35 @@ export const storage = {
       return localStorage.getItem('fs_onboarding_completed') === 'true';
     } catch {
       return false;
+    }
+  },
+
+  getUser() {
+    try {
+      const data = localStorage.getItem(KEYS.AUTH_USER);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  saveUser(user) {
+    try {
+      if (user) {
+        localStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(KEYS.AUTH_USER);
+      }
+    } catch (e) {
+      console.warn('User storage error:', e);
+    }
+  },
+
+  clearUser() {
+    try {
+      localStorage.removeItem(KEYS.AUTH_USER);
+    } catch (e) {
+      console.warn('User storage error:', e);
     }
   }
 };

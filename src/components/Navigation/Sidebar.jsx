@@ -4,6 +4,7 @@ import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToL
 import { useLibrary } from '../../context/LibraryContext';
 import { usePWA } from '../../context/PWAContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
+import { PlaylistCover } from '../Common/PlaylistCover';
 import './Sidebar.css';
 
 export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
@@ -143,6 +144,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
                   openPlaylistMenu(pl, e);
                 }}
               >
+                <PlaylistCover playlist={pl} size="sidebar" className="fs-sidebar-pl-cover" />
                 <div className="fs-playlist-info">
                   <span className="fs-playlist-title truncate">{pl.name}</span>
                   <span className="fs-playlist-sub">

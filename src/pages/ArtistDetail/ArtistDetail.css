@@ -87,6 +87,33 @@
   margin-top: 8px;
 }
 
+.fs-artist-header-play-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-primary) !important;
+  color: #000000 !important;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: var(--radius-full);
+  opacity: 1 !important;
+  position: static !important;
+  transform: none !important;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fs-artist-header-play-btn:hover {
+  background-color: var(--color-primary-hover) !important;
+  transform: scale(1.04) !important;
+}
+
+.fs-artist-header-play-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
 .fs-artist-section {
   display: flex;
   flex-direction: column;

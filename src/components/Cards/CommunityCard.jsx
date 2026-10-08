@@ -75,7 +75,7 @@ export function CommunityCard({ item, queueContext = null }) {
       {/* Artwork container */}
       <div className="fs-comm-art-wrap">
         <img
-          src={item.thumbnail || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '')}
+          src={item.thumbnail || item.coverImage || (item.songs && item.songs[0]?.thumbnail) || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '')}
           alt={item.title}
           className="fs-comm-artwork"
           loading="lazy"

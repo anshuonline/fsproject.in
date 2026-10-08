@@ -79,6 +79,50 @@
   gap: 18px;
 }
 
+/* Cover Section in Edit Modal */
+.fs-edit-cover-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md, 10px);
+}
+
+.fs-edit-cover-preview-wrap {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.fs-edit-modal-cover {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.fs-edit-cover-note {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fs-cover-note-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-white);
+}
+
+.fs-cover-note-desc {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
 .fs-form-group {
   display: flex;
   flex-direction: column;

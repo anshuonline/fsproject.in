@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, ListMusic } from 'lucide-react';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { PlaylistCover } from './PlaylistCover';
 import './EditPlaylistModal.css';
 
 export function EditPlaylistModal() {
@@ -28,7 +29,7 @@ export function EditPlaylistModal() {
       return;
     }
 
-    const isCustom = editingPlaylist.id && (editingPlaylist.id.startsWith('pl-'));
+    const isCustom = editingPlaylist.id && editingPlaylist.id.startsWith('pl-');
 
     if (isCustom) {
       updatePlaylist(editingPlaylist.id, {
@@ -70,6 +71,21 @@ export function EditPlaylistModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="fs-modal-form">
+          {/* Cover Preview (automatic from playlist tracks) */}
+          <div className="fs-edit-cover-section">
+            <div className="fs-edit-cover-preview-wrap">
+              <PlaylistCover
+                playlist={editingPlaylist}
+                size="modal"
+                className="fs-edit-modal-cover"
+              />
+            </div>
+            <div className="fs-edit-cover-note">
+              <span className="fs-cover-note-title">Playlist Artwork</span>
+              <span className="fs-cover-note-desc">Cover automatically reflects songs in this playlist</span>
+            </div>
+          </div>
+
           <div className="fs-form-group">
             <label htmlFor="edit-pl-name">Title</label>
             <input

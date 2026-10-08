@@ -13,20 +13,70 @@
 export const SYSTEM_YEAR = new Date().getFullYear();
 export const PREV_YEAR = SYSTEM_YEAR - 1;
 
-// ─── Official YouTube Music Live Chart Registry ─────────────────────────────
+// ─── YouTube Music Official Editorial New Releases Playlists ────────────────
+export const EDITORIAL_NEW_RELEASES = {
+  hindi: 'VLRDCLAK5uy_nNhhgRET3NcJ4SJBvqhAIJ6t7vjsQYowc',      // New Music Hindi
+  bollywood: 'VLRDCLAK5uy_nNhhgRET3NcJ4SJBvqhAIJ6t7vjsQYowc',  // New Music Hindi
+  punjabi: 'VLRDCLAK5uy_mk3xwsayv9PxawuXS-U6ao9eMeNmSwYAM',    // New Music Punjabi
+  tamil: 'VLRDCLAK5uy_nVQAtE2KBWk-ROQIc5o39Oup3hOLnYV0g',      // New Music Tamil
+  telugu: 'VLRDCLAK5uy_l8CaYQvBQWVT2st1VsW9JjODWisR_vd3U',     // New Music Telugu
+  haryanvi: 'VLRDCLAK5uy_nTkyDVpCk3iCQG_3bDJyhGgb1uzcBZM4A',   // New Music Haryanvi
+  bhojpuri: 'VLRDCLAK5uy_lNxm8Rc4iPjaqlYqeZ1oHxrjAC0Oi7bso',   // New Music Bhojpuri
+  desihiphop: 'VLRDCLAK5uy_mDTfR8UPbTurG-Riq7QDI5mjT4a7H5eoI', // Ekdum Fresh
+  hiphop: 'VLRDCLAK5uy_mDTfR8UPbTurG-Riq7QDI5mjT4a7H5eoI',     // Ekdum Fresh
+  indie: 'VLRDCLAK5uy_n17q7_2dwfDqWckpccDyTTkZ-g03jXuII',       // Indie Rising
+  indianindie: 'VLRDCLAK5uy_n17q7_2dwfDqWckpccDyTTkZ-g03jXuII', // Indie Rising
+  english: 'VLRDCLAK5uy_npj3EI5VV_uv_GdeeNgVpsGe5n_9YwzoI',     // Pop Hotlist
+  englishpop: 'VLRDCLAK5uy_npj3EI5VV_uv_GdeeNgVpsGe5n_9YwzoI',  // Pop Hotlist
+  pop: 'VLRDCLAK5uy_npj3EI5VV_uv_GdeeNgVpsGe5n_9YwzoI',         // Pop Hotlist
+  malayalam: 'VLRDCLAK5uy_kyttsX1y1cRq3B6X-ohiJJHwxkCArzPds',   // New Music Malayalam
+  kannada: 'VLRDCLAK5uy_k2CeIv7y1di4d2-Hu2fSz8o9lqwaccApA'      // New Music Kannada
+};
+
+// ─── YouTube Music Official Editorial Hitlists (Streaming Top Charts) ───────
+export const EDITORIAL_HITLISTS = {
+  // India Trending: Uncut Bollywood + Bollywood Hitlist + Top 100 Songs India
+  trending_india: [
+    'VLRDCLAK5uy_krbBs7P2iEb30IODyVbiOXWyhZtAIX9Uk', // Uncut Bollywood (India's premier streaming hits)
+    'VLRDCLAK5uy_n9Fbdw7e6ap-98_A-8JYBmPv64v-Uaq1g', // Bollywood Hitlist
+    'VLPL4fGSI1pDJn4pTWyM3t61lOyZ6_4jcNOw'          // Top 100 Songs India (Official song chart)
+  ],
+  bollywood: 'VLRDCLAK5uy_n9Fbdw7e6ap-98_A-8JYBmPv64v-Uaq1g',   // Bollywood Hitlist
+  hindi: 'VLRDCLAK5uy_n9Fbdw7e6ap-98_A-8JYBmPv64v-Uaq1g',       // Bollywood Hitlist
+  punjabi: 'VLRDCLAK5uy_kuo_NioExeUmw07dFf8BzQ64DFFTlgE7Q',     // Punjab Fire
+  tamil: 'VLRDCLAK5uy_nTbyVypdXPQd00z15bTWjZr7pG-26yyQ4',       // Kollywood Hitlist
+  telugu: 'VLRDCLAK5uy_lyVnWI5JnuwKJiuE-n1x-Un0mj9WlEyZw',      // Tollywood Hitlist
+  haryanvi: 'VLRDCLAK5uy_lFuh0seSkGQjEEqrmTk7hs2OCMvx86nSo',    // Haryanvi Essentials
+  bhojpuri: 'VLRDCLAK5uy_nlUHwf0SaQlGN6n_1ZtWhhplysMPwjP2k',    // Bhojpuri Hitlist
+  desihiphop: 'VLRDCLAK5uy_mOvRWCE7v4C98UgkSVh5FTlD3osGjolas',  // EKDUM
+  hiphop: 'VLRDCLAK5uy_mOvRWCE7v4C98UgkSVh5FTlD3osGjolas',      // EKDUM
+  indie: 'VLRDCLAK5uy_lE0yLj4nuJ--AIHE67gUQdKmfpdkTKNFk',        // हिंदी Indie
+  indianindie: 'VLRDCLAK5uy_lE0yLj4nuJ--AIHE67gUQdKmfpdkTKNFk',  // हिंदी Indie
+  english: 'VLRDCLAK5uy_nmS3YoxSwVVQk9lEQJ0UX4ZCjXsW_psU8',      // Pop's Biggest Hits
+  englishpop: 'VLRDCLAK5uy_nmS3YoxSwVVQk9lEQJ0UX4ZCjXsW_psU8',   // Pop's Biggest Hits
+  pop: 'VLRDCLAK5uy_nmS3YoxSwVVQk9lEQJ0UX4ZCjXsW_psU8',          // Pop's Biggest Hits
+  bengali: 'VLRDCLAK5uy_nppZBg2AQ7htxIuyqHoMOXX4z2pIjQUP8',     // Bengali Hitlist
+  malayalam: 'VLRDCLAK5uy_nT-zkEpc2x7AVVP0XV9JvHSfkFsOtGMR8',    // Mollywood Hitlist
+  kannada: 'VLRDCLAK5uy_mPBQePobkU9UZ100tOTfvTCdwWOHoiiPo'      // Sandalwood Hitlist
+};
+
+// ─── Backward-compatible Chart Registry ─────────────────────────────────────
 export const OFFICIAL_CHARTS = {
-  trending_india: 'VLOLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40', // Trending 20 India
-  bollywood: 'VLPL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX',         // Top Weekly Hindi
-  hindi: 'VLPL4fGSI1pDJn5RgLW0Sb_zECecWdH_4zOX',             // Top Weekly Hindi
-  punjabi: 'VLPL4fGSI1pDJn5JXkyIohg2RstsbL2SnRew',           // Top Weekly Punjabi
-  tamil: 'VLPL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk',             // Top Weekly Tamil
-  telugu: 'VLPL4fGSI1pDJn5ALuqpEj_YZ8mEyw9WN8jd',            // Top Weekly Telugu
-  haryanvi: 'VLPL4fGSI1pDJn4tiNLMZVGGt2Kghgw__2u0',          // Top Weekly Haryanvi
-  bhojpuri: 'VLPL4fGSI1pDJn4ivDqrsepD3tvHsp0KTDRM',          // Top Weekly Bhojpuri
-  english: 'VLPL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv',           // Top Weekly Global
-  global: 'VLPL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv',            // Top Weekly Global
-  daily_india: 'VLPL4fGSI1pDJn5oibdgJt8Hy0-dr2B7kSs2',       // Daily Top Videos India
-  top_100_india: 'VLPL4fGSI1pDJn40WjZ6utkIuj2rNg-7iGsq'     // Top 100 Music Videos India
+  trending_india: EDITORIAL_HITLISTS.trending_india,
+  bollywood: EDITORIAL_HITLISTS.bollywood,
+  hindi: EDITORIAL_HITLISTS.hindi,
+  punjabi: EDITORIAL_HITLISTS.punjabi,
+  tamil: EDITORIAL_HITLISTS.tamil,
+  telugu: EDITORIAL_HITLISTS.telugu,
+  haryanvi: EDITORIAL_HITLISTS.haryanvi,
+  bhojpuri: EDITORIAL_HITLISTS.bhojpuri,
+  desihiphop: EDITORIAL_HITLISTS.desihiphop,
+  indie: EDITORIAL_HITLISTS.indie,
+  english: EDITORIAL_HITLISTS.english,
+  global: EDITORIAL_HITLISTS.english,
+  bengali: EDITORIAL_HITLISTS.bengali,
+  malayalam: EDITORIAL_HITLISTS.malayalam,
+  kannada: EDITORIAL_HITLISTS.kannada
 };
 
 // ─── Duration & Format Helpers ──────────────────────────────────────────────
@@ -60,6 +110,8 @@ export function toHDThumbnail(url, videoId) {
 export function cleanSongTitle(title) {
   if (!title) return '';
   return title
+    .replace(/^#Video\s*\|\s*/gi, '')
+    .replace(/^#\S+\s*/gi, '')
     .replace(/\s*\(From\s+["'].*?["']\)/gi, '')
     .replace(/\s*\(Movie:.*?\)/gi, '')
     .replace(/\s*\[Official.*?\]/gi, '')
@@ -71,7 +123,8 @@ export function cleanSongTitle(title) {
     .replace(/\s*\[Video.*?\]/gi, '')
     .replace(/\s*\(Video.*?\)/gi, '')
     .replace(/\s*-\s*Official.*$/gi, '')
-    .replace(/#Video\s*\|\s*/gi, '')
+    .replace(/\s*\|\s*Official.*$/gi, '')
+    .replace(/\s*\|\s*New\s+.*$/gi, '')
     .trim();
 }
 
@@ -81,7 +134,7 @@ export function isSpamOrJunkSong(s) {
   const title = (s.title || '').toLowerCase();
   const artist = (s.artist || '').toLowerCase();
 
-  // 1. Long compilations, amateur mashups, and non-stop jukeboxes
+  // 1. Long compilations, amateur mashups, non-stop jukeboxes, meme dance covers, status videos
   const spamTitlePatterns = [
     /\bmashup\b/i,
     /\bnon[- ]?stop\b/i,
@@ -101,7 +154,18 @@ export function isSpamOrJunkSong(s) {
     /\b100 hits\b/i,
     /\btop 50 hits\b/i,
     /\btop 20 hits\b/i,
-    /\bcontinuous mix\b/i
+    /\bcontinuous mix\b/i,
+    /\bstatus\b/i,
+    /\bwhatsapp status\b/i,
+    /\bdance cover\b/i,
+    /\bdance performance\b/i,
+    /\bshorts\b/i,
+    /\breaction\b/i,
+    /\b8d audio\b/i,
+    /\bkaraoke\b/i,
+    /#video\s*\|/i,
+    /\bpromo\b/i,
+    /\bteaser\b/i
   ];
   if (spamTitlePatterns.some(pat => pat.test(title))) return true;
 
@@ -273,56 +337,70 @@ function formatPlaylist(p, customTitle) {
 }
 
 // ─── Fetch Official YouTube Music Chart Songs Directly via API ─────────────
-export async function fetchOfficialChart(yt, browseId, cacheGet, cacheSet) {
-  if (!browseId) return [];
-  const cacheKey = `chart_browse_${browseId}`;
+export async function fetchOfficialChart(yt, browseIdOrIds, cacheGet, cacheSet) {
+  if (!browseIdOrIds) return [];
+  const browseIds = Array.isArray(browseIdOrIds) ? browseIdOrIds : [browseIdOrIds];
+  const cacheKey = `chart_browse_${browseIds.join('_')}`;
   if (cacheGet) {
     const cached = cacheGet(cacheKey);
     if (cached && cached.length > 0) return cached;
   }
 
   try {
-    const data = await yt.constructRequest('browse', { browseId });
-    const shelf = data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents?.[0]?.musicPlaylistShelfRenderer;
-    const items = shelf?.contents || [];
-    const songs = [];
+    const allSongs = [];
+    const seenVideos = new Set();
+    const seenTitles = new Set();
 
-    for (const c of items) {
-      const r = c.musicResponsiveListItemRenderer;
-      if (!r) continue;
-      const title = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text;
-      const artist = r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || 'Artist';
-      const watch = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint ||
-                    r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint;
-      const videoId = watch?.videoId;
-      const thumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-      const thumb = thumbs[thumbs.length - 1]?.url || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
-      const durText = r.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text || '3:30';
-      const durSec = parseDuration(durText);
+    for (const browseId of browseIds) {
+      try {
+        const data = await yt.constructRequest('browse', { browseId });
+        const shelf = data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents?.[0]?.musicPlaylistShelfRenderer;
+        const items = shelf?.contents || [];
 
-      if (title && videoId) {
-        const item = {
-          videoId,
-          title: cleanSongTitle(title) || title,
-          artist,
-          album: '',
-          duration: durSec,
-          durationText: durText,
-          thumbnail: toHDThumbnail(thumb, videoId),
-          type: 'song'
-        };
-        if (!isSpamOrJunkSong(item)) {
-          songs.push(item);
+        for (const c of items) {
+          const r = c.musicResponsiveListItemRenderer;
+          if (!r) continue;
+          const rawTitle = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text;
+          const artist = r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || 'Artist';
+          const watch = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint ||
+                        r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint;
+          const videoId = watch?.videoId;
+          const thumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+          const thumb = thumbs[thumbs.length - 1]?.url || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
+          const durText = r.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text || '3:30';
+          const durSec = parseDuration(durText);
+
+          if (rawTitle && videoId) {
+            const cleaned = cleanSongTitle(rawTitle) || rawTitle;
+            const normTitle = cleaned.toLowerCase().trim();
+            const item = {
+              videoId,
+              title: cleaned,
+              artist,
+              album: '',
+              duration: durSec,
+              durationText: durText,
+              thumbnail: toHDThumbnail(thumb, videoId),
+              type: 'song'
+            };
+            if (!isSpamOrJunkSong(item) && !seenVideos.has(videoId) && !seenTitles.has(normTitle)) {
+              seenVideos.add(videoId);
+              seenTitles.add(normTitle);
+              allSongs.push(item);
+            }
+          }
         }
+      } catch (innerErr) {
+        console.warn(`fetchOfficialChart failed for browseId ${browseId}:`, innerErr.message);
       }
     }
 
-    if (songs.length > 0 && cacheSet) {
-      cacheSet(cacheKey, songs, 30 * 60 * 1000); // 30 min cache for official charts
+    if (allSongs.length > 0 && cacheSet) {
+      cacheSet(cacheKey, allSongs, 30 * 60 * 1000); // 30 min cache for official charts
     }
-    return songs;
+    return allSongs;
   } catch (err) {
-    console.warn(`fetchOfficialChart failed for ${browseId}:`, err.message);
+    console.warn(`fetchOfficialChart failed:`, err.message);
     return [];
   }
 }
@@ -395,18 +473,17 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'picks'
   });
 
-  // 3. LATEST RELEASES & FRESH DROPS (Brand new songs powered by official releases & trending drops)
+  // 3. LATEST RELEASES & FRESH DROPS (Brand new songs powered by official editorial releases & drops)
   shelves.push({
     id: 'shelf-latest-releases-main',
     eyebrow: 'FRESH DROPS & NEW MUSIC',
     title: 'Latest Releases & Fresh Drops',
-    searchQuery: `new ${mainGenre} songs`,
     genre: mainGenre,
     type: 'latest_releases',
     category: 'latest'
   });
 
-  // 4. LIVE TRENDING CHART (Official YouTube Music Chart API)
+  // 4. LIVE TRENDING CHART (Official YouTube Music Editorial Streaming Hitlists)
   shelves.push({
     id: 'shelf-official-trending-india',
     eyebrow: 'OFFICIAL LIVE CHART',
@@ -430,10 +507,9 @@ export function generateShelfPlan(preferences = {}, history = []) {
     id: 'shelf-latest-hits-main',
     eyebrow: 'HOT ON THE CHARTS',
     title: `Latest Hits: ${capGenre} & Trending`,
-    searchQuery: `trending ${mainGenre} songs`,
     genre: mainGenre,
-    chartKey: OFFICIAL_CHARTS[mainGenre] ? mainGenre : null,
-    type: OFFICIAL_CHARTS[mainGenre] ? 'chart_songs' : 'songs',
+    chartKey: OFFICIAL_CHARTS[mainGenre] ? mainGenre : 'bollywood',
+    type: 'chart_songs',
     category: 'hits'
   });
 
@@ -650,23 +726,35 @@ export function generateShelfPlan(preferences = {}, history = []) {
       chillQuery: `${genre} chill songs`
     };
 
-    // Genre Latest Releases
-    shelves.push({
-      id: `shelf-genre-latest-${idx}`,
-      eyebrow: 'NEW DROPS',
-      title: meta.latest,
-      searchQuery: meta.latestQuery,
-      type: 'songs',
-      category: 'latest'
-    });
+    // Genre Latest Releases (Uses official editorial new music playlist if available)
+    if (EDITORIAL_NEW_RELEASES[genre.toLowerCase()]) {
+      shelves.push({
+        id: `shelf-genre-latest-${idx}`,
+        eyebrow: 'NEW DROPS',
+        title: meta.latest,
+        genre: genre.toLowerCase(),
+        type: 'latest_releases',
+        category: 'latest'
+      });
+    } else {
+      shelves.push({
+        id: `shelf-genre-latest-${idx}`,
+        eyebrow: 'NEW DROPS',
+        title: meta.latest,
+        searchQuery: meta.latestQuery,
+        type: 'songs',
+        category: 'latest'
+      });
+    }
 
-    // Genre Trending Hits (Powered by official chart API if available!)
-    if (meta.chartKey && OFFICIAL_CHARTS[meta.chartKey]) {
+    // Genre Trending Hits (Powered by official editorial hitlists!)
+    const effectiveChartKey = meta.chartKey || (OFFICIAL_CHARTS[genre.toLowerCase()] ? genre.toLowerCase() : null);
+    if (effectiveChartKey && OFFICIAL_CHARTS[effectiveChartKey]) {
       shelves.push({
         id: `shelf-genre-chart-${idx}`,
         eyebrow: 'OFFICIAL CHART',
         title: meta.hits,
-        chartKey: meta.chartKey,
+        chartKey: effectiveChartKey,
         type: 'chart_songs',
         category: 'hits'
       });
@@ -948,9 +1036,10 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
         }
       }
 
-      // ── TYPE: latest_releases (Combines official new release tracks + official live trending) ──
+      // ── TYPE: latest_releases (Official YouTube Music Editorial New Drops) ──
       if (plan.type === 'latest_releases') {
-        const cacheKey = `shelf_latest_releases_v5_${plan.genre || 'all'}`;
+        const genreKey = (plan.genre || 'bollywood').toLowerCase();
+        const cacheKey = `shelf_latest_releases_v6_${genreKey}`;
         const cached = cacheGet(cacheKey);
         if (cached && cached.length > 0) {
           return { ...plan, items: cached };
@@ -958,85 +1047,163 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
 
         try {
           const songs = [];
+          const seenVideos = new Set();
+          const seenTitles = new Set();
 
-          // A. Extract top tracks from official YouTube Music new release albums
-          if (officialNewReleasesSec?.contents?.length > 0) {
-            const topAlbums = officialNewReleasesSec.contents.slice(0, 4);
-            const albumResults = await Promise.all(
-              topAlbums.map(a => a.albumId ? yt.getAlbum(a.albumId).catch(() => null) : null)
-            );
-            albumResults.forEach(alb => {
-              if (alb?.songs) {
-                alb.songs.slice(0, 3).forEach(s => {
-                  const formatted = formatSong({
-                    videoId: s.videoId,
-                    name: s.name,
-                    artist: alb.artist?.name || s.artist?.name || alb.name,
-                    album: alb.name,
-                    duration: s.duration,
-                    thumbnails: s.thumbnails || alb.thumbnails
-                  });
-                  if (formatted && !isSpamOrJunkSong(formatted)) {
-                    songs.push(formatted);
-                  }
+          const addCandidate = (item) => {
+            if (!item || !item.videoId || !item.title) return;
+            const cleaned = cleanSongTitle(item.title) || item.title;
+            const normTitle = cleaned.toLowerCase().trim();
+            if (seenVideos.has(item.videoId) || seenTitles.has(normTitle)) return;
+            if (isSpamOrJunkSong(item)) return;
+            seenVideos.add(item.videoId);
+            seenTitles.add(normTitle);
+            songs.push({
+              ...item,
+              title: cleaned
+            });
+          };
+
+          // 1. Primary: YouTube Music Editorial New Music playlist for this genre
+          const editorialPlaylistId = EDITORIAL_NEW_RELEASES[genreKey] || EDITORIAL_NEW_RELEASES.bollywood;
+          if (editorialPlaylistId) {
+            const playlistSongs = await fetchOfficialChart(yt, editorialPlaylistId, cacheGet, cacheSet);
+            (playlistSongs || []).slice(0, 14).forEach(addCandidate);
+          }
+
+          // 2. Secondary: YouTube Music Explore Section 5 "New music videos"
+          try {
+            const exploreData = await yt.constructRequest('browse', { browseId: 'FEmusic_explore' }).catch(() => null);
+            const exploreSecs = exploreData?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+            const vidsShelf = exploreSecs.find(s => {
+              const t = s.musicCarouselShelfRenderer?.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || '';
+              return t.toLowerCase().includes('new music video');
+            })?.musicCarouselShelfRenderer?.contents || [];
+
+            for (const it of vidsShelf) {
+              const twoRow = it.musicTwoRowItemRenderer;
+              if (!twoRow) continue;
+              const title = twoRow.title?.runs?.[0]?.text;
+              const subRuns = twoRow.subtitle?.runs || [];
+              const artist = subRuns[0]?.text || 'Artist';
+              const videoId = twoRow.navigationEndpoint?.watchEndpoint?.videoId;
+              const thumbs = twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+              const thumb = thumbs[thumbs.length - 1]?.url || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
+
+              if (title && videoId) {
+                addCandidate({
+                  videoId,
+                  title,
+                  artist,
+                  duration: 210,
+                  durationText: '3:30',
+                  thumbnail: toHDThumbnail(thumb, videoId),
+                  type: 'song'
                 });
               }
-            });
-          }
-
-          // B. Add top trending live drops from official India Trending chart
-          const trendingChartSongs = await fetchOfficialChart(
-            yt,
-            OFFICIAL_CHARTS.trending_india,
-            cacheGet,
-            cacheSet
-          );
-          if (trendingChartSongs.length > 0) {
-            songs.push(...trendingChartSongs.slice(0, 4));
-          }
-
-          // C. Query clean smart new songs (zero year numbers)
-          const query = plan.searchQuery || `new ${plan.genre || 'bollywood'} songs`;
-          const songRes = await yt.searchSongs(query).catch(() => []);
-          (songRes || []).forEach(s => {
-            const formatted = formatSong(s);
-            if (formatted && !isSpamOrJunkSong(formatted)) {
-              songs.push(formatted);
+              if (songs.length >= 16) break;
             }
-          });
+          } catch (expErr) {
+            console.warn('Explore new music videos fetch error:', expErr.message);
+          }
 
-          // Deduplicate
-          const seen = new Set();
-          const uniqueNewSongs = [];
-          for (const s of songs) {
-            if (!seen.has(s.videoId)) {
-              seen.add(s.videoId);
-              uniqueNewSongs.push(s);
-              if (uniqueNewSongs.length >= 14) break;
+          // 3. Tertiary: Top tracks from official new release albums/singles if more needed
+          if (songs.length < 10) {
+            try {
+              const relData = await yt.constructRequest('browse', { browseId: 'FEmusic_new_releases_albums' }).catch(() => null);
+              const gridItems = relData?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items || [];
+              const topAlbums = gridItems.slice(0, 5);
+              const albumResults = await Promise.all(
+                topAlbums.map(it => {
+                  const albId = it.musicTwoRowItemRenderer?.navigationEndpoint?.browseEndpoint?.browseId;
+                  return albId ? yt.getAlbum(albId).catch(() => null) : null;
+                })
+              );
+              albumResults.forEach(alb => {
+                if (alb?.songs) {
+                  alb.songs.slice(0, 2).forEach(s => {
+                    const formatted = formatSong({
+                      videoId: s.videoId,
+                      name: s.name,
+                      artist: alb.artist?.name || s.artist?.name || alb.name,
+                      album: alb.name,
+                      duration: s.duration,
+                      thumbnails: s.thumbnails || alb.thumbnails
+                    });
+                    if (formatted) addCandidate(formatted);
+                  });
+                }
+              });
+            } catch (relErr) {
+              console.warn('New release albums extraction error:', relErr.message);
             }
           }
 
-          if (uniqueNewSongs.length > 0) {
-            cacheSet(cacheKey, uniqueNewSongs, 15 * 60 * 1000);
+          if (songs.length > 0) {
+            const finalDrops = songs.slice(0, 16);
+            cacheSet(cacheKey, finalDrops, 20 * 60 * 1000);
+            return { ...plan, items: finalDrops };
           }
-          return { ...plan, items: uniqueNewSongs };
         } catch (err) {
           console.warn(`Latest releases shelf failed:`, err.message);
-          return { ...plan, items: [] };
         }
+        return { ...plan, items: [] };
       }
 
       // ── TYPE: official_albums (Direct official album releases from YouTube Music) ──
       if (plan.type === 'official_albums') {
+        const cacheKey = 'shelf_official_albums_v6';
+        const cached = cacheGet(cacheKey);
+        if (cached && cached.length > 0) {
+          return { ...plan, items: cached };
+        }
+
+        try {
+          const relData = await yt.constructRequest('browse', { browseId: 'FEmusic_new_releases_albums' }).catch(() => null);
+          const gridItems = relData?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items || [];
+          if (gridItems.length > 0) {
+            const albums = gridItems.map(it => {
+              const twoRow = it.musicTwoRowItemRenderer;
+              if (!twoRow) return null;
+              const title = twoRow.title?.runs?.[0]?.text;
+              const subRuns = twoRow.subtitle?.runs || [];
+              const subText = subRuns.map(r => r.text).join('');
+              const artist = subRuns.length > 2 ? subRuns.slice(2).map(r => r.text).join('').trim() : subRuns[0]?.text;
+              const albumId = twoRow.navigationEndpoint?.browseEndpoint?.browseId;
+              const thumbs = twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+              const rawThumb = thumbs[thumbs.length - 1]?.url || '';
+              return {
+                id: albumId || `alb-${Math.random().toString(36).substring(7)}`,
+                albumId,
+                title: title || 'New Release',
+                artist: artist || 'Artist',
+                creator: artist || 'Artist',
+                year: SYSTEM_YEAR,
+                views: subText || `Released ${SYSTEM_YEAR}`,
+                thumbnail: toHDThumbnail(rawThumb),
+                type: 'album',
+                badge: (artist || title || 'A')[0].toUpperCase(),
+                trackCount: subText.toLowerCase().includes('single') ? 1 : (subText.toLowerCase().includes('ep') ? 4 : 8)
+              };
+            }).filter(Boolean);
+
+            if (albums.length > 0) {
+              const topAlbums = albums.slice(0, 16);
+              cacheSet(cacheKey, topAlbums, 30 * 60 * 1000);
+              return { ...plan, items: topAlbums };
+            }
+          }
+        } catch (albErr) {
+          console.warn('Official albums browse failed:', albErr.message);
+        }
+
         if (officialNewReleasesSec?.contents?.length > 0) {
           const albumItems = officialNewReleasesSec.contents
             .map(formatAlbum)
             .filter(Boolean);
           return { ...plan, items: albumItems.slice(0, 12) };
         }
-        const res = await yt.searchAlbums('Latest Hindi Punjabi Albums').catch(() => []);
-        const fallbackAlbums = (res || []).slice(0, 10).map(formatAlbum).filter(Boolean);
-        return { ...plan, items: fallbackAlbums };
+        return { ...plan, items: [] };
       }
 
       // ── TYPE: quickpicks ──

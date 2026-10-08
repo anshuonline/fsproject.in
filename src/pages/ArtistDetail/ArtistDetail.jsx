@@ -6,6 +6,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
+import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './ArtistDetail.css';
 
 export function ArtistDetail() {
@@ -39,11 +40,23 @@ export function ArtistDetail() {
     );
   }
 
+  if (!artist || !artist.name) {
+    return (
+      <div className="fs-artist-loading">
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem' }}>
+          Artist profile could not be loaded.
+        </p>
+      </div>
+    );
+  }
+
   const handlePlayTop = () => {
     if (artist?.topSongs?.length > 0) {
       playSong(artist.topSongs[0], artist.topSongs);
     }
   };
+
+  const avatarSrc = artist.avatarImage || artist.headerImage || getArtistAvatarFallback(artist.name);
 
   return (
     <div className="fs-artist-page">
@@ -58,15 +71,15 @@ export function ArtistDetail() {
       >
         <div className="fs-artist-banner-content">
           <div className="fs-artist-avatar-wrap">
-            {artist?.avatarImage || artist?.headerImage ? (
-              <img
-                src={artist.avatarImage || artist.headerImage}
-                alt={artist.name}
-                className="fs-artist-avatar"
-              />
-            ) : (
-              <User size={64} />
-            )}
+            <img
+              src={avatarSrc}
+              alt={artist.name}
+              className="fs-artist-avatar"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = getArtistAvatarFallback(artist.name);
+              }}
+            />
           </div>
 
           <div className="fs-artist-info">
@@ -76,7 +89,7 @@ export function ArtistDetail() {
 
             <div className="fs-artist-actions">
               <button
-                className="btn btn-primary fs-artist-play-btn"
+                className="btn btn-primary fs-artist-header-play-btn"
                 onClick={handlePlayTop}
                 disabled={!artist?.topSongs?.length}
               >

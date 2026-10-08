@@ -3,6 +3,7 @@ import { Heart, Plus, ListMusic, History, Play } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
+import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import './Library.css';
 
 export function Library() {
@@ -77,7 +78,7 @@ export function Library() {
             onClick={() => navigate(`/playlist/${pl.id}`)}
           >
             <div className="fs-lib-playlist-art">
-              <ListMusic size={32} className="text-brand" />
+              <PlaylistCover playlist={pl} size="card" className="fs-lib-playlist-cover" />
             </div>
             <div className="fs-lib-playlist-meta">
               <h4 className="fs-lib-playlist-name truncate">{pl.name}</h4>

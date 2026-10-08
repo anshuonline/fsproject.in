@@ -4,6 +4,7 @@ import { PlayerProvider } from './context/PlayerContext';
 import { LibraryProvider } from './context/LibraryContext';
 import { ContextMenuProvider } from './context/ContextMenuContext';
 import { PWAProvider } from './context/PWAContext';
+import { AuthProvider } from './context/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
@@ -32,41 +33,43 @@ export default function App() {
         <LibraryProvider>
           <ContextMenuProvider>
             <PWAProvider>
-              <Routes>
-            {/* Main Application with Sidebar, Header, and Player */}
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/playlist/:id" element={<PlaylistDetail />} />
-              <Route path="/album/:id" element={<AlbumDetail />} />
-              <Route path="/artist/:id" element={<ArtistDetail />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
+              <AuthProvider>
+                <Routes>
+                  {/* Main Application with Sidebar, Header, and Player */}
+                  <Route element={<MainLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/library" element={<Library />} />
+                    <Route path="/search" element={<Search />} />
+                    <Route path="/favorites" element={<Favorites />} />
+                    <Route path="/playlist/:id" element={<PlaylistDetail />} />
+                    <Route path="/album/:id" element={<AlbumDetail />} />
+                    <Route path="/artist/:id" element={<ArtistDetail />} />
+                    <Route path="/history" element={<History />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
 
-              {/* Legal, AdSense & Policy Routes */}
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/dmca" element={<DmcaDisclaimer />} />
-              <Route path="/copyright" element={<Navigate to="/dmca" replace />} />
-              <Route path="/about" element={<AboutUs />} />
-              <Route path="/contact" element={<ContactUs />} />
-            </Route>
+                    {/* Legal, AdSense & Policy Routes */}
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/dmca" element={<DmcaDisclaimer />} />
+                    <Route path="/copyright" element={<Navigate to="/dmca" replace />} />
+                    <Route path="/about" element={<AboutUs />} />
+                    <Route path="/contact" element={<ContactUs />} />
+                  </Route>
 
-            {/* Auth Pages */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-            </Route>
+                  {/* Auth Pages */}
+                  <Route element={<AuthLayout />}>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                  </Route>
 
-            {/* Fallback to Home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </PWAProvider>
-      </ContextMenuProvider>
+                  {/* Fallback to Home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </AuthProvider>
+            </PWAProvider>
+          </ContextMenuProvider>
     </LibraryProvider>
   </PlayerProvider>
     </BrowserRouter>

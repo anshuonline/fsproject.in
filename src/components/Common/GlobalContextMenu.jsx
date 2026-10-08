@@ -609,13 +609,16 @@ export function GlobalContextMenu() {
                       className="fs-context-pl-item"
                       onClick={() => handleTogglePlaylist(pl)}
                     >
-                      <div className="fs-context-pl-meta">
-                        <span className="fs-context-pl-title truncate">
-                          {pl.name || pl.title}
-                        </span>
-                        <span className="fs-context-pl-count">
-                          {trackCount} {trackCount === 1 ? 'song' : 'songs'}
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                        <PlaylistCover playlist={pl} size="sidebar" style={{ width: 28, height: 28, borderRadius: 4 }} />
+                        <div className="fs-context-pl-meta" style={{ minWidth: 0 }}>
+                          <span className="fs-context-pl-title truncate">
+                            {pl.name || pl.title}
+                          </span>
+                          <span className="fs-context-pl-count">
+                            {trackCount} {trackCount === 1 ? 'song' : 'songs'}
+                          </span>
+                        </div>
                       </div>
                       <div
                         className={`fs-context-check-circle ${

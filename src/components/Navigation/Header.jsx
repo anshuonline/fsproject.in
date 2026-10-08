@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, User, X, History, TrendingUp, ArrowUpLeft, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import './Header.css';
 
 const RECENT_SEARCHES_KEY = 'freesong_recent_searches';
@@ -15,6 +16,7 @@ const POPULAR_SEARCHES = [
 ];
 
 export function Header({ onToggleSidebar }) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
@@ -369,10 +371,34 @@ export function Header({ onToggleSidebar }) {
 
       {/* Right: Actions */}
       <div className="fs-header-right">
-        <Link to="/profile" className="fs-user-avatar" title="Account & Settings">
-          <div className="fs-avatar-placeholder">
-            <User size={18} />
-          </div>
+        <Link
+          to="/profile"
+          className="fs-user-avatar"
+          title={user?.name ? `${user.name} (${user.email || 'Google Account'})` : 'Account & Profile'}
+        >
+          {user?.picture ? (
+            <div className="fs-avatar-img-wrap">
+              <img
+                src={user.picture}
+                alt={user.name || 'User'}
+                className="fs-header-avatar-img"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.nextElementSibling) {
+                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                  }
+                }}
+              />
+              <div className="fs-avatar-placeholder fs-avatar-fallback" style={{ display: 'none' }}>
+                {user.name ? user.name.charAt(0).toUpperCase() : <User size={18} />}
+              </div>
+            </div>
+          ) : (
+            <div className="fs-avatar-placeholder">
+              <User size={18} />
+            </div>
+          )}
         </Link>
       </div>
     </header>

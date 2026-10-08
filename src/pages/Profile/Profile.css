@@ -9,15 +9,36 @@
 .fs-profile-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 24px;
   padding: 32px;
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+.fs-profile-card-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+  min-width: 280px;
 }
 
 .fs-profile-avatar-wrap {
   position: relative;
+  flex-shrink: 0;
+}
+
+.fs-profile-avatar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-primary);
+  box-shadow: 0 8px 24px rgba(0, 200, 83, 0.25);
+  display: block;
 }
 
 .fs-profile-avatar-circle {
@@ -32,20 +53,10 @@
   box-shadow: 0 8px 24px rgba(0, 200, 83, 0.3);
 }
 
-.fs-profile-vip-badge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background-color: var(--color-primary);
-  color: #000000;
-  font-size: 0.65rem;
+.fs-profile-avatar-initial {
+  font-size: 2.4rem;
   font-weight: 800;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border: 2px solid var(--color-card);
+  color: #000000;
 }
 
 .fs-profile-details {
@@ -54,8 +65,30 @@
   gap: 6px;
 }
 
+.fs-profile-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .fs-profile-username {
   font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.fs-profile-google-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .fs-profile-email {
@@ -71,6 +104,115 @@
   color: var(--color-primary);
   font-weight: 600;
   margin-top: 4px;
+}
+
+.fs-profile-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  padding: 10px 16px;
+}
+
+.fs-profile-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  padding: 10px 16px;
+  background-color: transparent;
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.fs-profile-logout-btn:hover {
+  background-color: rgba(255, 82, 82, 0.12);
+  border-color: #ff5252;
+}
+
+.fs-profile-google-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+}
+
+.fs-profile-guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, #111111, #181818);
+  border: 1px solid rgba(0, 200, 83, 0.25);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+.fs-guest-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.fs-guest-banner-info h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.fs-guest-banner-info p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.fs-guest-connect-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.fs-account-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.fs-account-detail-card {
+  padding: 18px;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fs-detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.fs-detail-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .fs-profile-stats-row {
@@ -150,14 +292,46 @@
   .fs-profile-card {
     flex-direction: column;
     text-align: center;
-    padding: 20px;
+    padding: 24px 18px;
+    gap: 20px;
+  }
+
+  .fs-profile-card-main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .fs-profile-header-title {
+    justify-content: center;
   }
 
   .fs-profile-details {
     align-items: center;
   }
 
+  .fs-profile-card-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
   .fs-profile-stats-row {
     grid-template-columns: 1fr;
+  }
+
+  .fs-profile-guest-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .fs-guest-banner-info {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .fs-guest-connect-btn {
+    width: 100%;
   }
 }

@@ -219,6 +219,13 @@
   flex-shrink: 0;
 }
 
+.fs-sidebar-pl-cover {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--radius-xs) !important;
+  flex-shrink: 0;
+}
+
 .fs-playlist-info {
   display: flex;
   flex-direction: column;

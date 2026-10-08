@@ -31,7 +31,7 @@ export function LibraryCard({ item }) {
     <div className="fs-lib-card" onClick={handleCardClick}>
       <div className="fs-lib-art-wrap">
         <img
-          src={item.thumbnail}
+          src={item.thumbnail || item.coverImage || (item.songs && item.songs[0]?.thumbnail) || ''}
           alt={item.title}
           className="fs-lib-artwork"
           loading="lazy"
