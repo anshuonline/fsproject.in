@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ChevronDown,
   Play,
@@ -13,10 +13,12 @@ import {
   VolumeX,
   ListMusic,
   FileText,
-  Loader2
+  Loader2,
+  Mic2
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
+import { api } from '../../services/api';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {
@@ -24,6 +26,29 @@ function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function parseLrc(lrc) {
+  if (!lrc) return [];
+  const lines = lrc.split('\n');
+  const regex = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
+  const result = [];
+
+  for (const line of lines) {
+    const match = line.match(regex);
+    if (match) {
+      const min = parseInt(match[1], 10);
+      const sec = parseInt(match[2], 10);
+      const ms = parseInt(match[3], 10) * (match[3].length === 2 ? 10 : 1);
+      const text = match[4].trim();
+
+      if (text) {
+        const time = min * 60 + sec + ms / 1000;
+        result.push({ time, text });
+      }
+    }
+  }
+  return result;
 }
 
 export function FullScreenPlayer() {
@@ -54,6 +79,91 @@ export function FullScreenPlayer() {
 
   const { isLiked, toggleLike } = useLibrary();
   const [activeTab, setActiveTab] = useState('upnext'); // 'upnext' | 'lyrics'
+  const [lyricsData, setLyricsData] = useState({
+    loading: false,
+    syncedLyrics: [],
+    plainLyrics: null,
+    notFound: false
+  });
+
+  const lyricsContainerRef = useRef(null);
+
+  // Fetch lyrics whenever currentSong changes
+  useEffect(() => {
+    if (!currentSong) return;
+
+    let isCurrent = true;
+    setLyricsData({
+      loading: true,
+      syncedLyrics: [],
+      plainLyrics: null,
+      notFound: false
+    });
+
+    api.getLyrics(currentSong.title, currentSong.artist)
+      .then(res => {
+        if (!isCurrent) return;
+        if (res && res.syncedLyrics) {
+          const parsed = parseLrc(res.syncedLyrics);
+          setLyricsData({
+            loading: false,
+            syncedLyrics: parsed,
+            plainLyrics: null,
+            notFound: parsed.length === 0
+          });
+        } else if (res && res.plainLyrics) {
+          setLyricsData({
+            loading: false,
+            syncedLyrics: [],
+            plainLyrics: res.plainLyrics,
+            notFound: false
+          });
+        } else {
+          setLyricsData({
+            loading: false,
+            syncedLyrics: [],
+            plainLyrics: null,
+            notFound: true
+          });
+        }
+      })
+      .catch(err => {
+        if (!isCurrent) return;
+        console.warn('Failed to load lyrics:', err);
+        setLyricsData({
+          loading: false,
+          syncedLyrics: [],
+          plainLyrics: null,
+          notFound: true
+        });
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [currentSong?.videoId, currentSong?.title, currentSong?.artist]);
+
+  // Compute active lyric line
+  let activeLyricIndex = -1;
+  if (lyricsData.syncedLyrics.length > 0) {
+    for (let i = 0; i < lyricsData.syncedLyrics.length; i++) {
+      if (currentTime >= lyricsData.syncedLyrics[i].time) {
+        activeLyricIndex = i;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Auto-scroll to active lyric line
+  useEffect(() => {
+    if (activeTab === 'lyrics' && activeLyricIndex !== -1 && lyricsContainerRef.current) {
+      const activeEl = lyricsContainerRef.current.querySelector('.fs-lyric-line.active');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [activeLyricIndex, activeTab]);
 
   if (!isFullScreen || !currentSong) return null;
 
@@ -84,7 +194,7 @@ export function FullScreenPlayer() {
           <div style={{ width: 40 }} />
         </div>
 
-        {/* Main Content: Left Art & Right Up Next */}
+        {/* Main Content: Left Art & Right Up Next / Lyrics */}
         <div className="fs-fs-main">
           {/* Left / Center: Artwork & Details */}
           <div className="fs-fs-art-col">
@@ -163,14 +273,45 @@ export function FullScreenPlayer() {
                   )}
                 </div>
               ) : (
-                <div className="fs-fs-lyrics-panel">
-                  <p className="fs-lyrics-line highlight">{currentSong.title}</p>
-                  <p className="fs-lyrics-line">Performed by {currentSong.artist}</p>
-                  <p className="fs-lyrics-line italic">Lyrics synchronized via FreeSong.in stream</p>
-                  <div className="fs-lyrics-placeholder">
-                    <p>♪ Music playing in background ♪</p>
-                    <p>Enjoy lossless high-fidelity audio on FreeSong.in</p>
-                  </div>
+                <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
+                  {lyricsData.loading && (
+                    <div className="fs-lyrics-loading">
+                      <Loader2 size={32} className="spin text-brand" />
+                      <span>Syncing lyrics...</span>
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
+                    <div className="fs-synced-lyrics-text">
+                      {lyricsData.syncedLyrics.map((line, idx) => {
+                        const isActive = idx === activeLyricIndex;
+                        const isPassed = idx < activeLyricIndex;
+                        return (
+                          <p
+                            key={idx}
+                            className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
+                            onClick={() => seekTo(line.time)}
+                          >
+                            {line.text}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
+                    <div className="fs-plain-lyrics-text">
+                      {lyricsData.plainLyrics}
+                    </div>
+                  )}
+
+                  {!lyricsData.loading && lyricsData.notFound && (
+                    <div className="fs-lyrics-not-found">
+                      <Mic2 size={44} className="fs-lyrics-not-found-icon" />
+                      <p>Looks like we don't have synchronized lyrics for this song yet.</p>
+                      <span>Enjoy the high-fidelity audio stream!</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

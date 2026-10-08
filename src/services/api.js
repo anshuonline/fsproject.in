@@ -65,6 +65,17 @@ export const api = {
       console.error('Artist fetch error:', err);
       return null;
     }
+  },
+
+  async getLyrics(title, artist) {
+    try {
+      const res = await fetch(`${API_BASE}/lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist || '')}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Lyrics fetch error:', err);
+      return { syncedLyrics: null, plainLyrics: null };
+    }
   }
 };
 

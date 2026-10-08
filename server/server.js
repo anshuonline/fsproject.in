@@ -215,6 +215,75 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Synchronized Lyrics endpoint (lrclib + cache)
+app.get('/api/lyrics', async (req, res) => {
+  const { title, artist } = req.query;
+  if (!title) return res.status(400).json({ error: 'title is required' });
+
+  const cleanTitle = (title || '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/Official Video/gi, '')
+    .replace(/Video Song/gi, '')
+    .replace(/Full Song/gi, '')
+    .replace(/Lyrical/gi, '')
+    .replace(/\|.*/g, '')
+    .trim();
+
+  const cleanArtist = (artist || '')
+    .replace(/ - Topic/g, '')
+    .replace(/VEVO$/i, '')
+    .trim();
+
+  const cacheKey = `lyrics_${cleanTitle.toLowerCase()}_${cleanArtist.toLowerCase()}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const query = `${cleanTitle} ${cleanArtist}`.trim();
+    const lrcUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(query)}`;
+    const response = await fetch(lrcUrl, {
+      headers: {
+        'User-Agent': 'FreeSong.in/1.0.0 (https://freesong.in)'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`lrclib responded with ${response.status}`);
+    }
+
+    const results = await response.json();
+    let result = null;
+
+    if (Array.isArray(results) && results.length > 0) {
+      const withSync = results.find(r => r.syncedLyrics);
+      if (withSync) {
+        result = {
+          syncedLyrics: withSync.syncedLyrics,
+          plainLyrics: withSync.plainLyrics,
+          trackName: withSync.trackName,
+          artistName: withSync.artistName
+        };
+      } else {
+        result = {
+          syncedLyrics: null,
+          plainLyrics: results[0].plainLyrics || null,
+          trackName: results[0].trackName,
+          artistName: results[0].artistName
+        };
+      }
+    } else {
+      result = { syncedLyrics: null, plainLyrics: null };
+    }
+
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    console.warn(`Lyrics fetch error for "${title}":`, err.message);
+    res.json({ syncedLyrics: null, plainLyrics: null });
+  }
+});
+
 // Explore Feeds (Genres, Moods, Curated Picks)
 app.get('/api/explore', async (req, res) => {
   const cacheKey = 'explore_feed';
