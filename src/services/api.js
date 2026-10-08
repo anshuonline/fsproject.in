@@ -8,11 +8,12 @@ export const api = {
       if (prefs?.genres?.length) params.set('genres', prefs.genres.join(','));
       if (prefs?.artists?.length) params.set('artists', prefs.artists.map(a => typeof a === 'string' ? a : a.name).join(','));
       if (history?.length) params.set('history', JSON.stringify(history.slice(0, 5)));
+      params.set('_t', Date.now().toString());
 
       const qs = params.toString();
       if (qs) url += `?${qs}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -84,6 +85,17 @@ export const api = {
     } catch (err) {
       console.warn('Lyrics fetch error:', err);
       return { syncedLyrics: null, plainLyrics: null };
+    }
+  },
+
+  async getRelatedSongs(videoId, artist = '') {
+    try {
+      const res = await fetch(`${API_BASE}/related/${videoId}?artist=${encodeURIComponent(artist || '')}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getRelatedSongs error:', err);
+      return { songs: [] };
     }
   }
 };

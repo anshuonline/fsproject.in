@@ -30,6 +30,7 @@ export function LibraryCard({ item }) {
           alt={item.title}
           className="fs-lib-artwork"
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={(e) => {
             e.currentTarget.onerror = null;
             e.currentTarget.src = getArtworkFallback(item.title);

@@ -82,9 +82,10 @@ export function GlobalPlayer() {
         >
           <div className="fs-player-artwork-wrap">
             <img
-              src={currentSong.thumbnail || '/images/freesonglogowebp.webp'}
+              src={currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
               alt={currentSong.title}
               className="fs-player-artwork"
+              referrerPolicy="no-referrer"
             />
           </div>
           <div className="fs-player-meta">

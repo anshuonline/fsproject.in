@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { storage } from '../services/storage';
+import { api } from '../services/api';
 
 const PlayerContext = createContext(null);
 
@@ -21,6 +22,8 @@ export function PlayerProvider({ children }) {
   const playerRef = useRef(null);
   const progressTimerRef = useRef(null);
   const ytApiReadyRef = useRef(false);
+  const isFetchingRelatedRef = useRef(false);
+  const fetchedVideoIdsRef = useRef(new Set());
 
   // Load YouTube IFrame API script once
   useEffect(() => {
@@ -139,18 +142,30 @@ export function PlayerProvider({ children }) {
     };
   }, [isPlaying]);
 
-  // Handle track ending
-  const handleSongEnded = useCallback(() => {
-    if (repeatMode === 'one') {
-      if (playerRef.current?.seekTo) {
-        playerRef.current.seekTo(0);
-        playerRef.current.playVideo();
-      }
-      return;
-    }
+  // Auto-fetch related tracks and append to queue for infinite playback
+  const fetchAndAppendRelated = useCallback(async (baseSong) => {
+    if (!baseSong?.videoId || isFetchingRelatedRef.current) return;
+    if (fetchedVideoIdsRef.current.has(baseSong.videoId)) return;
 
-    nextSong();
-  }, [repeatMode]);
+    try {
+      isFetchingRelatedRef.current = true;
+      fetchedVideoIdsRef.current.add(baseSong.videoId);
+
+      const res = await api.getRelatedSongs(baseSong.videoId, baseSong.artist);
+      if (res && Array.isArray(res.songs) && res.songs.length > 0) {
+        setQueue(prevQueue => {
+          const existingIds = new Set(prevQueue.map(s => s.videoId));
+          const newSongs = res.songs.filter(s => !existingIds.has(s.videoId));
+          if (newSongs.length === 0) return prevQueue;
+          return [...prevQueue, ...newSongs.slice(0, 15)];
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to auto-fetch related songs:', err);
+    } finally {
+      isFetchingRelatedRef.current = false;
+    }
+  }, []);
 
   // Play a specific song
   const playSong = useCallback((song, customQueue = null) => {
@@ -163,11 +178,16 @@ export function PlayerProvider({ children }) {
     // Save to history
     storage.addToHistory(song);
 
+    let initialQueue = [song];
+    let initialIdx = 0;
+
     if (customQueue && Array.isArray(customQueue) && customQueue.length > 0) {
-      setQueue(customQueue);
+      initialQueue = customQueue;
       const idx = customQueue.findIndex(s => s.videoId === song.videoId);
-      setQueueIndex(idx !== -1 ? idx : 0);
-    } else if (queue.length === 0) {
+      initialIdx = idx !== -1 ? idx : 0;
+      setQueue(customQueue);
+      setQueueIndex(initialIdx);
+    } else {
       setQueue([song]);
       setQueueIndex(0);
     }
@@ -177,7 +197,22 @@ export function PlayerProvider({ children }) {
         player.playVideo();
       }
     });
-  }, [queue, ensurePlayer]);
+
+    // Auto-expand queue if small so queue is never just 1 song!
+    if (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2) {
+      fetchAndAppendRelated(song);
+    }
+  }, [ensurePlayer, fetchAndAppendRelated]);
+
+  // Auto-fetch next batch of songs when approaching the end of queue
+  useEffect(() => {
+    if (queue.length > 0 && queueIndex >= queue.length - 2) {
+      const activeSong = queue[queueIndex] || currentSong;
+      if (activeSong) {
+        fetchAndAppendRelated(activeSong);
+      }
+    }
+  }, [queueIndex, queue.length, currentSong, fetchAndAppendRelated]);
 
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
@@ -188,7 +223,7 @@ export function PlayerProvider({ children }) {
     }
   }, [isPlaying]);
 
-  const nextSong = useCallback(() => {
+  const nextSong = useCallback(async () => {
     if (queue.length === 0) return;
 
     let nextIdx = queueIndex + 1;
@@ -200,8 +235,32 @@ export function PlayerProvider({ children }) {
       if (repeatMode === 'all') {
         nextIdx = 0;
       } else {
-        setIsPlaying(false);
-        return;
+        // Continuous playback: Attempt fetching more songs or loop to beginning
+        const activeSong = currentSong || queue[queue.length - 1];
+        if (activeSong?.videoId && !isFetchingRelatedRef.current) {
+          isFetchingRelatedRef.current = true;
+          try {
+            const res = await api.getRelatedSongs(activeSong.videoId, activeSong.artist);
+            if (res && Array.isArray(res.songs) && res.songs.length > 0) {
+              const existingIds = new Set(queue.map(s => s.videoId));
+              const newSongs = res.songs.filter(s => !existingIds.has(s.videoId));
+              if (newSongs.length > 0) {
+                const updatedQueue = [...queue, ...newSongs.slice(0, 15)];
+                setQueue(updatedQueue);
+                setQueueIndex(nextIdx);
+                playSong(updatedQueue[nextIdx], updatedQueue);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Continuous queue fetch error:', e);
+          } finally {
+            isFetchingRelatedRef.current = false;
+          }
+        }
+
+        // Loop back to index 0 so music never stops
+        nextIdx = 0;
       }
     }
 
@@ -210,7 +269,20 @@ export function PlayerProvider({ children }) {
       setQueueIndex(nextIdx);
       playSong(nextTrack, queue);
     }
-  }, [queue, queueIndex, isShuffle, repeatMode, playSong]);
+  }, [queue, queueIndex, isShuffle, repeatMode, currentSong, playSong]);
+
+  // Handle track ending
+  const handleSongEnded = useCallback(() => {
+    if (repeatMode === 'one') {
+      if (playerRef.current?.seekTo) {
+        playerRef.current.seekTo(0);
+        playerRef.current.playVideo();
+      }
+      return;
+    }
+
+    nextSong();
+  }, [repeatMode, nextSong]);
 
   const prevSong = useCallback(() => {
     if (currentTime > 4 && playerRef.current?.seekTo) {

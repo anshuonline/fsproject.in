@@ -40,14 +40,18 @@ async function getYTMusic() {
 }
 
 // Helper to upgrade thumbnails to HD safely
-function toHDUrl(url) {
-  if (!url) return '';
+function toHDUrl(url, videoId) {
+  if (!url) {
+    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
+  }
   let u = url;
   if (u.startsWith('//')) u = 'https:' + u;
-  // If standard YouTube thumbnail has low-res default, upgrade to hqdefault
-  if (u.includes('ytimg.com') || u.includes('youtube.com')) {
+  // Upgrade Google usercontent thumbnails to 544x544 HD
+  if (u.includes('googleusercontent.com') && u.includes('=w')) {
+    u = u.replace(/=w\d+-h\d+/, '=w544-h544');
+  } else if (u.includes('ytimg.com') || u.includes('youtube.com')) {
     if (u.includes('/default.jpg') || u.includes('/mqdefault.jpg')) {
-      return u.replace(/\/(default|mqdefault)\.jpg/i, '/hqdefault.jpg');
+      u = u.replace(/\/(default|mqdefault)\.jpg/i, '/hqdefault.jpg');
     }
   }
   return u;
@@ -82,7 +86,7 @@ app.get('/api/home', async (req, res) => {
   } catch {}
 
   const historyKey = (userHistory[0]?.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cacheKey = `home_algo_${userGenres.slice(0, 3).sort().join('_')}_${userArtists.slice(0, 3).sort().join('_')}_${historyKey}`;
+  const cacheKey = `home_algo_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -225,6 +229,67 @@ app.get('/api/lyrics', async (req, res) => {
   } catch (err) {
     console.warn(`Lyrics fetch error for "${title}":`, err.message);
     res.json({ syncedLyrics: null, plainLyrics: null });
+  }
+});
+
+// Related / UpNext Radio songs endpoint (infinite queue)
+app.get('/api/related/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  const artistHint = req.query.artist || '';
+  if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+
+  const cacheKey = `upnext_${videoId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const yt = await getYTMusic();
+    let upNext = [];
+    try {
+      upNext = await yt.getUpNexts(videoId);
+    } catch (e) {
+      console.warn(`getUpNexts failed for ${videoId}:`, e.message);
+    }
+
+    let songs = [];
+    if (Array.isArray(upNext) && upNext.length > 0) {
+      songs = upNext.map(item => {
+        const rawThumb = item.thumbnail || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '');
+        return {
+          videoId: item.videoId,
+          title: item.title || 'Unknown Title',
+          artist: item.artists || artistHint || 'Unknown Artist',
+          durationText: item.duration || '3:30',
+          duration: parseDuration(item.duration),
+          thumbnail: toHDUrl(rawThumb, item.videoId),
+          type: 'song'
+        };
+      });
+    }
+
+    // Fallback: If getUpNexts yielded fewer than 5 songs and artist is available, search artist songs
+    if (songs.length < 5 && artistHint) {
+      const fallbackSearch = await yt.searchSongs(`${artistHint} songs`).catch(() => []);
+      const fallbackSongs = fallbackSearch.map(formatSong).filter(s => s && s.videoId !== videoId);
+      songs = [...songs, ...fallbackSongs];
+    }
+
+    // Deduplicate by videoId
+    const seen = new Set();
+    const uniqueSongs = [];
+    for (const s of songs) {
+      if (s && s.videoId && s.videoId !== videoId && !seen.has(s.videoId)) {
+        seen.add(s.videoId);
+        uniqueSongs.push(s);
+      }
+    }
+
+    const result = { songs: uniqueSongs.slice(0, 30) };
+    setCache(cacheKey, result, 15 * 60 * 1000);
+    res.json(result);
+  } catch (err) {
+    console.error(`Error in /api/related/${videoId}:`, err);
+    res.status(500).json({ error: 'Failed to fetch related songs', songs: [] });
   }
 });
 

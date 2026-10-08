@@ -65,9 +65,10 @@ export function QueueDrawer() {
                   >
                     <div className="fs-queue-idx">{idx + 1}</div>
                     <img
-                      src={song.thumbnail}
+                      src={song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
                       alt={song.title}
                       className="fs-queue-thumb"
+                      referrerPolicy="no-referrer"
                     />
                     <div className="fs-queue-meta">
                       <span className="fs-queue-song-title truncate">{song.title}</span>

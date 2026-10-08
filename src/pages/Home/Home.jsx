@@ -95,6 +95,14 @@ export function Home() {
         </button>
       </div>
 
+      {/* ─── Real-Time Updating Indicator ────────────────────────────────── */}
+      {loading && sections.length > 0 && (
+        <div className="fs-feed-updating-bar">
+          <Loader2 size={16} className="spin text-brand" />
+          <span>Updating your feed with your new taste profile...</span>
+        </div>
+      )}
+
       {/* ─── Shelf 1: Followed Artists ──────────────────────────────────── */}
       <section className="fs-shelf">
         <div className="fs-shelf-header">

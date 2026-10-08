@@ -15,10 +15,21 @@ import './OnboardingModal.css';
 
 export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const [step, setStep] = useState(1); // 1 = Genres, 2 = Artists
-  const [selectedGenres, setSelectedGenres] = useState(['bollywood', 'lofi', 'punjabi']);
-  const [selectedArtists, setSelectedArtists] = useState(['Arijit Singh', 'Taylor Swift', 'Diljit Dosanjh']);
+  const [selectedGenres, setSelectedGenres] = useState(() => storage.getPreferences()?.genres || ['bollywood', 'lofi', 'punjabi']);
+  const [selectedArtists, setSelectedArtists] = useState(() => storage.getPreferences()?.artists || ['Arijit Singh', 'Taylor Swift', 'Diljit Dosanjh']);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+
+  // Re-sync with current preferences whenever modal is reopened
+  useEffect(() => {
+    if (isOpen) {
+      const current = storage.getPreferences();
+      if (current?.genres?.length) setSelectedGenres(current.genres);
+      if (current?.artists?.length) setSelectedArtists(current.artists);
+      setStep(1);
+      setSearchQuery('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

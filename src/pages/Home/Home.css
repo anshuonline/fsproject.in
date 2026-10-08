@@ -83,6 +83,24 @@
   border-color: var(--color-primary);
 }
 
+.fs-feed-updating-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  border-radius: var(--radius-full);
+  color: var(--color-white);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: -8px;
+  margin-bottom: -12px;
+  animation: fadeIn 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
 /* ─── Shelf styling ──────────────────────────────────────────────────────── */
 .fs-shelf {
   display: flex;

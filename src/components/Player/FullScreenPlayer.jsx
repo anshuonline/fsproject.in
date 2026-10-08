@@ -200,9 +200,10 @@ export function FullScreenPlayer() {
           <div className="fs-fs-art-col">
             <div className="fs-fs-art-wrap">
               <img
-                src={currentSong.thumbnail || '/images/freesonglogowebp.webp'}
+                src={currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
                 alt={currentSong.title}
                 className="fs-fs-artwork"
+                referrerPolicy="no-referrer"
               />
             </div>
 
@@ -253,9 +254,10 @@ export function FullScreenPlayer() {
                         onClick={() => playSong(track, queue)}
                       >
                         <img
-                          src={track.thumbnail}
+                          src={track.thumbnail || (track.videoId ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
                           alt={track.title}
                           className="fs-fs-queue-thumb"
+                          referrerPolicy="no-referrer"
                         />
                         <div className="fs-fs-queue-meta">
                           <span className="fs-fs-queue-title truncate">{track.title}</span>

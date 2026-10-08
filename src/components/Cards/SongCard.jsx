@@ -30,13 +30,19 @@ export function SongCard({ song, queueContext = [] }) {
     >
       <div className="fs-song-thumb-wrap">
         <img
-          src={song.thumbnail || '/images/freesonglogowebp.webp'}
+          src={song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
           alt={song.title}
           className="fs-song-thumb"
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = getArtworkFallback(song.title);
+            const currentSrc = e.currentTarget.src || '';
+            if (song.videoId && !currentSrc.includes('i.ytimg.com')) {
+              e.currentTarget.src = `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`;
+            } else {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = getArtworkFallback(song.title);
+            }
           }}
         />
         <div className={`fs-song-play-icon ${isCurrent ? 'show' : ''}`}>

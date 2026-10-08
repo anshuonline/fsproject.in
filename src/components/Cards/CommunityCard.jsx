@@ -33,13 +33,19 @@ export function CommunityCard({ item }) {
       {/* Artwork container */}
       <div className="fs-comm-art-wrap">
         <img
-          src={item.thumbnail}
+          src={item.thumbnail || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '')}
           alt={item.title}
           className="fs-comm-artwork"
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = getArtworkFallback(item.title);
+            const currentSrc = e.currentTarget.src || '';
+            if (item.videoId && !currentSrc.includes('i.ytimg.com')) {
+              e.currentTarget.src = `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`;
+            } else {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = getArtworkFallback(item.title);
+            }
           }}
         />
 
