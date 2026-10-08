@@ -17,7 +17,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 350px;
+  min-height: 70vh;
   gap: 14px;
 }
 
@@ -141,6 +141,51 @@
   padding: 14px 18px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(16px);
+}
+
+/* Table Header */
+.fs-album-tracks-container .fs-pl-table-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.fs-album-tracks-container .fs-pl-th-num {
+  width: 26px;
+  min-width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.fs-album-tracks-container .fs-pl-th-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-album-tracks-container .fs-pl-th-time {
+  width: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.fs-album-tracks-container .fs-pl-th-actions-spacer {
+  width: 70px;
+  min-width: 70px;
+  flex-shrink: 0;
+  margin-left: 16px;
 }
 
 .fs-album-tracklist {

@@ -37,7 +37,8 @@ export function GlobalContextMenu() {
     startRadio,
     addToQueue,
     sleepTimer,
-    setSleepTimer
+    setSleepTimer,
+    setIsFullScreen
   } = usePlayer();
 
   const {
@@ -136,6 +137,9 @@ export function GlobalContextMenu() {
 
   const handleGoToArtist = () => {
     closeMenu();
+    if (typeof setIsFullScreen === 'function') {
+      setIsFullScreen(false);
+    }
     if (song.artistId) {
       navigate(`/artist/${song.artistId}`);
     } else if (song.artist) {

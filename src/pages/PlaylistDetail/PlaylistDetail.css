@@ -17,7 +17,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 350px;
+  min-height: 70vh;
   gap: 14px;
 }
 
@@ -132,19 +132,22 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 14px 10px 14px;
+  padding: 8px 14px 10px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 8px;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--color-text-secondary);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .fs-pl-th-num {
   width: 26px;
   min-width: 26px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .fs-pl-th-title {
@@ -152,23 +155,21 @@
   min-width: 0;
 }
 
-.fs-pl-th-album {
-  flex: 0.8;
-  display: none;
-  padding: 0 12px;
-}
-
 .fs-pl-th-time {
-  width: 80px;
+  width: 44px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-@media (min-width: 820px) {
-  .fs-pl-th-album {
-    display: block;
-  }
+.fs-pl-th-actions-spacer {
+  width: 70px;
+  min-width: 70px;
+  flex-shrink: 0;
+  margin-left: 16px;
 }
 
 .fs-pl-tracks-list {

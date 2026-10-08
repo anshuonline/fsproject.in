@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Heart, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
@@ -6,15 +7,28 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongCard.css';
 
-export function SongCard({ song, queueContext = [], index = null, showAlbum = false }) {
-  const { currentSong, isPlaying, playSong, togglePlay } = usePlayer();
+export function SongCard({ song, queueContext = [], index = null }) {
+  const { currentSong, isPlaying, playSong, togglePlay, setIsFullScreen } = usePlayer();
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu } = useContextMenu();
+  const navigate = useNavigate();
 
   if (!song) return null;
 
   const isCurrent = currentSong?.videoId === song.videoId;
   const liked = isLiked(song.videoId);
+
+  const handleArtistClick = (e) => {
+    e.stopPropagation();
+    if (typeof setIsFullScreen === 'function') {
+      setIsFullScreen(false);
+    }
+    if (song.artistId) {
+      navigate(`/artist/${song.artistId}`);
+    } else if (song.artist) {
+      navigate(`/search?q=${encodeURIComponent(song.artist)}`);
+    }
+  };
 
   const handlePlay = (e) => {
     e.stopPropagation();
@@ -91,42 +105,40 @@ export function SongCard({ song, queueContext = [], index = null, showAlbum = fa
         <span className={`fs-song-title truncate ${isCurrent ? 'text-brand' : ''}`} title={song.title}>
           {song.title}
         </span>
-        <span className="fs-song-artist truncate" title={song.artist}>
+        <span
+          className="fs-song-artist truncate fs-song-artist-link"
+          title={song.artist}
+          onClick={handleArtistClick}
+        >
           {song.artist}
         </span>
       </div>
 
-      {/* Album Column (Spotify Desktop) */}
-      {showAlbum && song.album && (
-        <div className="fs-song-album truncate" title={song.album}>
-          {song.album}
+      {/* Right Area: Duration first, then Actions (Heart & Three Dots) */}
+      <div className="fs-song-right">
+        <div className="fs-song-duration">
+          <span>{song.durationText || ''}</span>
         </div>
-      )}
 
-      {/* Duration */}
-      <div className="fs-song-duration">
-        <span>{song.durationText || ''}</span>
-      </div>
+        <div className={`fs-song-actions ${liked ? 'has-liked' : ''}`} onClick={(e) => e.stopPropagation()}>
+          <button
+            className={`btn-icon fs-song-btn ${liked ? 'liked' : ''}`}
+            onClick={() => toggleLike(song)}
+            title={liked ? 'Unlike' : 'Like'}
+            aria-label={liked ? 'Unlike' : 'Like'}
+          >
+            <Heart size={16} fill={liked ? 'currentColor' : 'none'} />
+          </button>
 
-      {/* Actions (Heart & Three Dots — NO plus button) */}
-      <div className="fs-song-actions" onClick={(e) => e.stopPropagation()}>
-        <button
-          className={`btn-icon fs-song-btn ${liked ? 'liked' : ''}`}
-          onClick={() => toggleLike(song)}
-          title={liked ? 'Unlike' : 'Like'}
-          aria-label={liked ? 'Unlike' : 'Like'}
-        >
-          <Heart size={16} fill={liked ? 'currentColor' : 'none'} />
-        </button>
-
-        <button
-          className="btn-icon fs-song-btn"
-          onClick={(e) => openMenu(song, e)}
-          title="More actions"
-          aria-label="More actions"
-        >
-          <MoreVertical size={16} />
-        </button>
+          <button
+            className="btn-icon fs-song-btn"
+            onClick={(e) => openMenu(song, e)}
+            title="More actions"
+            aria-label="More actions"
+          >
+            <MoreVertical size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

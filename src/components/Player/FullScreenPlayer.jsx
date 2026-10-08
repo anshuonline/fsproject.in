@@ -19,6 +19,7 @@ import {
   Sparkles,
   ListPlus
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -88,6 +89,8 @@ export function FullScreenPlayer() {
 
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu, setView: setContextView, showToast } = useContextMenu();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Desktop active tab: 'upnext' | 'lyrics' | 'related'
   const [activeTab, setActiveTab] = useState('upnext');
@@ -109,6 +112,26 @@ export function FullScreenPlayer() {
   const [loadingRelated, setLoadingRelated] = useState(false);
 
   const lyricsContainerRef = useRef(null);
+
+  // Automatically close fullscreen overlay when route/URL changes
+  useEffect(() => {
+    if (isFullScreen) {
+      setIsFullScreen(false);
+    }
+  }, [location.pathname, location.search]);
+
+  // Navigate directly to artist page and close fullscreen
+  const handleNavigateArtist = (artistName, artistId, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setIsFullScreen(false);
+    if (artistId) {
+      navigate(`/artist/${artistId}`);
+    } else if (artistName) {
+      navigate(`/search?q=${encodeURIComponent(artistName)}`);
+    }
+  };
 
   // Resize listener
   useEffect(() => {
@@ -346,7 +369,13 @@ export function FullScreenPlayer() {
               <div className="fs-fs-mobile-art-meta">
                 <div className="fs-fs-mobile-meta-text">
                   <h2 className="fs-fs-mobile-title truncate">{currentSong.title}</h2>
-                  <p className="fs-fs-mobile-artist truncate">{currentSong.artist}</p>
+                  <p
+                    className="fs-fs-mobile-artist truncate fs-clickable-artist"
+                    onClick={(e) => handleNavigateArtist(currentSong.artist, currentSong.artistId, e)}
+                    title={`Go to ${currentSong.artist}`}
+                  >
+                    {currentSong.artist}
+                  </p>
                 </div>
                 <button
                   className={`btn-icon fs-fs-mobile-like-btn ${liked ? 'liked' : ''}`}
@@ -478,7 +507,13 @@ export function FullScreenPlayer() {
                               <span className={`fs-fs-queue-title truncate ${isCurrent ? 'text-green' : ''}`}>
                                 {track.title}
                               </span>
-                              <span className="fs-fs-queue-artist truncate">{track.artist}</span>
+                              <span
+                                className="fs-fs-queue-artist truncate fs-clickable-artist"
+                                onClick={(e) => handleNavigateArtist(track.artist, track.artistId, e)}
+                                title={`Go to ${track.artist}`}
+                              >
+                                {track.artist}
+                              </span>
                             </div>
 
                             <span className="fs-fs-queue-duration">
@@ -621,7 +656,13 @@ export function FullScreenPlayer() {
                           </div>
                           <div className="fs-fs-queue-meta">
                             <span className="fs-fs-queue-title truncate">{track.title}</span>
-                            <span className="fs-fs-queue-artist truncate">{track.artist}</span>
+                            <span
+                              className="fs-fs-queue-artist truncate fs-clickable-artist"
+                              onClick={(e) => handleNavigateArtist(track.artist, track.artistId, e)}
+                              title={`Go to ${track.artist}`}
+                            >
+                              {track.artist}
+                            </span>
                           </div>
                           <span className="fs-fs-queue-duration">
                             {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
@@ -721,7 +762,13 @@ export function FullScreenPlayer() {
             />
             <div className="fs-fs-bar-meta">
               <span className="fs-fs-bar-title truncate">{currentSong.title}</span>
-              <span className="fs-fs-bar-artist truncate">{currentSong.artist}</span>
+              <span
+                className="fs-fs-bar-artist truncate fs-clickable-artist"
+                onClick={(e) => handleNavigateArtist(currentSong.artist, currentSong.artistId, e)}
+                title={`Go to ${currentSong.artist}`}
+              >
+                {currentSong.artist}
+              </span>
             </div>
             <button
               className={`btn-icon fs-fs-bar-like ${liked ? 'liked' : ''}`}

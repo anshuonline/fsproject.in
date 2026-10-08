@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Loader2, Music, Disc, ListMusic, User } from 'lucide-react';
 import { useSearchData } from './useSearchData';
@@ -19,6 +19,14 @@ const FILTERS = [
 export function Search() {
   const navigate = useNavigate();
   const { query, filterType, setFilterType, results, loading, error } = useSearchData();
+
+  useEffect(() => {
+    if (!loading) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  }, [query, filterType, loading]);
 
   return (
     <div className="fs-search-page">

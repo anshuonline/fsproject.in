@@ -10,6 +10,7 @@
   padding: 56px 32px 32px;
   position: relative;
   box-sizing: border-box;
+  overflow-anchor: none;
 }
 
 .fs-footer::before {

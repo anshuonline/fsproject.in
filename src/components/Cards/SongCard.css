@@ -141,45 +141,64 @@
   width: 100%;
 }
 
-/* Spotify Album Column */
-.fs-song-album {
-  flex: 0.8;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-  padding: 0 12px;
-  display: none;
-  min-width: 0;
+.fs-song-artist-link {
+  transition: color var(--transition-fast);
 }
 
-@media (min-width: 820px) {
-  .fs-song-album {
-    display: block;
-  }
+.fs-song-artist-link:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-/* Duration */
+/* Right Section: Duration + Actions */
+.fs-song-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Duration Column */
 .fs-song-duration {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
-  min-width: 42px;
+  width: 44px;
+  min-width: 44px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-/* Actions: Heart & Three-Dots (no plus button) */
+/* Actions: Heart & Three-Dots (no plus button) - placed AFTER duration */
 .fs-song-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  width: 70px;
+  min-width: 70px;
   opacity: 0;
   transition: opacity var(--transition-fast);
   flex-shrink: 0;
-  margin-left: 6px;
 }
 
-.fs-song-row:hover .fs-song-actions {
+.fs-song-row:hover .fs-song-actions,
+.fs-song-actions.has-liked {
   opacity: 1;
+}
+
+/* If liked but row is not hovered, keep heart visible and three-dots hidden */
+.fs-song-actions.has-liked .fs-song-btn:not(.liked) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fs-song-row:hover .fs-song-actions.has-liked .fs-song-btn:not(.liked) {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .fs-song-btn {
@@ -229,14 +248,25 @@
     font-size: 0.75rem;
   }
 
+  .fs-song-right {
+    gap: 6px;
+  }
+
   .fs-song-duration {
-    min-width: 32px;
+    width: 42px;
+    min-width: 42px;
     font-size: 0.75rem;
+    padding-right: 0;
   }
 
   .fs-song-actions {
     opacity: 1;
     gap: 2px;
+  }
+
+  .fs-song-actions.has-liked .fs-song-btn:not(.liked) {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .fs-song-btn {

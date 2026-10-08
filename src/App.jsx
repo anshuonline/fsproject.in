@@ -22,10 +22,12 @@ import { Settings } from './pages/Settings/Settings';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
 import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
+import { ScrollToTop } from './components/Common/ScrollToTop';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <PlayerProvider>
         <LibraryProvider>
           <ContextMenuProvider>

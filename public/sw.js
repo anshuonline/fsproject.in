@@ -1,5 +1,5 @@
 // FreeSong.in — PWA Service Worker
-const CACHE_NAME = 'freesong-pwa-v1';
+const CACHE_NAME = 'freesong-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -32,7 +32,14 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event listener required by Chrome/Edge for PWA installability
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+  if (
+    event.request.method !== 'GET' ||
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('/src/') ||
+    event.request.url.includes('/@vite/') ||
+    event.request.url.includes('/@react-refresh') ||
+    event.request.url.includes('/@id/')
+  ) {
     return;
   }
 

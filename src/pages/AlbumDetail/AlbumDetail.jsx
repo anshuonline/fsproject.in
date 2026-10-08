@@ -38,6 +38,13 @@ export function AlbumDetail() {
     loadAlbum();
   }, [id]);
 
+  // Ensure user always lands directly at the top album header
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [id, loading]);
+
   if (loading) {
     return (
       <div className="fs-album-loading">
@@ -123,10 +130,10 @@ export function AlbumDetail() {
           <div className="fs-pl-table-header">
             <span className="fs-pl-th fs-pl-th-num">#</span>
             <span className="fs-pl-th fs-pl-th-title">TITLE</span>
-            <span className="fs-pl-th fs-pl-th-album">ALBUM</span>
             <span className="fs-pl-th fs-pl-th-time">
               <Clock size={16} />
             </span>
+            <span className="fs-pl-th-actions-spacer" />
           </div>
         )}
 
@@ -140,7 +147,6 @@ export function AlbumDetail() {
                 song={song}
                 queueContext={album.songs}
                 index={index}
-                showAlbum={true}
               />
             ))
           )}

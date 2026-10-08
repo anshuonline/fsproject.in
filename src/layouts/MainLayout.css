@@ -27,6 +27,7 @@
   transition: margin-left var(--transition-smooth);
   box-sizing: border-box;
   overflow-x: hidden;
+  overflow-anchor: none;
 }
 
 .fs-app-layout.has-player .fs-main-content {

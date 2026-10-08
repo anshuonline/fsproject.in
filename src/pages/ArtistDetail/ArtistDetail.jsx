@@ -23,6 +23,13 @@ export function ArtistDetail() {
     });
   }, [id]);
 
+  // Ensure user always lands directly at the top artist banner
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [id, loading]);
+
   if (loading) {
     return (
       <div className="fs-artist-loading">

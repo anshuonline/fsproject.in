@@ -52,6 +52,13 @@ export function PlaylistDetail() {
     });
   }, [id, queryName, playlists]);
 
+  // Ensure user always lands directly at the top playlist header
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [id, loading]);
+
   if (loading) {
     return (
       <div className="fs-pl-loading">
@@ -119,10 +126,10 @@ export function PlaylistDetail() {
           <div className="fs-pl-table-header">
             <span className="fs-pl-th fs-pl-th-num">#</span>
             <span className="fs-pl-th fs-pl-th-title">TITLE</span>
-            <span className="fs-pl-th fs-pl-th-album">ALBUM</span>
             <span className="fs-pl-th fs-pl-th-time">
               <Clock size={16} />
             </span>
+            <span className="fs-pl-th-actions-spacer" />
           </div>
         )}
 
@@ -138,7 +145,6 @@ export function PlaylistDetail() {
                 song={song}
                 queueContext={playlist.songs}
                 index={idx}
-                showAlbum={true}
               />
             ))
           )}

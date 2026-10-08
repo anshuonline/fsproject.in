@@ -895,3 +895,15 @@
     width: auto;
   }
 }
+
+/* Clickable Artist Name in Fullscreen Player */
+.fs-clickable-artist {
+  cursor: pointer;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.fs-clickable-artist:hover {
+  color: var(--color-white, #ffffff) !important;
+  text-decoration: underline;
+}
+
