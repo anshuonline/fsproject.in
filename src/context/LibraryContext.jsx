@@ -69,17 +69,35 @@ export function LibraryProvider({ children }) {
 
   const saveExternalPlaylist = (ext) => {
     if (!ext) return null;
+    const songs = ext.songs || [];
+    const firstThumb = songs[0]?.thumbnail || (songs[0]?.videoId ? `https://i.ytimg.com/vi/${songs[0].videoId}/hqdefault.jpg` : null);
+    const cover = ext.coverImage || firstThumb || null;
     const newPl = {
       id: `pl-${Date.now()}`,
       name: ext.title || ext.name || 'Saved Playlist',
       description: ext.description || `Saved from ${ext.creator || 'Community'}`,
-      tracksCount: ext.songs?.length || 0,
-      songs: ext.songs || [],
-      coverImage: ext.coverImage || null,
+      tracksCount: songs.length,
+      songs: [...songs],
+      coverImage: cover,
+      sourcePlaylistId: ext.id,
       updatedAt: 'Just now'
     };
     setPlaylists(prev => [newPl, ...prev]);
     return newPl;
+  };
+
+  const clonePlaylist = (pl) => {
+    return saveExternalPlaylist(pl);
+  };
+
+  const isPlaylistSaved = (playlistId) => {
+    if (!playlistId) return false;
+    return playlists.some(p => p.id === playlistId || p.sourcePlaylistId === playlistId);
+  };
+
+  const getSavedClone = (playlistId) => {
+    if (!playlistId) return null;
+    return playlists.find(p => p.id === playlistId || p.sourcePlaylistId === playlistId) || null;
   };
 
   const addSongToPlaylist = (playlistId, song) => {
@@ -145,6 +163,9 @@ export function LibraryProvider({ children }) {
         deletePlaylist,
         updatePlaylist,
         saveExternalPlaylist,
+        clonePlaylist,
+        isPlaylistSaved,
+        getSavedClone,
         addSongToPlaylist,
         removeSongFromPlaylist,
         isSongInPlaylist,
