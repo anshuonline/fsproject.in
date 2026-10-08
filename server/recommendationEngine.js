@@ -267,14 +267,33 @@ export function generateShelfPlan(preferences = {}, history = []) {
     });
   }
 
-  // 5. Genre Shelves
-  primaryGenres.slice(0, 3).forEach((genre, idx) => {
-    const capitalized = genre.charAt(0).toUpperCase() + genre.slice(1);
+  // 5. Genre Shelves (Tailored for regional genres like Tamil, Telugu, Haryanvi, Bengali, etc.)
+  const GENRE_LABELS = {
+    tamil: { name: 'Tamil Kollywood Hits', party: 'Tamil Kuthu & Party', chill: 'Tamil Melodies & Chill', workout: 'Tamil Energy Hits' },
+    telugu: { name: 'Telugu Tollywood Hits', party: 'Telugu Mass Beats', chill: 'Telugu Soulful Melodies', workout: 'Telugu Fast Beats' },
+    haryanvi: { name: 'Haryanvi Ragni & Beats', party: 'Haryanvi Dance Party', chill: 'Haryanvi Desi Chill', workout: 'Haryanvi Power Beats' },
+    bengali: { name: 'Bengali Melodies & Folk', party: 'Bangla Modern Pop', chill: 'Bengali Acoustic & Folk', workout: 'Bengali Energy Hits' },
+    malayalam: { name: 'Malayalam Mollywood', party: 'Malayalam Beats', chill: 'Malayalam Acoustic Chill', workout: 'Malayalam Power Tracks' },
+    kannada: { name: 'Kannada Sandalwood', party: 'Kannada Mass Hits', chill: 'Kannada Melodies', workout: 'Kannada Energy Beats' },
+    bhojpuri: { name: 'Bhojpuri Tadka', party: 'Bhojpuri DJ Dance', chill: 'Bhojpuri Folk Melodies', workout: 'Bhojpuri High Energy' },
+    punjabi: { name: 'Punjabi Beats', party: 'Punjabi Club & Bhangra', chill: 'Punjabi Late Night Chill', workout: 'Punjabi Gym Energy' },
+    bollywood: { name: 'Bollywood Hits', party: 'Bollywood Club Party', chill: 'Bollywood Late Night Chill', workout: 'Bollywood Workout Energy' },
+    lofi: { name: 'Lo-Fi Chill', party: 'Lo-Fi Grooves', chill: 'Lo-Fi Midnight Echoes', workout: 'Lo-Fi Focus Energy' }
+  };
+
+  primaryGenres.slice(0, 4).forEach((genre, idx) => {
+    const meta = GENRE_LABELS[genre.toLowerCase()] || {
+      name: genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hits',
+      party: `${genre} Party Hits`,
+      chill: `${genre} Chill & Lo-Fi`,
+      workout: `${genre} Workout Energy`
+    };
+
     shelves.push({
       id: `shelf-genre-suggested-${idx}`,
       eyebrow: 'RECOMMENDED BY GENRE',
-      title: `Suggested for you: ${capitalized} Hits`,
-      searchQuery: `${genre} hits mix playlist`,
+      title: `Suggested for you: ${meta.name}`,
+      searchQuery: `${genre} best hits songs playlist`,
       type: 'playlists',
       category: 'genre'
     });
@@ -282,18 +301,19 @@ export function generateShelfPlan(preferences = {}, history = []) {
     shelves.push({
       id: `shelf-genre-mood-${idx}`,
       eyebrow: 'MOOD VIBES',
-      title: `${capitalized} Late Night Chill`,
-      searchQuery: `${genre} chill lofi songs`,
+      title: meta.chill,
+      searchQuery: `${genre} chill acoustic melodies songs`,
       type: 'songs',
       category: 'genre'
     });
   });
 
   // 6. Workout & High Energy Genre
+  const firstMeta = GENRE_LABELS[mainGenre.toLowerCase()] || { workout: `${capGenre} Workout Energy`, party: `${capGenre} Party Station` };
   shelves.push({
     id: 'shelf-genre-workout',
     eyebrow: 'PUMPED UP BEATS',
-    title: `${capGenre} Workout Energy`,
+    title: firstMeta.workout,
     searchQuery: `${mainGenre} workout energetic songs`,
     type: 'songs',
     category: 'genre'
@@ -313,7 +333,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
   shelves.push({
     id: 'shelf-genre-party',
     eyebrow: 'WEEKEND PARTY',
-    title: `${capGenre} Party Station`,
+    title: firstMeta.party,
     searchQuery: `${mainGenre} party dance club songs`,
     type: 'songs',
     category: 'genre'

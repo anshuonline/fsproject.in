@@ -712,6 +712,104 @@ export const TOP_100_ARTISTS = [
     "genre": "Mantra Chants",
     "category": "Devotional",
     "image": "https://yt3.googleusercontent.com/t9F4PWdfSMGP_Y1zx7X1qB-82qfBRBHtBIIU3h1K5GrtHovPIZ03wnEo8cf1iXJHu6KZo9mjc9NxkpoD=w120-h120-l90-rj"
+  },
+  {
+    "id": "ilaiyaraaja",
+    "name": "Ilaiyaraaja",
+    "genre": "Tamil Legend",
+    "category": "South",
+    "image": "https://lh3.googleusercontent.com/QxbV6wK_wcQWcBY9rBicZlsl1-gX5M6nGjfNN3BTzgknhaSJ6yhnHW7NmF4dTx0Ch9g9-VTD6YUD2crW=w120-h120-p-l90-rj"
+  },
+  {
+    "id": "d-imman",
+    "name": "D. Imman",
+    "genre": "Tamil Melodies",
+    "category": "South",
+    "image": "https://yt3.googleusercontent.com/vyWvssNMFaoGKP2VQvVrWMcsUotLTZfzp4-nGsMEbSAngEJBvXCMEo6rbM1di1kYkTz88zbNGiaabxI=w120-h120-l90-rj"
+  },
+  {
+    "id": "ram-miriyala",
+    "name": "Ram Miriyala",
+    "genre": "Telugu Folk / Pop",
+    "category": "South",
+    "image": "https://yt3.googleusercontent.com/C6ZgYX28bO6D8qQxEZ_RYz90PkFYL9byd6xCUIZW4M016lMI4-LxD-BBakbSid_9e9d0PTK9HLqR7iDs=w120-h120-l90-rj"
+  },
+  {
+    "id": "anurag-kulkarni",
+    "name": "Anurag Kulkarni",
+    "genre": "Telugu Playback",
+    "category": "South",
+    "image": "https://yt3.googleusercontent.com/63T2Aq52wrRMDLUhnT8RbqqfWi4NF3NtAVtLNuitM9vnzmd0ZiQrCmUURxOW_H3svAJVrKRtE_YhG9gg=w120-h120-p-l90-rj"
+  },
+  {
+    "id": "mangli",
+    "name": "Mangli",
+    "genre": "Telugu Folk",
+    "category": "South",
+    "image": "https://yt3.googleusercontent.com/zBCWcqba3lk2xRDovurDlM4vliSaRRk5SdjYUrStXiAbtrSelCiosHICIONdRGuXsnGLG91oGVlPJLmO=w120-h120-l90-rj"
+  },
+  {
+    "id": "sushin-shyam",
+    "name": "Sushin Shyam",
+    "genre": "Malayalam Wave",
+    "category": "South",
+    "image": "https://yt3.googleusercontent.com/YlcHWu5-x5LKoVkv80_D533SdNG_mly1WtLAkcUcFwuVGWSHgU_q-3-SFQgj8XXg8q8UZXPacg=w120-h120-l90-rj"
+  },
+  {
+    "id": "ks-harisankar",
+    "name": "KS Harisankar",
+    "genre": "Malayalam Melodies",
+    "category": "South",
+    "image": "https://yt3.ggpht.com/ytc/AIdro_m1BynvBFb52BYjixx0qIygoVxxw9MfxF1fehzhdAR15Bw=w120-h120-l90-rj-dcITSSjaEH"
+  },
+  {
+    "id": "iman-chakraborty",
+    "name": "Iman Chakraborty",
+    "genre": "Bengali Folk",
+    "category": "Regional",
+    "image": "https://yt3.googleusercontent.com/_sYaerP53oW4B-Rx702KI4t3F-rHQwxUrOMQmgyeWL6uV72KOIPpHZe-PDcAdMINzOWOdDf-Y4VptuhmyA=w120-h120-l90-rj"
+  },
+  {
+    "id": "somlata-acharyya",
+    "name": "Somlata Acharyya",
+    "genre": "Bengali Modern",
+    "category": "Regional",
+    "image": "https://yt3.ggpht.com/ytc/AIdro_mJDo_Jo6MX51h-Tez8Dq3J377PAOUplyyraKZpmzG9BQI=w120-h120-l90-rj-dcJXWUza0H"
+  },
+  {
+    "id": "renuka-panwar",
+    "name": "Renuka Panwar",
+    "genre": "Haryanvi Pop",
+    "category": "Regional",
+    "image": "https://yt3.googleusercontent.com/n6Tv6YEkLuaAUGNZeE38m5Cx-z3RXV2lzk_NKWsOyHsksCsCc9EaCq3R4m6oxuunCpcYz_3msx9JwQo=w120-h120-p-l90-rj"
+  },
+  {
+    "id": "khasa-aala-chahar",
+    "name": "Khasa Aala Chahar",
+    "genre": "Haryanvi Desi",
+    "category": "Regional",
+    "image": "https://yt3.ggpht.com/ytc/AIdro_n3EWkDRfvUB0Do-8zTqPW7agE7Zt4qS2059PYe07n0rg=w120-h120-l90-rj"
+  },
+  {
+    "id": "masoom-sharma",
+    "name": "Masoom Sharma",
+    "genre": "Haryanvi Ragni",
+    "category": "Regional",
+    "image": "https://yt3.googleusercontent.com/tdAsmMAtaKxazC86csCLxZFGFoo0yrhyJDCsqqF4p9lAHQKwVCh2hwT1HEqcTCv2c5af5k7t=w120-h120-l90-rj"
+  },
+  {
+    "id": "diler-kharkiya",
+    "name": "Diler Kharkiya",
+    "genre": "Haryanvi Beats",
+    "category": "Regional",
+    "image": "https://yt3.googleusercontent.com/htiTp0NUK5pWlxkr7RYhvvgplf4TEUqegmlEbQmceo9_xBu79rz3q7723hdl0nmxlqV4-ADCwTplYg=w120-h120-p-l90-rj"
+  },
+  {
+    "id": "neelkamal-singh",
+    "name": "Neelkamal Singh",
+    "genre": "Bhojpuri Melody",
+    "category": "Regional",
+    "image": "https://yt3.googleusercontent.com/G63zU8h91CFpcL2KGF_0t721M6XM3RrlS9jEqcy4i2uqmtnEN4KIgfn8r0DahVWLRRS3J9fiMOCbE2fv9Q=w120-h120-l90-rj"
   }
 ];
 
@@ -729,15 +827,57 @@ export const GENRES_LIST = [
     "icon": "Flame"
   },
   {
+    "id": "tamil",
+    "name": "Tamil Hits (Kollywood)",
+    "color": "#FF3366",
+    "icon": "Flame"
+  },
+  {
+    "id": "telugu",
+    "name": "Telugu Hits (Tollywood)",
+    "color": "#FF6B00",
+    "icon": "Activity"
+  },
+  {
+    "id": "haryanvi",
+    "name": "Haryanvi Ragni & Beats",
+    "color": "#FF5722",
+    "icon": "Zap"
+  },
+  {
+    "id": "bengali",
+    "name": "Bengali Melodies & Folk",
+    "color": "#9C27B0",
+    "icon": "Heart"
+  },
+  {
+    "id": "malayalam",
+    "name": "Malayalam Hits",
+    "color": "#00BCD4",
+    "icon": "Music"
+  },
+  {
+    "id": "kannada",
+    "name": "Kannada Hits",
+    "color": "#FFC107",
+    "icon": "Disc"
+  },
+  {
+    "id": "bhojpuri",
+    "name": "Bhojpuri Tadka",
+    "color": "#F44336",
+    "icon": "Volume2"
+  },
+  {
     "id": "lofi",
     "name": "Lo-Fi & Chill",
-    "color": "#9C27B0",
+    "color": "#7E57C2",
     "icon": "Coffee"
   },
   {
     "id": "romantic",
     "name": "Romantic & Love",
-    "color": "#F44336",
+    "color": "#EC407A",
     "icon": "Heart"
   },
   {
@@ -749,7 +889,7 @@ export const GENRES_LIST = [
   {
     "id": "indianindie",
     "name": "Indian Indie",
-    "color": "#00BCD4",
+    "color": "#26C6DA",
     "icon": "Music"
   },
   {
@@ -767,38 +907,32 @@ export const GENRES_LIST = [
   {
     "id": "devotional",
     "name": "Devotional & Spiritual",
-    "color": "#FFC107",
+    "color": "#FFB300",
     "icon": "Sparkles"
   },
   {
     "id": "workout",
     "name": "Workout & Energy",
-    "color": "#FF5722",
+    "color": "#E64A19",
     "icon": "Zap"
   },
   {
     "id": "party",
     "name": "Party & Club Hits",
-    "color": "#E040FB",
+    "color": "#AB47BC",
     "icon": "Volume2"
   },
   {
     "id": "90s",
     "name": "90s Bollywood Nostalgia",
-    "color": "#795548",
+    "color": "#8D6E63",
     "icon": "Disc"
   },
   {
     "id": "ghazals",
     "name": "Ghazals & Sufi",
-    "color": "#607D8B",
+    "color": "#78909C",
     "icon": "BookOpen"
-  },
-  {
-    "id": "southhits",
-    "name": "Tollywood & Kollywood",
-    "color": "#FF5252",
-    "icon": "Activity"
   },
   {
     "id": "edm",

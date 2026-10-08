@@ -59,11 +59,25 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const filteredArtists = TOP_100_ARTISTS.filter(artist => {
     const matchesSearch = artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           artist.genre.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || artist.category === activeCategory;
+    
+    let matchesCategory = activeCategory === 'All';
+    if (!matchesCategory) {
+      if (activeCategory === 'South') {
+        matchesCategory = artist.category === 'South' || /tamil|telugu|malayalam|kannada/i.test(artist.genre);
+      } else if (activeCategory === 'Haryanvi') {
+        matchesCategory = /haryanvi/i.test(artist.genre) || /haryanvi/i.test(artist.category);
+      } else if (activeCategory === 'Bengali') {
+        matchesCategory = /bengali/i.test(artist.genre) || /bengali/i.test(artist.category);
+      } else if (activeCategory === 'Bhojpuri') {
+        matchesCategory = /bhojpuri/i.test(artist.genre) || /bhojpuri/i.test(artist.category);
+      } else {
+        matchesCategory = artist.category === activeCategory;
+      }
+    }
     return matchesSearch && matchesCategory;
   });
 
-  const categories = ['All', 'Hindi', 'English', 'Punjabi', 'Indie', 'South', 'Regional', 'Devotional'];
+  const categories = ['All', 'Hindi', 'Punjabi', 'South', 'Haryanvi', 'Bengali', 'Bhojpuri', 'English', 'Indie', 'Devotional'];
 
   return (
     <div className="fs-onboarding-backdrop">
