@@ -911,6 +911,85 @@ async function getIpGeo(ip) {
   return { country: 'India', countryCode: 'IN', region: null, city: null, lat: null, lon: null };
 }
 
+// Helper to resolve user identifier (DB ID, Firebase UID, or email) to MySQL users.id
+async function resolveUserId(userIdentifier, email = null) {
+  if (!userIdentifier && !email) return null;
+
+  try {
+    // 1. If it's already a numeric integer, verify in users table
+    if (userIdentifier && /^\d+$/.test(String(userIdentifier))) {
+      const rows = await query('SELECT id FROM users WHERE id = ?', [Number(userIdentifier)]);
+      if (rows && rows.length > 0) return rows[0].id;
+    }
+
+    // 2. Look up by firebase_uid
+    if (userIdentifier) {
+      const rows = await query('SELECT id FROM users WHERE firebase_uid = ?', [String(userIdentifier)]);
+      if (rows && rows.length > 0) return rows[0].id;
+    }
+
+    // 3. Look up by email
+    const lookupEmail = email || (typeof userIdentifier === 'string' && userIdentifier.includes('@') ? userIdentifier : null);
+    if (lookupEmail) {
+      const rows = await query('SELECT id FROM users WHERE email = ?', [lookupEmail]);
+      if (rows && rows.length > 0) return rows[0].id;
+
+      // Auto-create user row if not found yet
+      try {
+        await query(
+          'INSERT INTO users (email, name, auth_provider) VALUES (?, ?, ?)',
+          [lookupEmail, lookupEmail.split('@')[0], 'email']
+        );
+        const newRows = await query('SELECT id FROM users WHERE email = ?', [lookupEmail]);
+        if (newRows && newRows.length > 0) return newRows[0].id;
+      } catch {}
+    }
+  } catch (err) {
+    console.warn('resolveUserId error:', err.message);
+  }
+
+  return null;
+}
+
+// Database Status & Diagnostics endpoint
+app.get('/api/db/status', async (req, res) => {
+  const start = Date.now();
+  try {
+    await query('SELECT 1 as ping');
+    const latencyMs = Date.now() - start;
+
+    const [usersRes] = await query('SELECT COUNT(*) as count FROM users');
+    const [likesRes] = await query('SELECT COUNT(*) as count FROM user_likes');
+    const [historyRes] = await query('SELECT COUNT(*) as count FROM user_play_history');
+    const [logsRes] = await query('SELECT COUNT(*) as count FROM user_login_logs');
+
+    res.json({
+      connected: true,
+      provider: 'Hostinger Cloud MySQL',
+      host: process.env.DB_HOST || 'srv2109.hstgr.io',
+      database: process.env.DB_NAME || 'u388169091_freesong',
+      port: process.env.DB_PORT || 3306,
+      latencyMs,
+      stats: {
+        users: Number(usersRes?.count || 0),
+        likes: Number(likesRes?.count || 0),
+        history: Number(historyRes?.count || 0),
+        logins: Number(logsRes?.count || 0)
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(503).json({
+      connected: false,
+      error: err.message,
+      provider: 'Hostinger Cloud MySQL',
+      host: process.env.DB_HOST || 'srv2109.hstgr.io',
+      database: process.env.DB_NAME || 'u388169091_freesong',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // User Sync (Saves registration info, IP, Geolocation, and Login logs)
 app.post('/api/user/sync', async (req, res) => {
   const { email, name, avatarUrl, authProvider, firebaseUid } = req.body;
@@ -973,18 +1052,34 @@ app.post('/api/user/sync', async (req, res) => {
 
 // Play History: Save played song and enforce max 100 history limit
 app.post('/api/user/history', async (req, res) => {
-  const { userId, videoId, title, artist, album, thumbnail, duration, durationText, playedDuration } = req.body;
-  if (!userId || !videoId) return res.status(400).json({ error: 'userId and videoId are required' });
-
-  const ip = getClientIp(req);
+  const { userId, email, videoId, title, artist, album, thumbnail, duration, durationText, playedDuration } = req.body;
+  if (!videoId) return res.status(400).json({ error: 'videoId is required' });
 
   try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    const ip = getClientIp(req);
+
     await query(`
       INSERT INTO user_play_history (
         user_id, video_id, title, artist, album, thumbnail,
         duration, duration_text, played_duration, ip_address, played_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `, [userId, videoId, title, artist, album || '', thumbnail || '', duration || 0, durationText || '', playedDuration || 0, ip]);
+    `, [
+      resolvedUserId,
+      videoId,
+      title || 'Unknown Title',
+      artist || 'Unknown Artist',
+      album || '',
+      thumbnail || '',
+      duration || 0,
+      durationText || '',
+      playedDuration || 0,
+      ip
+    ]);
 
     // Keep only the most recent 100 songs for this user
     await query(`
@@ -998,9 +1093,9 @@ app.post('/api/user/history', async (req, res) => {
             LIMIT 100
           ) AS recent_tracks
         )
-    `, [userId, userId]);
+    `, [resolvedUserId, resolvedUserId]).catch(() => {});
 
-    res.json({ success: true });
+    res.json({ success: true, userId: resolvedUserId });
   } catch (err) {
     console.warn('History save error:', err.message);
     res.status(500).json({ error: 'Failed to record play history' });
@@ -1011,9 +1106,12 @@ app.post('/api/user/history', async (req, res) => {
 app.get('/api/user/:userId/history', async (req, res) => {
   const { userId } = req.params;
   try {
+    const resolvedUserId = await resolveUserId(userId);
+    if (!resolvedUserId) return res.json({ history: [] });
+
     const history = await query(
-      'SELECT * FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',
-      [userId]
+      'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, played_at as playedAt FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',
+      [resolvedUserId]
     );
     res.json({ history });
   } catch (err) {
@@ -1025,9 +1123,12 @@ app.get('/api/user/:userId/history', async (req, res) => {
 app.get('/api/user/:userId/likes', async (req, res) => {
   const { userId } = req.params;
   try {
+    const resolvedUserId = await resolveUserId(userId);
+    if (!resolvedUserId) return res.json({ likes: [] });
+
     const likes = await query(
-      'SELECT * FROM user_likes WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
+      'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, created_at as likedAt FROM user_likes WHERE user_id = ? ORDER BY created_at DESC',
+      [resolvedUserId]
     );
     res.json({ likes });
   } catch (err) {
@@ -1036,26 +1137,51 @@ app.get('/api/user/:userId/likes', async (req, res) => {
 });
 
 app.post('/api/user/likes', async (req, res) => {
-  const { userId, videoId, title, artist, album, thumbnail, duration, durationText } = req.body;
-  if (!userId || !videoId) return res.status(400).json({ error: 'Missing fields' });
+  const { userId, email, videoId, title, artist, album, thumbnail, duration, durationText } = req.body;
+  if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
+
   try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
     await query(`
       INSERT INTO user_likes (user_id, video_id, title, artist, album, thumbnail, duration, duration_text, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE created_at = NOW()
-    `, [userId, videoId, title, artist, album || '', thumbnail || '', duration || 0, durationText || '']);
-    res.json({ success: true });
+    `, [
+      resolvedUserId,
+      videoId,
+      title || 'Unknown Title',
+      artist || 'Unknown Artist',
+      album || '',
+      thumbnail || '',
+      duration || 0,
+      durationText || ''
+    ]);
+
+    res.json({ success: true, userId: resolvedUserId });
   } catch (err) {
+    console.warn('Like save error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.delete('/api/user/likes', async (req, res) => {
-  const { userId, videoId } = req.body;
+  const { userId, email, videoId } = req.body;
+  if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
+
   try {
-    await query('DELETE FROM user_likes WHERE user_id = ? AND video_id = ?', [userId, videoId]);
-    res.json({ success: true });
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    await query('DELETE FROM user_likes WHERE user_id = ? AND video_id = ?', [resolvedUserId, videoId]);
+    res.json({ success: true, userId: resolvedUserId });
   } catch (err) {
+    console.warn('Like delete error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

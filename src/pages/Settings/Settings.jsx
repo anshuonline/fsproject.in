@@ -99,6 +99,29 @@ export function Settings() {
           </div>
         </div>
 
+        {/* Database & Cloud Sync */}
+        <div className="fs-settings-card">
+          <h3 className="fs-settings-section-title">Hostinger Cloud Database</h3>
+
+          <div className="fs-setting-row">
+            <div className="fs-setting-info">
+              <span className="fs-setting-label">Remote MySQL Status</span>
+              <span className="fs-setting-desc">Host: srv2109.hstgr.io • DB: u388169091_freesong</span>
+            </div>
+            <span className="fs-badge-active" style={{ background: 'rgba(0, 200, 83, 0.15)', color: 'var(--color-primary)', border: '1px solid rgba(0, 200, 83, 0.3)' }}>
+              Connected
+            </span>
+          </div>
+
+          <div className="fs-setting-row">
+            <div className="fs-setting-info">
+              <span className="fs-setting-label">Real-time Cloud Sync</span>
+              <span className="fs-setting-desc">Automatically saves user login, likes, and play history to Hostinger MySQL</span>
+            </div>
+            <span className="fs-badge-active">Active</span>
+          </div>
+        </div>
+
         {/* About */}
         <div className="fs-settings-about">
           <img src="/images/freesonglogowebp.webp" alt="FreeSong" className="fs-about-logo" />

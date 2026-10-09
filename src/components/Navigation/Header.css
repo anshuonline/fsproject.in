@@ -345,6 +345,14 @@
   font-size: 0.9375rem;
 }
 
+.fs-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
 /* Responsive */
 @media (max-width: 650px) {
   .fs-header-center {

@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../services/storage';
+import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const LibraryContext = createContext(null);
 
 export function LibraryProvider({ children }) {
+  const { user } = useAuth();
   const [likedSongs, setLikedSongs] = useState(() => storage.getLikedSongs());
   const [playlists, setPlaylists] = useState(() => storage.getPlaylists());
   const [history, setHistory] = useState(() => storage.getHistory());
 
+  // Save to localStorage
   useEffect(() => {
     storage.saveLikedSongs(likedSongs);
   }, [likedSongs]);
@@ -16,16 +20,52 @@ export function LibraryProvider({ children }) {
     storage.savePlaylists(playlists);
   }, [playlists]);
 
+  // Sync likes from Hostinger MySQL cloud when user logs in or dbId resolves
+  useEffect(() => {
+    if (user?.email || user?.dbId) {
+      const identifier = user.dbId || user.email || user.id;
+      api.getUserLikes(identifier).then((cloudLikes) => {
+        if (Array.isArray(cloudLikes) && cloudLikes.length > 0) {
+          setLikedSongs((localLikes) => {
+            const map = new Map();
+            // Local likes first
+            (localLikes || []).forEach(s => {
+              if (s?.videoId) map.set(s.videoId, s);
+            });
+            // Merge in cloud likes
+            cloudLikes.forEach(s => {
+              if (s?.videoId && !map.has(s.videoId)) {
+                map.set(s.videoId, s);
+              }
+            });
+            const merged = Array.from(map.values());
+            storage.saveLikedSongs(merged);
+            return merged;
+          });
+        }
+      }).catch(err => {
+        console.warn('Could not sync cloud likes:', err);
+      });
+    }
+  }, [user?.email, user?.dbId]);
+
   const toggleLike = (song) => {
     if (!song || !song.videoId) return;
-    setLikedSongs(prev => {
-      const exists = prev.some(s => s.videoId === song.videoId);
-      if (exists) {
-        return prev.filter(s => s.videoId !== song.videoId);
-      } else {
-        return [{ ...song, likedAt: new Date().toISOString() }, ...prev];
+
+    const exists = likedSongs.some(s => s.videoId === song.videoId);
+
+    if (exists) {
+      setLikedSongs(prev => prev.filter(s => s.videoId !== song.videoId));
+      if (user?.email || user?.dbId) {
+        api.removeLike(user.dbId || user.email || user.id, song.videoId, user.email).catch(console.warn);
       }
-    });
+    } else {
+      const newSong = { ...song, likedAt: new Date().toISOString() };
+      setLikedSongs(prev => [newSong, ...prev]);
+      if (user?.email || user?.dbId) {
+        api.addLike(user.dbId || user.email || user.id, newSong, user.email).catch(console.warn);
+      }
+    }
   };
 
   const isLiked = (videoId) => {

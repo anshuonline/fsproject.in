@@ -124,6 +124,130 @@ export const api = {
       console.warn(`getSong error for ${id}:`, err);
       return null;
     }
+  },
+
+  async getDbStatus() {
+    try {
+      const res = await fetch(`${API_BASE}/db/status`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      return { connected: false, error: err.message };
+    }
+  },
+
+  async syncUser(userData) {
+    if (!userData || !userData.email) return null;
+    try {
+      const res = await fetch(`${API_BASE}/user/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userData.email,
+          name: userData.name || 'FreeSong Listener',
+          avatarUrl: userData.picture || userData.avatarUrl || null,
+          authProvider: userData.provider || userData.authProvider || 'google',
+          firebaseUid: userData.id || userData.firebaseUid || null
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('User sync API error:', err);
+      return null;
+    }
+  },
+
+  async addLike(userId, song, email = null) {
+    if (!song?.videoId) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/likes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email,
+          videoId: song.videoId,
+          title: song.title || 'Untitled',
+          artist: song.artist || 'Unknown Artist',
+          album: song.album || '',
+          thumbnail: song.thumbnail || '',
+          duration: song.duration || 0,
+          durationText: song.durationText || ''
+        })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('addLike API error:', err);
+      return false;
+    }
+  },
+
+  async removeLike(userId, videoId, email = null) {
+    if (!videoId) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/likes`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, videoId })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('removeLike API error:', err);
+      return false;
+    }
+  },
+
+  async getUserLikes(userId) {
+    if (!userId) return [];
+    try {
+      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/likes`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.likes || [];
+    } catch (err) {
+      console.warn('getUserLikes API error:', err);
+      return [];
+    }
+  },
+
+  async recordHistory(userId, song, email = null) {
+    if (!song?.videoId) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email,
+          videoId: song.videoId,
+          title: song.title || 'Untitled',
+          artist: song.artist || 'Unknown Artist',
+          album: song.album || '',
+          thumbnail: song.thumbnail || '',
+          duration: song.duration || 0,
+          durationText: song.durationText || '',
+          playedDuration: song.playedDuration || 0
+        })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('recordHistory API error:', err);
+      return false;
+    }
+  },
+
+  async getUserHistory(userId) {
+    if (!userId) return [];
+    try {
+      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/history`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.history || [];
+    } catch (err) {
+      console.warn('getUserHistory API error:', err);
+      return [];
+    }
   }
 };
 

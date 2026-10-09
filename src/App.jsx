@@ -30,12 +30,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <PlayerProvider>
-        <SharedSongHandler />
-        <LibraryProvider>
-          <ContextMenuProvider>
-            <PWAProvider>
-              <AuthProvider>
+      <AuthProvider>
+        <PlayerProvider>
+          <SharedSongHandler />
+          <LibraryProvider>
+            <ContextMenuProvider>
+              <PWAProvider>
                 <Routes>
                   {/* Main Application with Sidebar, Header, and Player */}
                   <Route element={<MainLayout />}>
@@ -72,11 +72,11 @@ export default function App() {
                   {/* Fallback to Home */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
-              </AuthProvider>
-            </PWAProvider>
-          </ContextMenuProvider>
-    </LibraryProvider>
-  </PlayerProvider>
+              </PWAProvider>
+            </ContextMenuProvider>
+          </LibraryProvider>
+        </PlayerProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

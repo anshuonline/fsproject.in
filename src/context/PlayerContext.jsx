@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { storage } from '../services/storage';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
+  const { user } = useAuth();
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -272,6 +274,9 @@ export function PlayerProvider({ children }) {
 
     // Save to history
     storage.addToHistory(song);
+    if (user?.email || user?.dbId) {
+      api.recordHistory(user.dbId || user.email || user.id, song, user.email).catch(console.warn);
+    }
 
     let initialQueue = [song];
     let initialIdx = 0;

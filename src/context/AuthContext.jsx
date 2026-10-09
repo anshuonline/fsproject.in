@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { storage } from '../services/storage';
+import { api } from '../services/api';
 import { GoogleSignInModal } from '../components/Common/GoogleSignInModal';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from '../services/firebase';
 
@@ -15,23 +16,50 @@ export function AuthProvider({ children }) {
     storage.saveUser(user);
   }, [user]);
 
+  // Background sync with Hostinger DB whenever user is logged in
+  useEffect(() => {
+    if (user?.email) {
+      api.syncUser(user).then((res) => {
+        if (res?.user?.id && (!user.dbId || user.dbId !== res.user.id)) {
+          setUser((prev) => {
+            if (!prev) return null;
+            const updated = {
+              ...prev,
+              dbId: res.user.id,
+              dbCountry: res.user.registered_country || prev.dbCountry
+            };
+            storage.saveUser(updated);
+            return updated;
+          });
+        }
+      }).catch((err) => {
+        console.warn('Background Hostinger DB sync notice:', err);
+      });
+    }
+  }, [user?.email]);
+
   // Listen to Firebase auth state changes (restores Google session automatically)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        setUser((prev) => {
-          const profileData = {
-            id: fbUser.uid,
-            name: fbUser.displayName || 'Google User',
-            email: fbUser.email || '',
-            picture: fbUser.photoURL || '',
-            provider: 'google',
-            emailVerified: Boolean(fbUser.emailVerified),
-            joinedDate: prev?.joinedDate || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-          };
-          storage.saveUser(profileData);
-          return profileData;
-        });
+        const profileData = {
+          id: fbUser.uid,
+          name: fbUser.displayName || 'Google User',
+          email: fbUser.email || '',
+          picture: fbUser.photoURL || '',
+          provider: 'google',
+          emailVerified: Boolean(fbUser.emailVerified),
+          joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        };
+        try {
+          const synced = await api.syncUser(profileData);
+          if (synced?.user?.id) {
+            profileData.dbId = synced.user.id;
+          }
+        } catch {}
+        setUser(profileData);
+        storage.saveUser(profileData);
       }
     });
 
@@ -51,10 +79,19 @@ export function AuthProvider({ children }) {
         emailVerified: true,
         joinedDate: manualData.joinedDate || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
       };
+      try {
+        const synced = await api.syncUser(profile);
+        if (synced?.user?.id) profile.dbId = synced.user.id;
+      } catch {}
       setUser(profile);
       storage.saveUser(profile);
       setIsGoogleModalOpen(false);
       return profile;
+    }
+
+    if (!auth || !googleProvider) {
+      setIsGoogleModalOpen(true);
+      return;
     }
 
     setIsGoogleLoading(true);
@@ -70,6 +107,10 @@ export function AuthProvider({ children }) {
         emailVerified: Boolean(fbUser.emailVerified),
         joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
       };
+      try {
+        const synced = await api.syncUser(profileData);
+        if (synced?.user?.id) profileData.dbId = synced.user.id;
+      } catch {}
       setUser(profileData);
       storage.saveUser(profileData);
       setIsGoogleModalOpen(false);
@@ -83,7 +124,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Standard email/demo login
-  const loginWithEmail = useCallback((name, email) => {
+  const loginWithEmail = useCallback(async (name, email) => {
     const profileData = {
       id: `usr_${Date.now()}`,
       name: name || 'FreeSong Listener',
@@ -93,6 +134,10 @@ export function AuthProvider({ children }) {
       emailVerified: true,
       joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     };
+    try {
+      const synced = await api.syncUser(profileData);
+      if (synced?.user?.id) profileData.dbId = synced.user.id;
+    } catch {}
     setUser(profileData);
     storage.saveUser(profileData);
     return profileData;
@@ -101,7 +146,7 @@ export function AuthProvider({ children }) {
   // Logout (signs out of Firebase and clears local storage)
   const logout = useCallback(async () => {
     try {
-      await signOut(auth);
+      if (auth) await signOut(auth);
     } catch (err) {
       console.warn('Firebase signout error:', err);
     }
