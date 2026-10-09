@@ -2,6 +2,7 @@ const KEYS = {
   LIKED_SONGS: 'fs_liked_songs',
   PLAYLISTS: 'fs_playlists',
   HISTORY: 'fs_history',
+  DELETED_HISTORY: 'fs_deleted_history',
   SETTINGS: 'fs_settings',
   AUTH_USER: 'fs_auth_user'
 };
@@ -64,10 +65,46 @@ export const storage = {
     }
   },
 
+  getDeletedHistoryIds() {
+    try {
+      const data = localStorage.getItem(KEYS.DELETED_HISTORY);
+      return new Set(data ? JSON.parse(data) : []);
+    } catch {
+      return new Set();
+    }
+  },
+
+  markHistoryDeleted(videoId) {
+    if (!videoId) return;
+    try {
+      const set = this.getDeletedHistoryIds();
+      set.add(videoId);
+      localStorage.setItem(KEYS.DELETED_HISTORY, JSON.stringify(Array.from(set).slice(-200)));
+    } catch (e) {
+      console.warn('Mark deleted history error:', e);
+    }
+  },
+
+  unmarkHistoryDeleted(videoId) {
+    if (!videoId) return;
+    try {
+      const set = this.getDeletedHistoryIds();
+      if (set.has(videoId)) {
+        set.delete(videoId);
+        localStorage.setItem(KEYS.DELETED_HISTORY, JSON.stringify(Array.from(set)));
+      }
+    } catch (e) {
+      console.warn('Unmark deleted history error:', e);
+    }
+  },
+
   getHistory() {
     try {
       const data = localStorage.getItem(KEYS.HISTORY);
-      return data ? JSON.parse(data) : [];
+      const raw = data ? JSON.parse(data) : [];
+      const deletedIds = this.getDeletedHistoryIds();
+      if (deletedIds.size === 0) return raw;
+      return raw.filter(s => !deletedIds.has(s.videoId || s.id));
     } catch {
       return [];
     }
@@ -75,16 +112,21 @@ export const storage = {
 
   saveHistory(history) {
     try {
-      localStorage.setItem(KEYS.HISTORY, JSON.stringify((history || []).slice(0, 100)));
+      const deletedIds = this.getDeletedHistoryIds();
+      const clean = (history || []).filter(s => !deletedIds.has(s.videoId || s.id)).slice(0, 100);
+      localStorage.setItem(KEYS.HISTORY, JSON.stringify(clean));
     } catch (e) {
       console.warn('History storage error:', e);
     }
   },
 
   addToHistory(song) {
+    if (!song) return;
+    const vid = song.videoId || song.id;
+    if (vid) this.unmarkHistoryDeleted(vid);
     try {
-      const history = this.getHistory().filter(s => s.videoId !== song.videoId);
-      history.unshift({ ...song, playedAt: new Date().toISOString() });
+      const history = this.getHistory().filter(s => (s.videoId || s.id) !== vid);
+      history.unshift({ ...song, videoId: vid, playedAt: new Date().toISOString() });
       localStorage.setItem(KEYS.HISTORY, JSON.stringify(history.slice(0, 100)));
     } catch (e) {
       console.warn('History storage error:', e);
@@ -92,8 +134,11 @@ export const storage = {
   },
 
   removeFromHistory(videoId) {
+    if (!videoId) return [];
+    this.markHistoryDeleted(videoId);
     try {
-      const history = this.getHistory().filter(s => s.videoId !== videoId);
+      const current = this.getHistory();
+      const history = current.filter(s => (s.videoId || s.id) !== videoId);
       localStorage.setItem(KEYS.HISTORY, JSON.stringify(history));
       return history;
     } catch (e) {
@@ -105,6 +150,7 @@ export const storage = {
   clearHistory() {
     try {
       localStorage.removeItem(KEYS.HISTORY);
+      localStorage.removeItem(KEYS.DELETED_HISTORY);
     } catch (e) {
       console.warn('History storage error:', e);
     }

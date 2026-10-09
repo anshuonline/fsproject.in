@@ -218,8 +218,9 @@ export function GlobalContextMenu() {
   };
 
   const handleRemoveFromHistory = () => {
-    if (song && song.videoId && typeof removeFromHistory === 'function') {
-      removeFromHistory(song.videoId);
+    const vid = song?.videoId || song?.id;
+    if (vid && typeof removeFromHistory === 'function') {
+      removeFromHistory(vid);
       showToast(`Removed "${song.title}" from history`, 'info');
       closeMenu();
     }

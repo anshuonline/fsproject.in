@@ -67,18 +67,21 @@ export function LibraryProvider({ children }) {
 
     // 3. Play History sync (Batch upload local history first, then pull full cloud history)
     const localHistory = storage.getHistory();
+    const deletedIds = storage.getDeletedHistoryIds();
     if (Array.isArray(localHistory) && localHistory.length > 0) {
       api.syncUserHistory(identifier, localHistory, currentUser.email).then((cloudHistory) => {
-        if (Array.isArray(cloudHistory) && cloudHistory.length > 0) {
-          setHistory(cloudHistory);
-          storage.saveHistory(cloudHistory);
+        if (Array.isArray(cloudHistory)) {
+          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
+          setHistory(cleanHistory);
+          storage.saveHistory(cleanHistory);
         }
       }).catch(console.warn);
     } else {
       api.getUserHistory(identifier, currentUser.email).then((cloudHistory) => {
-        if (Array.isArray(cloudHistory) && cloudHistory.length > 0) {
-          setHistory(cloudHistory);
-          storage.saveHistory(cloudHistory);
+        if (Array.isArray(cloudHistory)) {
+          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
+          setHistory(cleanHistory);
+          storage.saveHistory(cleanHistory);
         }
       }).catch(console.warn);
     }
@@ -249,7 +252,7 @@ export function LibraryProvider({ children }) {
   const removeFromHistory = (videoId) => {
     if (!videoId) return;
     storage.removeFromHistory(videoId);
-    setHistory(prev => (prev || []).filter(s => s.videoId !== videoId));
+    setHistory(prev => (prev || []).filter(s => (s.videoId || s.id) !== videoId));
 
     const currentUser = user || storage.getUser();
     if (currentUser?.email || currentUser?.dbId || currentUser?.id) {

@@ -52,12 +52,14 @@ export function Library() {
       <div className="fs-library-grid">
         {/* Liked Songs Special Card */}
         <div className="fs-lib-featured-card" onClick={() => navigate('/favorites')}>
-          <div className="fs-lib-heart-icon-box">
-            <Heart size={36} fill="#FFFFFF" />
-          </div>
-          <div className="fs-lib-featured-info">
-            <h3 className="fs-lib-card-title">Liked music</h3>
-            <p className="fs-lib-card-sub">Auto playlist • {likedSongs.length} songs</p>
+          <div className="fs-lib-featured-card-left">
+            <div className="fs-lib-heart-icon-box">
+              <Heart size={32} fill="#FFFFFF" />
+            </div>
+            <div className="fs-lib-featured-info">
+              <h3 className="fs-lib-card-title">Liked music</h3>
+              <p className="fs-lib-card-sub">Auto playlist • {likedSongs.length} songs</p>
+            </div>
           </div>
           {likedSongs.length > 0 && (
             <button
@@ -88,6 +90,24 @@ export function Library() {
             </div>
           </div>
         ))}
+
+        {/* Empty state shortcut if no playlists yet */}
+        {playlists.length === 0 && (
+          <div
+            className="fs-lib-playlist-card fs-lib-empty-create-card"
+            onClick={() => setShowModal(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="fs-lib-playlist-art fs-lib-empty-art">
+              <Plus size={32} className="text-brand" />
+            </div>
+            <div className="fs-lib-playlist-meta">
+              <h4 className="fs-lib-playlist-name truncate">New playlist</h4>
+              <p className="fs-lib-playlist-count">Create your first playlist</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create Modal */}

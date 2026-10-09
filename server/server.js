@@ -8,6 +8,7 @@ import YTMusic from 'ytmusic-api';
 import { buildAlgorithmicFeed } from './recommendationEngine.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
+import { sendWelcomeEmail } from './mailer.js';
 
 dotenv.config();
 
@@ -1053,6 +1054,15 @@ app.post('/api/user/sync', async (req, res) => {
         'INSERT INTO user_login_logs (user_id, ip_address, country, city, region, user_agent, logged_in_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
         [user.id, resolvedIp, geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
       ).catch(() => {});
+
+      // Send 1st-time registration welcome email asynchronously if not already sent
+      if (!user.welcome_email_sent) {
+        sendWelcomeEmail({
+          email: user.email,
+          name: user.name || name || email.split('@')[0],
+          userId: user.id
+        }).catch(err => console.warn('[Welcome Email] Dispatch error:', err.message));
+      }
     }
 
     res.json({ success: true, user });
@@ -1517,6 +1527,26 @@ app.post('/api/user/playlists/sync', async (req, res) => {
   } catch (err) {
     console.warn('Playlist sync error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin / Verification endpoint to test welcome email delivery
+app.all('/api/admin/test-welcome-email', async (req, res) => {
+  const email = req.body?.email || req.query?.email;
+  const name = req.body?.name || req.query?.name;
+  const force = req.body?.force !== undefined ? req.body.force : (req.query?.force !== 'false');
+
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  try {
+    const result = await sendWelcomeEmail({
+      email,
+      name: name || 'Music Lover',
+      force
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
