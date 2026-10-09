@@ -105,6 +105,7 @@ CREATE TABLE `analytics_plays` (
   `title` VARCHAR(255) NULL,
   `artist` VARCHAR(255) NULL,
   `thumbnail` VARCHAR(500) NULL,
+  `duration` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Song duration in seconds (for listening hours)',
   `visitor_id` VARCHAR(128) NULL,
   `is_registered` TINYINT(1) NOT NULL DEFAULT 0,
   `played_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

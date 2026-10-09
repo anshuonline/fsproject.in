@@ -1,0 +1,183 @@
+.fs-ga-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── 7-Day Bars ── */
+.fs-ga-hours-chart-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.fs-ga-hours-bars {
+  display: flex;
+  gap: 10px;
+  height: 170px;
+}
+
+.fs-ga-hours-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fs-ga-hours-bar-track {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.fs-ga-hours-bar {
+  width: 100%;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: linear-gradient(180deg, var(--color-accent), rgba(118, 255, 3, 0.35));
+  transition: height var(--transition-smooth);
+}
+
+.fs-ga-hours-bar-value {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  min-height: 14px;
+}
+
+.fs-ga-hours-bar-label {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Top Songs by Hours ── */
+.fs-ga-hours-song-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 20px;
+  transition: background var(--transition-fast);
+}
+
+.fs-ga-hours-song-row:hover {
+  background: var(--color-card-hover);
+}
+
+.fs-ga-hours-song-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.fs-ga-hours-song-play {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #000000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.fs-ga-hours-song-play:hover {
+  transform: scale(1.06);
+  background: var(--color-primary-hover);
+}
+
+.fs-ga-hours-song-row:hover .fs-ga-hours-song-play {
+  display: flex;
+}
+
+.fs-ga-hours-song-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fs-ga-hours-song-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fs-ga-hours-song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fs-ga-hours-song-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.fs-ga-hours-song-artist {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.fs-ga-hours-song-count {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .fs-ga-hours-bars {
+    height: 120px;
+    gap: 6px;
+  }
+
+  .fs-ga-hours-chart-card {
+    padding: 14px;
+  }
+
+  .fs-ga-hours-song-row {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 10px;
+  }
+
+  .fs-ga-hours-song-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fs-ga-hours-song-play {
+    display: none !important;
+  }
+
+  .fs-ga-hours-song-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .fs-ga-hours-song-count {
+    font-size: 0.78rem;
+  }
+}

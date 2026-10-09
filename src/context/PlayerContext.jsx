@@ -60,6 +60,7 @@ export function PlayerProvider({ children }) {
   const standbyPlayResolveRef = useRef(null);
   const crossfadeTokenRef = useRef(0);
   const crossfadeRampRef = useRef(null);
+  const crossfadePreloadRef = useRef(null);
   const fadeInRampRef = useRef(null);
   const lastFadedVideoIdRef = useRef(null);
 
@@ -235,7 +236,7 @@ export function PlayerProvider({ children }) {
   }, []);
 
   // Create the second hidden YT player used as crossfade standby
-  const createStandbyPlayer = useCallback((videoId) => {
+  const createStandbyPlayer = useCallback((videoId, autoStart = true) => {
     return new Promise((resolve, reject) => {
       if (!window.YT || !window.YT.Player) {
         reject(new Error('YT API unavailable'));
@@ -265,7 +266,7 @@ export function PlayerProvider({ children }) {
           width: '1',
           videoId: videoId,
           playerVars: {
-            autoplay: 1,
+            autoplay: autoStart ? 1 : 0,
             controls: 0,
             disablekb: 1,
             fs: 0,
@@ -281,10 +282,15 @@ export function PlayerProvider({ children }) {
                 if (typeof event.target.setPlaybackQuality === 'function') {
                   event.target.setPlaybackQuality(quality);
                 }
-                event.target.playVideo();
+                if (autoStart) {
+                  event.target.playVideo();
+                } else {
+                  event.target.cueVideoById({ videoId, suggestedQuality: quality });
+                }
               } catch (e) {}
               resolve(event.target);
             },
+            onStateChange: handlePlayerStateChange,
             onError: () => reject(new Error('Standby player failed to load'))
           }
         });
@@ -292,7 +298,7 @@ export function PlayerProvider({ children }) {
         reject(err);
       }
     });
-  }, []);
+  }, [handlePlayerStateChange]);
 
   // Determine the next track in the queue (sync, side-effect free) for crossfade preload
   const computeNextTrack = useCallback(() => {
@@ -324,12 +330,36 @@ export function PlayerProvider({ children }) {
     return { track: currentQ[nextIdx], nextIdx };
   }, []);
 
+  // Pre-buffer the next track on the standby player so the crossfade engages instantly
+  const preloadNextForCrossfade = useCallback(() => {
+    const nextInfo = computeNextTrack();
+    if (!nextInfo || !nextInfo.track?.videoId) return;
+    const videoId = nextInfo.track.videoId;
+    if (crossfadePreloadRef.current?.videoId === videoId) return;
+
+    const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
+    let standby = standbyPlayerRef.current;
+    if (standby && typeof standby.cueVideoById === 'function') {
+      try {
+        standby.setVolume(0);
+        standby.cueVideoById({ videoId, suggestedQuality: quality });
+        crossfadePreloadRef.current = { videoId, player: standby };
+      } catch (e) {}
+    } else {
+      createStandbyPlayer(videoId, false).then(player => {
+        standbyPlayerRef.current = player;
+        crossfadePreloadRef.current = { videoId, player };
+      }).catch(() => {});
+    }
+  }, [computeNextTrack, createStandbyPlayer]);
+
   // Cancel any running crossfade blend and restore normal volume
   const abortCrossfade = useCallback(() => {
     crossfadeTokenRef.current += 1;
     if (standbyPlayResolveRef.current) {
       standbyPlayResolveRef.current = null;
     }
+    crossfadePreloadRef.current = null;
     const ramp = crossfadeRampRef.current;
     if (ramp && !ramp.finalized) {
       if (ramp.intervalId) clearInterval(ramp.intervalId);
@@ -372,6 +402,8 @@ export function PlayerProvider({ children }) {
   // Swap players and global state once the crossfade blend completes
   const finalizeCrossfade = useCallback((track, nextIdx, newPlayer, oldPlayer) => {
     crossfadeRampRef.current = null;
+    crossfadePreloadRef.current = null;
+    lastFadedVideoIdRef.current = track.videoId;
     try { oldPlayer.stopVideo(); } catch (e) {}
     try { oldPlayer.setVolume(0); } catch (e) {}
 
@@ -431,14 +463,19 @@ export function PlayerProvider({ children }) {
     const { track, nextIdx } = nextInfo;
     const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
     let standby = standbyPlayerRef.current;
+    const preloaded = crossfadePreloadRef.current;
 
     try {
       if (standby && typeof standby.loadVideoById === 'function') {
-        try { standby.setVolume(0); } catch (e) {}
-        standby.loadVideoById({ videoId: track.videoId, suggestedQuality: quality });
-        if (typeof standby.setPlaybackQuality === 'function') {
-          standby.setPlaybackQuality(quality);
+        // Reuse the standby player: pre-buffered track starts instantly
+        if (!preloaded || preloaded.videoId !== track.videoId) {
+          try { standby.setVolume(0); } catch (e) {}
+          standby.loadVideoById({ videoId: track.videoId, suggestedQuality: quality });
+          if (typeof standby.setPlaybackQuality === 'function') {
+            standby.setPlaybackQuality(quality);
+          }
         }
+        try { standby.setVolume(0); } catch (e) {}
         standby.playVideo();
       } else {
         standby = await createStandbyPlayer(track.videoId);
@@ -462,11 +499,13 @@ export function PlayerProvider({ children }) {
       ]);
       if (token !== crossfadeTokenRef.current) return;
       standbyPlayResolveRef.current = null;
-      if (!started) {
-        try { standby.pauseVideo(); } catch (e) {}
-        isTransitioningRef.current = false;
-        return;
-      }
+    if (!started) {
+      try { standby.pauseVideo(); } catch (e) {}
+      crossfadePreloadRef.current = null;
+      console.warn('[Crossfade] Standby did not start in time, falling back to normal transition');
+      isTransitioningRef.current = false;
+      return;
+    }
     }
 
     const oldPlayer = playerRef.current;
@@ -481,6 +520,7 @@ export function PlayerProvider({ children }) {
     const rampMs = Math.max(500, Math.min(cfMs, remainingSec * 1000 - elapsed - 250));
     const baseEff = computeEffectiveVolume(volumeRef.current);
     const rampStart = performance.now();
+    console.log('[Crossfade] Blending into next track:', track.title, `(${Math.round(rampMs)}ms blend)`);
     crossfadeRampRef.current = { intervalId: null, finalized: false, standby };
     const intervalId = setInterval(() => {
       if (token !== crossfadeTokenRef.current) {
@@ -614,8 +654,13 @@ export function PlayerProvider({ children }) {
           if (typeof t === 'number') setCurrentTime(t || 0);
           if (typeof d === 'number' && d > 0) setDuration(d);
 
-          // Crossfade trigger: start blending into the next track N seconds before the end
+          // Pre-buffer the next track on the standby player ~35s before the end
           const cf = Number(crossfadeRef.current) || 0;
+          if (cf > 0 && !isTransitioningRef.current && d > 40 && t > 0 && (d - t) <= 35) {
+            preloadNextForCrossfade();
+          }
+
+          // Crossfade trigger: start blending into the next track N seconds before the end
           if (cf > 0 && !isTransitioningRef.current && d > cf + 2 && t > 0 && (d - t) <= cf) {
             startCrossfadeTransition(d - t);
           }
@@ -639,7 +684,7 @@ export function PlayerProvider({ children }) {
     return () => {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
-  }, [isPlaying, startCrossfadeTransition]);
+  }, [isPlaying, startCrossfadeTransition, preloadNextForCrossfade]);
 
   // Auto-fetch related tracks and append to queue for infinite playback
   const fetchAndAppendRelated = useCallback(async (baseSong) => {

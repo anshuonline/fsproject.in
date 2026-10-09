@@ -21,7 +21,7 @@ import { Followed } from './pages/Followed/Followed';
 import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
-import { GAnalyticsLayout, Dashboard, LiveNow, RegisteredUsers, TopSearches, TopSongs, AdminLogs } from './pages/GAnalytics';
+import { GAnalyticsLayout, Dashboard, LiveNow, RegisteredUsers, TopSearches, TopSongs, AdminLogs, Daily, ListeningHours } from './pages/GAnalytics';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
@@ -77,6 +77,8 @@ export default function App() {
                       <Route index element={<Dashboard />} />
                       <Route path="live" element={<LiveNow />} />
                       <Route path="users" element={<RegisteredUsers />} />
+                      <Route path="daily" element={<Daily />} />
+                      <Route path="hours" element={<ListeningHours />} />
                       <Route path="searches" element={<TopSearches />} />
                       <Route path="songs" element={<TopSongs />} />
                       <Route path="logs" element={<AdminLogs />} />

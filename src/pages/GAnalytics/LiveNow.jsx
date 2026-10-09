@@ -44,6 +44,8 @@ export function LiveNow() {
 
   const formatNumber = (n) => Number(n || 0).toLocaleString('en-IN');
 
+  const playingUsers = (live?.users || []).filter(u => u.currentSong);
+
   const guestLabel = (visitorId) => {
     const short = (visitorId || '').replace('guest_', '').split('_')[0];
     return `Guest ${short ? `• ${short.slice(0, 6)}` : ''}`;
@@ -71,6 +73,43 @@ export function LiveNow() {
           <p className="fs-ga-stat-label">Registered Online</p>
           <p className="fs-ga-stat-value">{formatNumber(live?.registeredOnline)}</p>
         </div>
+      </div>
+
+      {/* Now Playing Right Now */}
+      <div className="fs-ga-section">
+        <div className="fs-ga-section-header">
+          <Music2 size={18} className="fs-ga-section-icon" />
+          <h2 className="fs-ga-section-title">Now Playing Right Now</h2>
+          <span className="fs-ga-section-sub">{playingUsers.length} {playingUsers.length === 1 ? 'listener' : 'listeners'} streaming</span>
+          {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
+        </div>
+        {playingUsers.length === 0 ? (
+          <div className="fs-ga-live-np-empty">
+            <Music2 size={28} />
+            <p>Koi gana play nahi ho raha right now</p>
+          </div>
+        ) : (
+          <div className="fs-ga-live-np-grid">
+            {playingUsers.map((u, i) => (
+              <div key={`np-${u.visitorId}-${i}`} className="fs-ga-live-np-card">
+                <img src={u.currentSong.thumbnail} alt={u.currentSong.title} className="fs-ga-live-np-thumb" loading="lazy" />
+                <div className="fs-ga-live-np-body">
+                  <span className="fs-ga-live-np-title truncate">{u.currentSong.title}</span>
+                  <span className="fs-ga-live-np-artist truncate">{u.currentSong.artist}</span>
+                  <div className="fs-ga-live-np-meta">
+                    <span className={`fs-ga-badge ${u.type}`}>
+                      {u.type === 'registered' ? (u.name || 'Registered') : 'Guest'}
+                    </span>
+                    {u.city && (
+                      <span className="fs-ga-live-np-location truncate"><MapPin size={11} /> {u.city}</span>
+                    )}
+                  </div>
+                </div>
+                <Music2 size={14} className="fs-ga-live-np-eq" />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Live Listeners List */}

@@ -27,6 +27,99 @@
   position: relative;
 }
 
+/* ── Now Playing Grid ── */
+.fs-ga-live-np-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 20px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.fs-ga-live-np-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.fs-ga-live-np-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(180deg, var(--color-card-hover), var(--color-card));
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fs-ga-live-np-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(118, 255, 3, 0.4);
+}
+
+.fs-ga-live-np-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.fs-ga-live-np-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fs-ga-live-np-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.fs-ga-live-np-artist {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+}
+
+.fs-ga-live-np-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.fs-ga-live-np-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  min-width: 0;
+}
+
+.fs-ga-live-np-location svg {
+  flex-shrink: 0;
+}
+
+.fs-ga-live-np-eq {
+  color: var(--color-accent);
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  animation: fs-ga-equalize 1s ease-in-out infinite alternate;
+}
+
 /* ── Live Table ── */
 .fs-ga-live-header,
 .fs-ga-live-row {
@@ -145,6 +238,12 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 900px) {
+  .fs-ga-live-np-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 700px) {
   .fs-ga-live-header,
   .fs-ga-live-row {
@@ -165,5 +264,16 @@
   .fs-ga-live-song-thumb {
     width: 36px;
     height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-ga-live-np-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-ga-live-np-thumb {
+    width: 48px;
+    height: 48px;
   }
 }

@@ -148,6 +148,10 @@ export async function testDbConnection() {
       `);
     } catch {}
     try {
+      // Safe auto-migration: duration column for listening hours tracking
+      await connection.query('ALTER TABLE analytics_plays ADD COLUMN duration INT UNSIGNED NOT NULL DEFAULT 0');
+    } catch {}
+    try {
       await connection.query(`
         CREATE TABLE IF NOT EXISTS analytics_presence (
           visitor_id VARCHAR(128) NOT NULL,

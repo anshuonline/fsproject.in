@@ -2593,19 +2593,20 @@ app.post('/api/analytics/track/search', async (req, res) => {
 
 // Track Play (fire and forget from frontend)
 app.post('/api/analytics/track/play', async (req, res) => {
-  const { videoId, title, artist, thumbnail, visitorId, isRegistered } = req.body;
+  const { videoId, title, artist, thumbnail, duration, visitorId, isRegistered } = req.body;
   if (!videoId || typeof videoId !== 'string') {
     return res.status(400).json({ error: 'videoId is required' });
   }
 
   try {
     await query(
-      'INSERT INTO analytics_plays (video_id, title, artist, thumbnail, visitor_id, is_registered, played_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      'INSERT INTO analytics_plays (video_id, title, artist, thumbnail, duration, visitor_id, is_registered, played_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
       [
         videoId.slice(0, 64),
         (title || 'Unknown Title').slice(0, 255),
         (artist || 'Unknown Artist').slice(0, 255),
         (thumbnail || '').slice(0, 500),
+        Math.max(0, Number(duration) || 0),
         visitorId ? String(visitorId).slice(0, 128) : null,
         isRegistered ? 1 : 0
       ]
@@ -2614,6 +2615,134 @@ app.post('/api/analytics/track/play', async (req, res) => {
   } catch (err) {
     console.warn('Analytics play track error:', err.message);
     res.json({ success: false });
+  }
+});
+
+// Daily Stats (token protected): last 30 days with guests/registered split + hours
+app.get('/api/analytics/daily', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const rangeStart = 'DATE_SUB(CURDATE(), INTERVAL 29 DAY)';
+
+    const [visitRows, searchRows, playRows] = await Promise.all([
+      query(`SELECT DATE(visited_at) AS day, is_registered, COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= ${rangeStart} GROUP BY DATE(visited_at), is_registered`),
+      query(`SELECT DATE(searched_at) AS day, is_registered, COUNT(*) AS c FROM analytics_searches WHERE searched_at >= ${rangeStart} GROUP BY DATE(searched_at), is_registered`),
+      query(`SELECT DATE(played_at) AS day, is_registered, COUNT(*) AS c, SUM(duration) AS seconds FROM analytics_plays WHERE played_at >= ${rangeStart} GROUP BY DATE(played_at), is_registered`)
+    ]);
+
+    // Build 30-day map
+    const daysMap = new Map();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      daysMap.set(key, {
+        day: key,
+        label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+        visitors: 0, guests: 0, registered: 0,
+        searches: 0, guestSearches: 0, registeredSearches: 0,
+        plays: 0, guestPlays: 0, registeredPlays: 0,
+        hours: 0, guestHours: 0, registeredHours: 0
+      });
+    }
+
+    const isoDay = (val) => new Date(val).toISOString().slice(0, 10);
+
+    for (const r of visitRows || []) {
+      const row = daysMap.get(isoDay(r.day));
+      if (!row) continue;
+      const c = Number(r.c);
+      row.visitors += c;
+      if (r.is_registered) row.registered += c;
+      else row.guests += c;
+    }
+    for (const r of searchRows || []) {
+      const row = daysMap.get(isoDay(r.day));
+      if (!row) continue;
+      const c = Number(r.c);
+      row.searches += c;
+      if (r.is_registered) row.registeredSearches += c;
+      else row.guestSearches += c;
+    }
+    for (const r of playRows || []) {
+      const row = daysMap.get(isoDay(r.day));
+      if (!row) continue;
+      const c = Number(r.c);
+      const hrs = (Number(r.seconds) || 0) / 3600;
+      row.plays += c;
+      row.hours = Math.round((row.hours + hrs) * 10) / 10;
+      if (r.is_registered) {
+        row.registeredPlays += c;
+        row.registeredHours = Math.round((row.registeredHours + hrs) * 10) / 10;
+      } else {
+        row.guestPlays += c;
+        row.guestHours = Math.round((row.guestHours + hrs) * 10) / 10;
+      }
+    }
+
+    res.json({ success: true, days: Array.from(daysMap.values()) });
+  } catch (err) {
+    console.error('Analytics daily error:', err);
+    res.status(500).json({ error: 'Failed to fetch daily stats' });
+  }
+});
+
+// Listening Hours (token protected): total hours + 7-day trend + top songs by hours
+app.get('/api/analytics/hours', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const weekStart = 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)';
+
+    const [todaySum, weekSum, allTimeSum, weekTrend, topSongs] = await Promise.all([
+      query('SELECT COALESCE(SUM(duration), 0) AS s FROM analytics_plays WHERE played_at >= CURDATE()'),
+      query(`SELECT COALESCE(SUM(duration), 0) AS s FROM analytics_plays WHERE played_at >= ${weekStart}`),
+      query('SELECT COALESCE(SUM(duration), 0) AS s FROM analytics_plays'),
+      query(`SELECT DATE(played_at) AS day, SUM(duration) AS s, COUNT(*) AS c FROM analytics_plays WHERE played_at >= ${weekStart} GROUP BY DATE(played_at) ORDER BY day ASC`),
+      query(`SELECT video_id AS videoId, MAX(title) AS title, MAX(artist) AS artist, MAX(thumbnail) AS thumbnail, COUNT(*) AS play_count, SUM(duration) AS total_seconds FROM analytics_plays WHERE played_at >= ${weekStart} GROUP BY video_id ORDER BY total_seconds DESC LIMIT 10`)
+    ]);
+
+    const toHours = (seconds) => Math.round(((Number(seconds) || 0) / 3600) * 10) / 10;
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const match = (weekTrend || []).find(r => new Date(r.day).toISOString().slice(0, 10) === key);
+      days.push({
+        day: key,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        hours: toHours(match?.s),
+        plays: Number(match?.c) || 0
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totals: {
+          today: toHours(todaySum[0]?.s),
+          last7Days: toHours(weekSum[0]?.s),
+          allTime: toHours(allTimeSum[0]?.s)
+        },
+        days,
+        topSongs: (topSongs || []).map(r => ({
+          videoId: r.videoId,
+          title: r.title || 'Unknown Title',
+          artist: r.artist || 'Unknown Artist',
+          thumbnail: r.thumbnail || (r.videoId ? `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg` : ''),
+          playCount: Number(r.play_count),
+          hours: toHours(r.total_seconds)
+        }))
+      }
+    });
+  } catch (err) {
+    console.error('Analytics hours error:', err);
+    res.status(500).json({ error: 'Failed to fetch listening hours' });
   }
 });
 

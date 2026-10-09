@@ -90,6 +90,7 @@ export function trackPlay(track, user = null) {
     title: track.title,
     artist: track.artist,
     thumbnail: track.thumbnail || '',
+    duration: Math.max(0, Number(track.duration) || 0),
     visitorId: isRegistered ? (user.dbId ? `usr_${user.dbId}` : user.email) : getAnalyticsVisitorId(),
     isRegistered
   });
@@ -207,6 +208,42 @@ export async function getLiveUsers(token) {
   } catch (err) {
     if (err.status === 401) throw err;
     console.warn('Live users error:', err);
+    return null;
+  }
+}
+
+// Fetch daily stats (last 30 days, guests/registered split)
+export async function getDailyStats(token) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/daily?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch daily stats');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data?.days || [];
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('Daily stats error:', err);
+    return [];
+  }
+}
+
+// Fetch listening hours (token protected)
+export async function getListeningHours(token) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/hours?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch hours');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data?.data || null;
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('Listening hours error:', err);
     return null;
   }
 }

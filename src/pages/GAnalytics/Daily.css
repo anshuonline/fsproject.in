@@ -1,0 +1,195 @@
+.fs-ga-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Filters ── */
+.fs-ga-daily-filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.fs-ga-daily-date-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+}
+
+.fs-ga-daily-date-wrap svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.fs-ga-daily-date {
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.fs-ga-daily-type {
+  display: flex;
+  gap: 6px;
+}
+
+.fs-ga-daily-chip {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fs-ga-daily-chip:hover {
+  color: var(--color-text-primary);
+  background: var(--color-card-hover);
+}
+
+.fs-ga-daily-chip.active {
+  background: var(--color-primary);
+  color: #000000;
+  border-color: var(--color-primary);
+}
+
+.fs-ga-daily-chip.active.guests {
+  background: #FFC107;
+  border-color: #FFC107;
+}
+
+.fs-ga-daily-chip.active.registered {
+  background: #26C6DA;
+  border-color: #26C6DA;
+}
+
+.fs-ga-daily-mini-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.fs-ga-daily-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.fs-ga-daily-mini svg {
+  color: var(--color-primary);
+}
+
+/* ── 30-Day Table ── */
+.fs-ga-daily-header,
+.fs-ga-daily-row {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr 0.9fr 1fr 0.9fr 0.9fr 0.8fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.fs-ga-daily-header {
+  padding: 10px 20px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.fs-ga-daily-row {
+  padding: 9px 20px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.fs-ga-daily-row:hover {
+  background: var(--color-card-hover);
+}
+
+.fs-ga-daily-row.selected {
+  background: rgba(0, 200, 83, 0.08);
+}
+
+.fs-ga-daily-row.selected:hover {
+  background: rgba(0, 200, 83, 0.12);
+}
+
+.fs-ga-daily-col-date {
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.fs-ga-daily-col-visitors {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.fs-ga-daily-col-guests {
+  color: #FFC107;
+  font-size: 0.88rem;
+}
+
+.fs-ga-daily-col-logged {
+  color: #26C6DA;
+  font-size: 0.88rem;
+}
+
+.fs-ga-daily-col-searches,
+.fs-ga-daily-col-plays {
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+}
+
+.fs-ga-daily-col-hours {
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .fs-ga-daily-header,
+  .fs-ga-daily-row {
+    grid-template-columns: 1.1fr 0.9fr 0.9fr 0.8fr;
+  }
+
+  .fs-ga-daily-header .fs-ga-daily-col-logged,
+  .fs-ga-daily-row .fs-ga-daily-col-logged,
+  .fs-ga-daily-header .fs-ga-daily-col-searches,
+  .fs-ga-daily-row .fs-ga-daily-col-searches,
+  .fs-ga-daily-header .fs-ga-daily-col-plays,
+  .fs-ga-daily-row .fs-ga-daily-col-plays {
+    display: none;
+  }
+
+  .fs-ga-daily-row {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 8px;
+  }
+
+  .fs-ga-daily-type {
+    flex-wrap: wrap;
+  }
+}

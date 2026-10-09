@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, createContext, useContext } fr
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   Lock, Loader, LogOut, LayoutDashboard, Radio, Users,
-  Search, Music, FileClock, RefreshCw, ShieldCheck
+  Search, Music, FileClock, RefreshCw, ShieldCheck,
+  CalendarDays, Clock3
 } from 'lucide-react';
 import {
   loginAdmin, getAnalyticsOverview,
@@ -181,6 +182,14 @@ export function GAnalyticsLayout() {
           <NavLink to="/ganalytics/users" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
             <Users size={16} />
             <span>Users</span>
+          </NavLink>
+          <NavLink to="/ganalytics/daily" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
+            <CalendarDays size={16} />
+            <span>Daily</span>
+          </NavLink>
+          <NavLink to="/ganalytics/hours" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
+            <Clock3 size={16} />
+            <span>Hours</span>
           </NavLink>
           <NavLink to="/ganalytics/searches" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
             <Search size={16} />
