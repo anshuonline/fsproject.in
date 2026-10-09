@@ -1776,20 +1776,6 @@ app.post('/api/user/history/batch', async (req, res) => {
     // Process in reverse (oldest first) so that newest song finishes with latest played_at
     const reversed = [...songs].reverse();
 
-    // Identify songs NOT already recorded — the lifetime counter must never
-    // double-count re-syncs of the same local history (sync runs on every login/refresh)
-    const validVideos = reversed.filter(s => s?.videoId).map(s => s.videoId);
-    let newPlays = 0;
-    if (validVideos.length > 0) {
-      const placeholders = validVideos.map(() => '?').join(',');
-      const existingRows = await query(
-        `SELECT video_id FROM user_play_history WHERE user_id = ? AND video_id IN (${placeholders})`,
-        [resolvedUserId, ...validVideos]
-      ).catch(() => []);
-      const existingSet = new Set((existingRows || []).map(r => r.video_id));
-      newPlays = validVideos.filter(v => !existingSet.has(v)).length;
-    }
-
     for (const song of reversed) {
       if (!song?.videoId) continue;
       await query('DELETE FROM user_play_history WHERE user_id = ? AND video_id = ?', [resolvedUserId, song.videoId]).catch(() => {});
@@ -1828,10 +1814,8 @@ app.post('/api/user/history/batch', async (req, res) => {
         )
     `, [resolvedUserId, resolvedUserId]).catch(() => {});
 
-    // Lifetime play counter: only genuinely NEW songs increment (re-syncs ignored)
-    if (newPlays > 0) {
-      await query('UPDATE users SET total_plays = total_plays + ? WHERE id = ?', [newPlays, resolvedUserId]).catch(() => {});
-    }
+    // NOTE: Batch is a history mirror only — lifetime plays are counted exclusively
+    // by the single-play endpoint (client records only after 10+ seconds of playback)
 
     const history = await query(
       'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, played_at as playedAt FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',

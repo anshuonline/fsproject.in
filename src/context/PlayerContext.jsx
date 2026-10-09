@@ -53,6 +53,7 @@ export function PlayerProvider({ children }) {
   const fetchedVideoIdsRef = useRef(new Set());
   const isTransitioningRef = useRef(false);
   const isAutoplayRef = useRef(true);
+  const isPlayingRef = useRef(false);
   const volumeRef = useRef(volume);
   const stableVolumeRef = useRef(stableVolume);
   const crossfadeRef = useRef(crossfade);
@@ -75,6 +76,7 @@ export function PlayerProvider({ children }) {
   const sleepTimerRef = useRef(sleepTimer);
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
+  const historyRecordedVideoIdRef = useRef(null);
 
   useEffect(() => {
     userRef.current = user;
@@ -99,6 +101,10 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     crossfadeRef.current = crossfade;
   }, [crossfade]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Convert raw volume into effective volume (applies stable-volume leveling)
   const computeEffectiveVolume = useCallback((vol) => {
@@ -156,6 +162,34 @@ export function PlayerProvider({ children }) {
     window.onYouTubeIframeAPIReady = () => {
       ytApiReadyRef.current = true;
     };
+  }, []);
+
+  // Background playback keep-alive: YouTube IFrame pauses when the page is hidden on
+  // mobile browsers. Auto-resume via playVideo() retries keeps audio streaming in the
+  // background (works on Android Chrome; iOS Safari blocks web background audio by
+  // platform design).
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (!isPlayingRef.current) return;
+
+      const player = playerRef.current;
+      if (!player) return;
+
+      let attempts = 0;
+      const tryResume = () => {
+        let state = -1;
+        try { state = player.getPlayerState(); } catch (e) {}
+        if (state === 1) return;
+        try { player.playVideo(); } catch (e) {}
+        attempts += 1;
+        if (attempts < 5) setTimeout(tryResume, 500);
+      };
+      setTimeout(tryResume, 300);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Quick fade-in during the first moments of a newly started track when crossfade is enabled
@@ -426,16 +460,8 @@ export function PlayerProvider({ children }) {
     setCurrentTime(nt || 0);
     setDuration(nd || track.duration || 0);
 
-    if (addToHistoryRef.current) {
-      addToHistoryRef.current(track);
-    } else {
-      storage.addToHistory(track);
-      const currentUser = userRef.current || storage.getUser();
-      if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
-        const identifier = currentUser.dbId || currentUser.email || currentUser.id;
-        api.recordHistory(identifier, track, currentUser.email).catch(console.warn);
-      }
-    }
+    // History is recorded by the progress ticker only after 10+ seconds of playback
+    historyRecordedVideoIdRef.current = null;
     trackPlay(track, userRef.current || storage.getUser());
 
     applyPlayerVolume(volumeRef.current);
@@ -654,6 +680,27 @@ export function PlayerProvider({ children }) {
           if (typeof t === 'number') setCurrentTime(t || 0);
           if (typeof d === 'number' && d > 0) setDuration(d);
 
+          // Record history only after the song has actually played 10+ seconds
+          // (once per song; skips & quick switches never count as plays)
+          if (
+            currentSongRef.current?.videoId &&
+            historyRecordedVideoIdRef.current !== currentSongRef.current.videoId &&
+            t >= 10
+          ) {
+            historyRecordedVideoIdRef.current = currentSongRef.current.videoId;
+            const playedSong = currentSongRef.current;
+            if (addToHistoryRef.current) {
+              addToHistoryRef.current(playedSong);
+            } else {
+              storage.addToHistory(playedSong);
+              const currentUser = userRef.current || storage.getUser();
+              if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+                const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+                api.recordHistory(identifier, playedSong, currentUser.email).catch(console.warn);
+              }
+            }
+          }
+
           // Pre-buffer the next track on the standby player ~35s before the end
           const cf = Number(crossfadeRef.current) || 0;
           if (cf > 0 && !isTransitioningRef.current && d > 40 && t > 0 && (d - t) <= 35) {
@@ -723,17 +770,8 @@ export function PlayerProvider({ children }) {
     setIsLoading(true);
     setCurrentTime(0);
 
-    // Save to history (real-time UI, local storage & Hostinger MySQL database sync)
-    if (addToHistoryRef.current) {
-      addToHistoryRef.current(song);
-    } else {
-      storage.addToHistory(song);
-      const currentUser = userRef.current || user || storage.getUser();
-      if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
-        const identifier = currentUser.dbId || currentUser.email || currentUser.id;
-        api.recordHistory(identifier, song, currentUser.email).catch(console.warn);
-      }
-    }
+    // History is recorded by the progress ticker only after 10+ seconds of playback
+    historyRecordedVideoIdRef.current = null;
 
     // Track play for GAnalytics (fire and forget)
     trackPlay(song, userRef.current || user || storage.getUser());
