@@ -49,9 +49,18 @@ export async function testDbConnection() {
   try {
     const connection = await pool.getConnection();
     console.log(` MySQL Database Connected: ${dbConfig.database} on ${dbConfig.host}:${dbConfig.port}`);
-    // Safe auto-migration: ensure password_hash column exists
+    // Safe auto-migration: ensure password_hash, reset_token, reset_token_expires_at exist
     try {
       await connection.query('ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN reset_token VARCHAR(255) NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN reset_token_expires_at DATETIME NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN last_reset_request_at DATETIME NULL');
     } catch {}
     connection.release();
     return true;

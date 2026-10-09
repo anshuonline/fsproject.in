@@ -1,51 +1,71 @@
 /* ==============================================================================
-   FreeSong.in — Spotify-Inspired AMOLED Profile Page Styles
+   FreeSong.in — Spotify AMOLED Pro Profile Page Styles
    ============================================================================== */
 
 .fs-profile-page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  max-width: 960px;
+  gap: 24px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 8px 12px 64px;
+  padding: 12px 16px 80px;
+  animation: fsProfileFade 0.25s ease-out;
 }
 
-/* 1. Header Card */
-.fs-profile-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px 36px;
-  background-color: var(--color-card, #111111);
-  border: 1px solid var(--color-border, #222222);
+@keyframes fsProfileFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================================================================
+   1. Header Card (Spotify AMOLED Hero Banner)
+   ============================================================================== */
+.fs-profile-header-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(24, 24, 24, 0.95) 0%, rgba(14, 14, 14, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  flex-wrap: wrap;
-  transition: border-color 0.2s ease;
+  padding: 32px 36px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
-.fs-profile-card:hover {
-  border-color: #2c2c2c;
+.fs-profile-header-card::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 20%;
+  width: 280px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(0, 200, 83, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(30px);
 }
 
-.fs-profile-card-main {
+.fs-profile-header-hero {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 24px;
-  flex: 1;
-  min-width: 280px;
+  gap: 28px;
+  z-index: 1;
 }
 
-/* Circular Avatar */
-.fs-profile-avatar-wrap {
+/* Avatar */
+.fs-profile-avatar-wrapper {
   position: relative;
   flex-shrink: 0;
 }
 
 .fs-profile-avatar-img {
-  width: 96px;
-  height: 96px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--color-primary, #00C853);
@@ -54,10 +74,10 @@
 }
 
 .fs-profile-avatar-circle {
-  width: 96px;
-  height: 96px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00C853 0%, #1de9b6 100%);
+  background: linear-gradient(135deg, #00C853 0%, #00b0ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,122 +86,171 @@
 }
 
 .fs-profile-avatar-initial {
-  font-size: 2.4rem;
+  font-size: 2.8rem;
   font-weight: 800;
   color: #000000;
   line-height: 1;
 }
 
-.fs-profile-details {
+/* Hero Content */
+.fs-profile-hero-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
-.fs-profile-header-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+.fs-profile-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, #b3b3b3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .fs-profile-username {
-  font-size: 1.85rem;
+  font-size: 2.1rem;
   font-weight: 800;
-  color: var(--color-white, #ffffff);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0;
+  word-break: break-word;
 }
 
-/* Badges / Pills */
-.fs-profile-provider-pill,
-.fs-profile-security-pill {
+.fs-profile-email {
+  font-size: 0.925rem;
+  color: #a7a7a7;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+/* Clean Status Pills Row (Below email, neatly structured) */
+.fs-profile-status-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.fs-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background-color: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #e0e0e0;
+  text-decoration: none;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.fs-profile-security-pill {
+.fs-status-pill-google {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #eaeaea;
+}
+
+.fs-status-pill-password {
   background-color: rgba(0, 200, 83, 0.1);
-  border-color: rgba(0, 200, 83, 0.3);
+  border: 1px solid rgba(0, 200, 83, 0.32);
   color: var(--color-primary, #00C853);
 }
 
-.fs-profile-email {
-  color: var(--color-text-secondary, #afafaf);
-  font-size: 0.9375rem;
-  line-height: 1.3;
+.fs-status-pill-link {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: #a7a7a7;
+  transition: all 0.2s ease;
 }
 
-/* Header Action Buttons */
-.fs-profile-card-actions {
+.fs-status-pill-link:hover {
+  background-color: rgba(0, 200, 83, 0.12);
+  border-color: var(--color-primary, #00C853);
+  color: var(--color-primary, #00C853);
+}
+
+/* Action Buttons */
+.fs-profile-action-buttons {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 14px;
   flex-wrap: wrap;
 }
 
-.fs-profile-edit-btn,
-.fs-profile-switch-btn {
+.fs-profile-pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 9px 16px;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 18px;
   border-radius: 999px;
-  border: 1px solid #2a2a2a;
-  background-color: #1a1a1a;
-  color: #ffffff;
-  transition: all 0.2s ease;
+  font-size: 0.8125rem;
+  font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  white-space: nowrap;
 }
 
-.fs-profile-edit-btn:hover,
-.fs-profile-switch-btn:hover {
-  background-color: #242424;
-  border-color: #383838;
-  color: var(--color-primary, #00C853);
+.fs-btn-outline {
+  border: 1px solid #535353;
+  background-color: transparent;
+  color: #ffffff;
 }
 
-.fs-profile-auth-cta-group {
+.fs-btn-outline:hover {
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: scale(1.02);
+}
+
+.fs-btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #cccccc;
+}
+
+.fs-btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: scale(1.02);
+}
+
+.fs-btn-brand {
+  background-color: var(--color-primary, #00C853);
+  color: #000000;
+  border: none;
+  font-weight: 800;
+}
+
+.fs-btn-brand:hover {
+  background-color: var(--color-primary-hover, #00E676);
+  transform: scale(1.03);
+}
+
+.fs-profile-guest-cta-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.fs-profile-login-link {
-  padding: 9px 18px;
-  border-radius: 999px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.fs-profile-google-login-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  font-weight: 600;
-  border-radius: 999px;
-}
-
-/* 2. Guest Banner */
+/* ==============================================================================
+   2. Guest Connect Banner
+   ============================================================================== */
 .fs-profile-guest-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 22px 28px;
-  background: linear-gradient(135deg, #121212 0%, #181818 100%);
-  border: 1px solid rgba(0, 200, 83, 0.25);
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #141414 0%, #1a1a1a 100%);
+  border: 1px solid rgba(0, 200, 83, 0.22);
   border-radius: 16px;
   flex-wrap: wrap;
 }
@@ -195,10 +264,10 @@
 }
 
 .fs-guest-banner-icon-wrap {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.07);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,15 +275,16 @@
 }
 
 .fs-guest-banner-info h3 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 4px;
+  margin: 0 0 3px;
 }
 
 .fs-guest-banner-info p {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary, #afafaf);
+  font-size: 0.825rem;
+  color: #a7a7a7;
+  margin: 0;
   line-height: 1.4;
 }
 
@@ -224,171 +294,149 @@
   gap: 10px;
 }
 
-.fs-guest-connect-btn {
-  padding: 10px 20px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-/* 3. Stats Row (Spotify 3-Stat Counter Grid) */
-.fs-profile-stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
-.fs-stat-box {
-  background-color: var(--color-card, #111111);
-  border: 1px solid var(--color-border, #222222);
+/* ==============================================================================
+   3. Spotify Segmented Stats Card (Pro Segmented Bar)
+   ============================================================================== */
+.fs-profile-stats-card {
+  background-color: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 20px 16px;
+  padding: 18px 24px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-  transition: all 0.2s ease;
+  justify-content: space-around;
+  transition: border-color 0.2s ease;
 }
 
-.fs-stat-box:hover {
-  background-color: var(--color-card-hover, #181818);
-  border-color: #333333;
-  transform: translateY(-2px);
+.fs-profile-stats-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.fs-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
 }
 
 .fs-stat-icon-wrap {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: rgba(0, 200, 83, 0.08);
+  background-color: rgba(0, 200, 83, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+
+.fs-stat-meta {
+  display: flex;
+  flex-direction: column;
 }
 
 .fs-stat-number {
-  font-size: 1.85rem;
+  font-size: 1.45rem;
   font-weight: 800;
-  color: var(--color-white, #ffffff);
-  line-height: 1;
+  color: #ffffff;
+  line-height: 1.1;
   letter-spacing: -0.02em;
 }
 
 .fs-stat-label {
-  font-size: 0.78rem;
+  font-size: 0.725rem;
   font-weight: 600;
-  color: var(--color-text-secondary, #afafaf);
+  color: #888888;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-/* 4. Section Containers */
-.fs-profile-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.fs-stat-separator {
+  width: 1px;
+  height: 32px;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
-.fs-section-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--color-white, #ffffff);
-  letter-spacing: -0.01em;
-}
-
-/* Account Details Grid */
-.fs-account-details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-.fs-account-detail-card {
-  padding: 16px 18px;
-  background-color: var(--color-card, #111111);
-  border: 1px solid var(--color-border, #222222);
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: border-color 0.2s ease;
-}
-
-.fs-account-detail-card:hover {
-  border-color: #2e2e2e;
-}
-
-.fs-detail-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #707070);
-  letter-spacing: 0.06em;
-  font-weight: 700;
-}
-
-.fs-detail-value {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #ffffff);
-}
-
-.fs-set-pw-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-primary, #00C853);
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  transition: opacity 0.2s ease;
-}
-
-.fs-set-pw-link:hover {
-  opacity: 0.85;
-  text-decoration: underline;
-}
-
-/* 5. Preferences List */
-.fs-prefs-list {
+/* ==============================================================================
+   4. Structured Grouped Lists (Spotify & iOS Settings Aesthetic)
+   ============================================================================== */
+.fs-profile-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.fs-pref-item {
+.fs-group-header {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #b3b3b3;
+  letter-spacing: 0.02em;
+  margin: 0 4px;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.fs-group-container {
+  background-color: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.fs-group-container:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.fs-group-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background-color: var(--color-card, #111111);
-  border: 1px solid var(--color-border, #222222);
-  border-radius: 14px;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  color: inherit;
-}
-
-.fs-pref-item:hover {
-  background-color: var(--color-card-hover, #181818);
-  border-color: #333333;
-}
-
-.fs-pref-info {
-  display: flex;
-  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   gap: 16px;
 }
 
-.fs-pref-icon-wrap {
+.fs-group-row:last-child {
+  border-bottom: none;
+}
+
+.fs-group-row-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.fs-group-row-link:hover {
+  background-color: #181818;
+}
+
+.fs-row-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fs-row-label {
+  font-size: 0.8875rem;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.fs-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fs-row-icon-box {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,202 +444,287 @@
   flex-shrink: 0;
 }
 
-.fs-pref-info h4 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 3px;
+.fs-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.fs-pref-info p {
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary, #afafaf);
+.fs-row-text h4 {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.fs-row-text p {
+  font-size: 0.775rem;
+  color: #888888;
+  margin: 0;
   line-height: 1.3;
 }
 
-.fs-pref-arrow {
+.fs-row-arrow {
   color: #666666;
   flex-shrink: 0;
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.fs-pref-item:hover .fs-pref-arrow {
+.fs-group-row-link:hover .fs-row-arrow {
   color: #ffffff;
   transform: translateX(3px);
 }
 
-/* 6. Sign Out Section at the Bottom (Spotify Aesthetic) */
-.fs-profile-bottom-section {
+.fs-meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #999999;
+}
+
+.fs-tag-brand {
+  color: var(--color-primary, #00C853);
+}
+
+.fs-tag-google {
+  color: #ffffff;
+}
+
+.fs-row-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary, #00C853);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.fs-row-action-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+/* ==============================================================================
+   5. Minimal Sign Out Footer
+   ============================================================================== */
+.fs-profile-logout-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 24px 0 16px;
-  margin-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 0 8px;
+  gap: 8px;
 }
 
-.fs-profile-bottom-logout-btn {
+.fs-profile-logout-pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
-  max-width: 320px;
-  padding: 13px 24px;
-  background-color: rgba(255, 82, 82, 0.05);
-  color: #ff5252;
-  border: 1px solid rgba(255, 82, 82, 0.35);
+  padding: 10px 32px;
   border-radius: 999px;
-  font-size: 0.9375rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-color: transparent;
+  color: #ffffff;
+  font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.fs-profile-bottom-logout-btn:hover {
-  background-color: rgba(255, 82, 82, 0.15);
+.fs-profile-logout-pill-btn:hover {
   border-color: #ff5252;
-  transform: translateY(-1px);
+  color: #ff5252;
+  background-color: rgba(255, 82, 82, 0.08);
+  transform: scale(1.02);
 }
 
-.fs-profile-bottom-meta {
-  font-size: 0.78rem;
+.fs-profile-logout-caption {
+  font-size: 0.775rem;
   color: #707070;
+  margin: 0;
   text-align: center;
 }
 
 /* ==============================================================================
-   Mobile Responsiveness (Clean, Spotify-like Compact Layout)
+   6. Mobile Responsiveness (Refined Spotify Native Experience)
    ============================================================================== */
 @media (max-width: 650px) {
   .fs-profile-page {
-    gap: 22px;
-    padding: 4px 8px 50px;
+    gap: 18px;
+    padding: 6px 12px 64px;
   }
 
-  .fs-profile-card {
+  .fs-profile-header-card {
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+
+  .fs-profile-header-card::before {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    height: 140px;
+  }
+
+  .fs-profile-header-hero {
     flex-direction: column;
     text-align: center;
-    padding: 22px 16px;
-    gap: 16px;
-    border-radius: 16px;
-  }
-
-  .fs-profile-card-main {
-    flex-direction: column;
     align-items: center;
-    text-align: center;
     gap: 14px;
-    min-width: unset;
   }
 
   .fs-profile-avatar-img,
   .fs-profile-avatar-circle {
-    width: 84px;
-    height: 84px;
+    width: 88px;
+    height: 88px;
   }
 
   .fs-profile-avatar-initial {
-    font-size: 2rem;
+    font-size: 2.2rem;
+  }
+
+  .fs-profile-hero-content {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .fs-profile-kicker {
+    font-size: 0.7rem;
   }
 
   .fs-profile-username {
-    font-size: 1.5rem;
+    font-size: 1.65rem;
+    line-height: 1.2;
   }
 
-  .fs-profile-header-title {
+  .fs-profile-email {
+    font-size: 0.85rem;
+  }
+
+  /* Status Pills neatly centered */
+  .fs-profile-status-pills {
     justify-content: center;
+    gap: 6px;
   }
 
-  .fs-profile-card-actions {
+  .fs-status-pill {
+    padding: 4px 9px;
+    font-size: 0.72rem;
+  }
+
+  /* Action Buttons */
+  .fs-profile-action-buttons {
+    justify-content: center;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .fs-profile-pill-btn {
+    flex: 1;
+    max-width: 150px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .fs-profile-guest-cta-row {
     width: 100%;
     justify-content: center;
-    gap: 8px;
   }
 
-  .fs-profile-edit-btn,
-  .fs-profile-switch-btn {
-    flex: 1;
-    justify-content: center;
-    padding: 9px 12px;
-    font-size: 0.8125rem;
+  /* Stats Card - 3 Compact Columns on Mobile */
+  .fs-profile-stats-card {
+    padding: 14px 10px;
+    border-radius: 14px;
   }
 
-  /* CRITICAL: Keep stats row as a clean 3-column horizontal grid on mobile! */
-  .fs-profile-stats-row {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .fs-stat-box {
-    padding: 14px 6px;
-    border-radius: 12px;
-    gap: 4px;
+  .fs-stat-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 6px;
+    padding: 2px 4px;
   }
 
   .fs-stat-icon-wrap {
     width: 28px;
     height: 28px;
-    margin-bottom: 0;
   }
 
   .fs-stat-icon-wrap svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
+  }
+
+  .fs-stat-meta {
+    align-items: center;
   }
 
   .fs-stat-number {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
   }
 
   .fs-stat-label {
     font-size: 0.65rem;
-    letter-spacing: 0.02em;
   }
 
-  .fs-account-details-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
+  .fs-stat-separator {
+    height: 28px;
   }
 
-  .fs-account-detail-card {
-    padding: 14px 16px;
+  /* Group Rows on Mobile */
+  .fs-group-row {
+    padding: 14px 14px;
   }
 
-  .fs-pref-item {
-    padding: 14px 16px;
+  .fs-row-label {
+    font-size: 0.8125rem;
   }
 
-  .fs-pref-info {
-    gap: 12px;
-  }
-
-  .fs-pref-info h4 {
-    font-size: 0.9rem;
-  }
-
-  .fs-pref-info p {
+  .fs-meta-tag {
     font-size: 0.75rem;
   }
 
+  .fs-row-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .fs-row-icon-box svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .fs-row-text h4 {
+    font-size: 0.85rem;
+  }
+
+  .fs-row-text p {
+    font-size: 0.72rem;
+  }
+
+  /* Guest Banner on Mobile */
   .fs-profile-guest-banner {
     flex-direction: column;
     text-align: center;
-    padding: 18px 16px;
-    gap: 14px;
+    padding: 16px 14px;
   }
 
   .fs-guest-banner-info {
     flex-direction: column;
     text-align: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .fs-guest-actions {
     width: 100%;
     flex-direction: column;
+    gap: 8px;
   }
 
   .fs-guest-actions a,
@@ -600,8 +733,9 @@
     justify-content: center;
   }
 
-  .fs-profile-bottom-logout-btn {
-    max-width: 100%;
+  /* Logout button */
+  .fs-profile-logout-pill-btn {
     width: 100%;
+    max-width: 260px;
   }
 }

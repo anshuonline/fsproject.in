@@ -469,8 +469,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed. Please check your credentials.');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Login failed. Please check your credentials.');
+      err.code = data.code;
+      err.isGoogleUser = data.isGoogleUser;
+      throw err;
+    }
     return data;
   },
 
@@ -480,8 +485,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Registration failed');
+      err.code = data.code;
+      err.email = data.email;
+      throw err;
+    }
     return data;
   },
 
@@ -494,6 +504,40 @@ export const api = {
     } catch {
       return false;
     }
+  },
+
+  async requestPasswordReset(email) {
+    const res = await fetch(`${API_BASE}/user/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Failed to dispatch password reset email');
+      err.code = data.code;
+      err.hoursRemaining = data.hoursRemaining;
+      throw err;
+    }
+    return data;
+  },
+
+  async verifyResetToken(token) {
+    const res = await fetch(`${API_BASE}/user/verify-reset-token?token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Invalid or expired password reset link');
+    return data;
+  },
+
+  async resetPassword(token, newPassword) {
+    const res = await fetch(`${API_BASE}/user/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update password');
+    return data;
   }
 };
 

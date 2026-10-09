@@ -9,7 +9,7 @@ import { buildAlgorithmicFeed } from './recommendationEngine.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
-import { sendWelcomeEmail, sendAccountDeletionEmail } from './mailer.js';
+import { sendWelcomeEmail, sendAccountDeletionEmail, sendPasswordResetEmail } from './mailer.js';
 
 dotenv.config();
 
@@ -1078,27 +1078,28 @@ app.post('/api/user/sync', async (req, res) => {
   }
 });
 
-// Password Hashing and Verification Utilities (Salted SHA-512 with PBKDF2)
+// Password Hashing and Verification Utilities (MD5)
 function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-  return `${salt}:${hash}`;
+  return crypto.createHash('md5').update(password).digest('hex');
 }
 
 function verifyPassword(password, storedHash) {
-  if (!storedHash || typeof storedHash !== 'string' || !storedHash.includes(':')) return false;
-  try {
-    const [salt, originalHash] = storedHash.split(':');
-    if (!salt || !originalHash) return false;
-    const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    const hashBuf = Buffer.from(hash, 'hex');
-    const origBuf = Buffer.from(originalHash, 'hex');
-    if (hashBuf.length !== origBuf.length) return false;
-    return crypto.timingSafeEqual(hashBuf, origBuf);
-  } catch (err) {
-    console.warn('Password verification error:', err.message);
-    return false;
+  if (!storedHash || typeof storedHash !== 'string') return false;
+  // Direct MD5 comparison
+  const md5Hash = crypto.createHash('md5').update(password).digest('hex');
+  if (storedHash.toLowerCase() === md5Hash.toLowerCase()) return true;
+
+  // Backward compatibility: If stored hash was pbkdf2 format (salt:hash)
+  if (storedHash.includes(':')) {
+    try {
+      const [salt, originalHash] = storedHash.split(':');
+      if (salt && originalHash) {
+        const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+        if (hash === originalHash) return true;
+      }
+    } catch {}
   }
+  return false;
 }
 
 // Check if user has set a password
@@ -1155,19 +1156,32 @@ app.post('/api/user/login-password', async (req, res) => {
   try {
     const users = await query('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
     if (!users || users.length === 0) {
-      return res.status(401).json({ error: 'No account found with this email. Please check your email or register.' });
+      return res.status(404).json({
+        error: 'No account found with this email. Would you like to create one?',
+        code: 'USER_NOT_FOUND'
+      });
     }
 
     const user = users[0];
     if (!user.password_hash) {
-      return res.status(401).json({
-        error: 'No password has been set for this account yet. Please sign in with Google once and set your password in Settings.'
+      return res.status(400).json({
+        error: 'This email is registered via Google and has no password yet. Please continue with Google, or click "Forgot password?" to set one.',
+        code: 'NO_PASSWORD_SET',
+        isGoogleUser: true
       });
     }
 
     const isMatch = verifyPassword(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+      return res.status(401).json({
+        error: 'Incorrect password. Please try again or use "Forgot password?" to reset it.',
+        code: 'INVALID_PASSWORD'
+      });
+    }
+
+    // Auto-migrate legacy hash to clean MD5 in DB
+    if (user.password_hash.includes(':')) {
+      await query('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword(password), user.id]).catch(() => {});
     }
 
     const geo = await getIpGeo(rawIp);
@@ -1220,47 +1234,41 @@ app.post('/api/user/register-password', async (req, res) => {
   const userAgent = req.headers['user-agent'] || '';
 
   try {
-    const existing = await query('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+    const existing = await query('SELECT id, email, name FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+    if (existing && existing.length > 0) {
+      return res.status(409).json({
+        error: 'An account with this email address already exists. Please sign in instead.',
+        code: 'ACCOUNT_EXISTS',
+        email: cleanEmail
+      });
+    }
+
     const geo = await getIpGeo(rawIp);
     const resolvedIp = geo.ip || rawIp;
     const hashedPassword = hashPassword(password);
 
-    let userId = null;
-    if (existing && existing.length > 0) {
-      const user = existing[0];
-      if (user.password_hash) {
-        return res.status(409).json({ error: 'An account with this email already exists. Please log in instead.' });
-      }
-      // User signed in previously via Google without a password — link the password!
-      await query(
-        'UPDATE users SET password_hash = ?, name = COALESCE(name, ?), last_login_at = NOW(), last_login_ip = ? WHERE id = ?',
-        [hashedPassword, cleanName, resolvedIp, user.id]
-      );
-      userId = user.id;
-    } else {
-      const insertResult = await query(`
-        INSERT INTO users (
-          email, name, password_hash, auth_provider,
-          registered_ip, registered_country, registered_country_code,
-          registered_region, registered_city, registered_latitude, registered_longitude,
-          registered_user_agent, last_login_at, last_login_ip
-        ) VALUES (?, ?, ?, 'email', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
-      `, [
-        cleanEmail,
-        cleanName,
-        hashedPassword,
-        resolvedIp,
-        geo.country || 'India',
-        geo.countryCode || 'IN',
-        geo.region || null,
-        geo.city || null,
-        geo.lat || null,
-        geo.lon || null,
-        userAgent || null,
-        resolvedIp
-      ]);
-      userId = insertResult.insertId;
-    }
+    const insertResult = await query(`
+      INSERT INTO users (
+        email, name, password_hash, auth_provider,
+        registered_ip, registered_country, registered_country_code,
+        registered_region, registered_city, registered_latitude, registered_longitude,
+        registered_user_agent, last_login_at, last_login_ip
+      ) VALUES (?, ?, ?, 'email', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+    `, [
+      cleanEmail,
+      cleanName,
+      hashedPassword,
+      resolvedIp,
+      geo.country || 'India',
+      geo.countryCode || 'IN',
+      geo.region || null,
+      geo.city || null,
+      geo.lat || null,
+      geo.lon || null,
+      userAgent || null,
+      resolvedIp
+    ]);
+    const userId = insertResult.insertId;
 
     const users = await query('SELECT * FROM users WHERE id = ?', [userId]);
     const user = users[0];
@@ -1296,6 +1304,136 @@ app.post('/api/user/register-password', async (req, res) => {
   } catch (err) {
     console.warn('Register password error:', err.message);
     res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+// Request Password Reset Link (Sends 24-Hour Token via Hostinger SMTP, Max 1 Request Per 24 Hours)
+app.post('/api/user/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
+  try {
+    const users = await query(
+      'SELECT id, email, name, last_reset_request_at FROM users WHERE LOWER(email) = ?',
+      [cleanEmail]
+    );
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        error: 'No FreeSong account found with this email. Please check your email or create an account.',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const user = users[0];
+
+    // Enforce 1 reset per 24 hours rate limit
+    if (user.last_reset_request_at) {
+      const lastRequestTime = new Date(user.last_reset_request_at).getTime();
+      const now = Date.now();
+      const diffHours = (now - lastRequestTime) / (1000 * 60 * 60);
+
+      if (diffHours < 24) {
+        const hoursRemaining = Math.max(1, Math.ceil(24 - diffHours));
+        return res.status(429).json({
+          error: `A password reset link was already sent today. For security, you can only request 1 reset link per 24 hours. Please check your inbox (including spam) or try again in ${hoursRemaining} hour${hoursRemaining > 1 ? 's' : ''}.`,
+          code: 'RATE_LIMIT_EXCEEDED',
+          hoursRemaining
+        });
+      }
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Token expires in 24 hours, update last_reset_request_at
+    await query(
+      'UPDATE users SET reset_token = ?, reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR), last_reset_request_at = NOW() WHERE id = ?',
+      [token, user.id]
+    );
+
+    const mailResult = await sendPasswordResetEmail({
+      email: user.email,
+      name: user.name,
+      token
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset link sent to your email! Please check your inbox within 24 hours.',
+      mailResult
+    });
+  } catch (err) {
+    console.warn('Forgot password error:', err.message);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Verify Password Reset Token Validity
+app.get('/api/user/verify-reset-token', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ valid: false, error: 'Reset token is required' });
+
+  try {
+    const users = await query(
+      'SELECT id, email, name FROM users WHERE reset_token = ? AND reset_token_expires_at > NOW()',
+      [token]
+    );
+
+    if (!users || users.length === 0) {
+      return res.status(400).json({ valid: false, error: 'Invalid or expired password reset link (exceeded 24 hours)' });
+    }
+
+    const user = users[0];
+    res.json({
+      valid: true,
+      email: user.email,
+      name: user.name
+    });
+  } catch (err) {
+    console.warn('Verify reset token error:', err.message);
+    res.status(500).json({ valid: false, error: 'Failed to verify token' });
+  }
+});
+
+// Complete Password Reset (Sets new password using MD5 and clears token)
+app.post('/api/user/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token) return res.status(400).json({ error: 'Reset token is required' });
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+  }
+
+  try {
+    const users = await query(
+      'SELECT id, email, name FROM users WHERE reset_token = ? AND reset_token_expires_at > NOW()',
+      [token]
+    );
+
+    if (!users || users.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
+    }
+
+    const user = users[0];
+    const md5Hash = hashPassword(newPassword);
+
+    // Update password to MD5 and clear reset token
+    await query(
+      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?',
+      [md5Hash, user.id]
+    );
+
+    console.log(`[Password Reset] User ${user.email} successfully updated password via email reset token`);
+
+    res.json({
+      success: true,
+      message: 'Password successfully updated! You can now log into FreeSong using your new password.'
+    });
+  } catch (err) {
+    console.warn('Reset password error:', err.message);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

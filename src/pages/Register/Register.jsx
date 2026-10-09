@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
 import './Register.css';
 
 export function Register() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { isAuthenticated, loginWithGoogle, isGoogleLoading, registerWithPassword } = useAuth();
+
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => location.state?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const { isAuthenticated, loginWithGoogle, isGoogleLoading, registerWithPassword } = useAuth();
-  const { showToast } = useToast();
-  const navigate = useNavigate();
+  const [errorInfo, setErrorInfo] = useState(null);
 
   // Redirect to profile if already logged in
   useEffect(() => {
@@ -39,6 +42,8 @@ export function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorInfo(null);
+
     if (!name.trim() || !email.trim() || !password) {
       showToast('Please fill in all fields', 'error');
       return;
@@ -55,6 +60,11 @@ export function Register() {
       showToast(`Account created! Welcome, ${user.name}!`, 'success');
       navigate('/profile');
     } catch (err) {
+      setErrorInfo({
+        code: err.code || 'UNKNOWN',
+        message: err.message || 'Registration failed. Please try again.',
+        email: email.trim()
+      });
       showToast(err.message || 'Registration failed', 'error');
     } finally {
       setIsRegistering(false);
@@ -81,6 +91,34 @@ export function Register() {
         <span>or with email & password</span>
       </div>
 
+      {/* Smart Error Handling */}
+      {errorInfo?.code === 'ACCOUNT_EXISTS' ? (
+        <div className="fs-auth-smart-alert fs-auth-alert-warning">
+          <div className="fs-auth-alert-icon-col">
+            <AlertCircle size={20} />
+          </div>
+          <div className="fs-auth-alert-body">
+            <h4 className="fs-auth-alert-title">Account Already Exists</h4>
+            <p className="fs-auth-alert-text">
+              An account registered with <strong>{errorInfo.email}</strong> is already present.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary fs-auth-alert-btn"
+              onClick={() => navigate('/login', { state: { email: errorInfo.email } })}
+            >
+              <span>Sign In with this Email</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      ) : errorInfo ? (
+        <div className="fs-auth-smart-alert fs-auth-alert-danger">
+          <AlertCircle size={18} />
+          <span>{errorInfo.message}</span>
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="fs-auth-form">
         <div className="fs-form-group">
           <label className="fs-form-label">Full Name</label>
@@ -91,7 +129,10 @@ export function Register() {
               className="fs-input-field"
               placeholder="Your Name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errorInfo) setErrorInfo(null);
+              }}
               disabled={isRegistering}
               required
             />
@@ -107,7 +148,10 @@ export function Register() {
               className="fs-input-field"
               placeholder="you@domain.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errorInfo) setErrorInfo(null);
+              }}
               disabled={isRegistering}
               required
             />
@@ -123,7 +167,10 @@ export function Register() {
               className="fs-input-field"
               placeholder="At least 6 characters"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorInfo) setErrorInfo(null);
+              }}
               disabled={isRegistering}
               required
             />

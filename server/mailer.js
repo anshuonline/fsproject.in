@@ -640,3 +640,161 @@ export async function sendAccountDeletionEmail({ email, name, token }) {
   }
 }
 
+/**
+ * Generate AMOLED Spotify-Style Password Reset Email HTML
+ */
+export function generatePasswordResetEmailHtml(name, email, token) {
+  const safeName = (name && name !== 'FreeSong Listener' && name !== 'Google User')
+    ? name.trim()
+    : (email ? email.split('@')[0] : 'Music Lover');
+
+  const appUrl = (process.env.APP_URL || 'https://freesong.in').replace(/\/$/, '');
+  const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  const logoUrl = `${appUrl}/images/freesonglogowebp.webp`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your FreeSong Password</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FFFFFF; -webkit-font-smoothing: antialiased;">
+
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #000000; min-height: 100vh; padding: 40px 12px;">
+    <tr>
+      <td align="center" valign="top">
+
+        <!-- Outer Card -->
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #111111; border: 1px solid #222222; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);">
+
+          <!-- Header Logo Bar -->
+          <tr>
+            <td align="center" style="padding: 32px 24px 20px 24px;">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <img src="${logoUrl}" alt="FreeSong.in" width="48" height="48" style="display: block; border-radius: 12px; margin-bottom: 12px;" />
+                    <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #FFFFFF;">FreeSong<span style="color: #00C853;">.in</span></span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td height="1" style="background-color: #1F1F1F; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 32px 28px 24px 28px;">
+              <h1 style="margin: 0 0 14px 0; font-size: 22px; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em;">
+                Reset Your Password
+              </h1>
+              <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #AFAFAF;">
+                Hello <strong style="color: #FFFFFF;">${safeName}</strong>,
+              </p>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #AFAFAF;">
+                We received a request to reset the password for your FreeSong account (<span style="color: #FFFFFF; font-weight: 600;">${email}</span>). Click the button below to set your new password:
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 28px 0 32px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}" target="_blank" style="display: inline-block; background-color: #00C853; color: #000000; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 999px; letter-spacing: 0.02em; box-shadow: 0 6px 20px rgba(0, 200, 83, 0.35);">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #161616; border: 1px solid #262626; border-radius: 10px; padding: 14px 16px;">
+                <tr>
+                  <td style="font-size: 12px; line-height: 1.5; color: #888888;">
+                    <strong style="color: #FFFFFF;">Validity Notice:</strong> This reset link is valid for <strong>24 hours</strong>.<br/>
+                    If you did not request this change, you can safely ignore this email. Your existing password will not be changed.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fallback URL Link -->
+          <tr>
+            <td align="center" style="padding: 0 28px 24px 28px;">
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #666666; word-break: break-all;">
+                Button not working? Copy and paste this link into your browser:<br/>
+                <a href="${resetUrl}" style="color: #00C853; text-decoration: underline;">${resetUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer Divider -->
+          <tr>
+            <td height="1" style="background-color: #1F1F1F; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Footer Information -->
+          <tr>
+            <td align="center" style="padding: 22px 24px; font-size: 12px; line-height: 1.6; color: #707070;">
+              <p style="margin: 0 0 4px 0; color: #888888;">
+                FreeSong.in Media • High-Fidelity AMOLED Music Streaming
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #555555;">
+                This security alert was dispatched to ${email}. Replies are routed to support@ganatube.in.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+/**
+ * Send Password Reset Email with 24-Hour Token
+ */
+export async function sendPasswordResetEmail({ email, name, token }) {
+  if (!email || !email.includes('@') || !token) {
+    return { success: false, error: 'Invalid email or reset token' };
+  }
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.warn('[Password Reset Email] SMTP transporter not configured');
+    return { success: false, error: 'SMTP transporter not configured' };
+  }
+
+  const appUrl = (process.env.APP_URL || 'https://freesong.in').replace(/\/$/, '');
+  const fromAddress = process.env.SMTP_FROM || '"FreeSong.in Security" <support@ganatube.in>';
+  const safeName = (name && name !== 'FreeSong Listener' && name !== 'Google User') ? name.trim() : email.split('@')[0];
+
+  const mailOptions = {
+    from: fromAddress,
+    to: email,
+    replyTo: 'support@ganatube.in',
+    subject: `Reset Your FreeSong.in Password`,
+    html: generatePasswordResetEmailHtml(name, email, token),
+    text: `Reset Your FreeSong.in Password\n\nHello ${safeName},\n\nWe received a request to reset your password for ${email}.\n\nTo set a new password, click the link below (valid for 24 hours):\n${appUrl}/reset-password?token=${encodeURIComponent(token)}\n\nIf you did not request this, you can safely ignore this email.\n\nFreeSong.in Media\nsupport@ganatube.in`
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Password Reset Email] Successfully dispatched to ${email} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.warn(`[Password Reset Email] Failed sending to ${email}:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+

@@ -62,9 +62,9 @@ export function Profile() {
   return (
     <div className="fs-profile-page">
       {/* Spotify-Inspired AMOLED Profile Header Card */}
-      <div className="fs-profile-card">
-        <div className="fs-profile-card-main">
-          <div className="fs-profile-avatar-wrap">
+      <div className="fs-profile-header-card">
+        <div className="fs-profile-header-hero">
+          <div className="fs-profile-avatar-wrapper">
             {hasGooglePic ? (
               <img
                 src={user.picture}
@@ -80,74 +80,77 @@ export function Profile() {
                     {user.name.charAt(0).toUpperCase()}
                   </span>
                 ) : (
-                  <User size={44} />
+                  <User size={48} />
                 )}
               </div>
             )}
           </div>
 
-          <div className="fs-profile-details">
-            <div className="fs-profile-header-title">
-              <h1 className="fs-profile-username">{displayName}</h1>
-              {user?.provider === 'google' && (
-                <div className="fs-profile-provider-pill" title="Signed in with Google">
-                  <GoogleIcon size={14} />
-                  <span>Google</span>
-                </div>
-              )}
-              {hasPasswordState && (
-                <div className="fs-profile-security-pill" title="Password login enabled">
-                  <KeyRound size={13} />
-                  <span>Password Active</span>
-                </div>
-              )}
-            </div>
+          <div className="fs-profile-hero-content">
+            <span className="fs-profile-kicker">PROFILE</span>
+            <h1 className="fs-profile-username">{displayName}</h1>
             <p className="fs-profile-email">{displayEmail}</p>
-          </div>
-        </div>
 
-        {/* Profile Header Action Buttons */}
-        <div className="fs-profile-card-actions">
-          {isAuthenticated ? (
-            <>
-              <Link
-                to="/settings"
-                className="btn btn-secondary fs-profile-edit-btn"
-                title="Account and playback settings"
-              >
-                <Settings size={15} />
-                <span>Edit Profile</span>
-              </Link>
+            {/* Dedicated Status Badges Row (Clean Spotify Pills below email) */}
+            <div className="fs-profile-status-pills">
               {user?.provider === 'google' && (
-                <button
-                  type="button"
-                  className="btn btn-secondary fs-profile-switch-btn"
-                  onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading}
-                  title="Switch Google account"
-                >
-                  <RefreshCw size={14} className={isGoogleLoading ? 'fs-spin' : ''} />
-                  <span>{isGoogleLoading ? 'Switching...' : 'Switch'}</span>
-                </button>
+                <span className="fs-status-pill fs-status-pill-google">
+                  <GoogleIcon size={13} />
+                  <span>Google Account</span>
+                </span>
               )}
-            </>
-          ) : (
-            <div className="fs-profile-auth-cta-group">
-              <Link to="/login" className="btn btn-secondary fs-profile-login-link">
-                Sign In
-              </Link>
-              <button
-                type="button"
-                className="btn btn-primary fs-profile-google-login-btn"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-                title="Sign in with your Google account"
-              >
-                <GoogleIcon size={16} />
-                <span>{isGoogleLoading ? 'Connecting...' : 'Google'}</span>
-              </button>
+              {hasPasswordState ? (
+                <span className="fs-status-pill fs-status-pill-password">
+                  <CheckCircle2 size={13} />
+                  <span>Password Active</span>
+                </span>
+              ) : isAuthenticated ? (
+                <Link to="/settings" className="fs-status-pill fs-status-pill-link">
+                  <KeyRound size={13} />
+                  <span>Set Password</span>
+                </Link>
+              ) : null}
             </div>
-          )}
+
+            {/* Profile Action Buttons */}
+            <div className="fs-profile-action-buttons">
+              {isAuthenticated ? (
+                <>
+                  <Link to="/settings" className="fs-profile-pill-btn fs-btn-outline">
+                    <Settings size={14} />
+                    <span>Edit Profile</span>
+                  </Link>
+                  {user?.provider === 'google' && (
+                    <button
+                      type="button"
+                      className="fs-profile-pill-btn fs-btn-ghost"
+                      onClick={handleGoogleSignIn}
+                      disabled={isGoogleLoading}
+                      title="Switch Google account"
+                    >
+                      <RefreshCw size={13} className={isGoogleLoading ? 'fs-spin' : ''} />
+                      <span>{isGoogleLoading ? 'Switching...' : 'Switch'}</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="fs-profile-guest-cta-row">
+                  <Link to="/login" className="fs-profile-pill-btn fs-btn-outline">
+                    Sign In
+                  </Link>
+                  <button
+                    type="button"
+                    className="fs-profile-pill-btn fs-btn-brand"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading}
+                  >
+                    <GoogleIcon size={14} />
+                    <span>{isGoogleLoading ? 'Connecting...' : 'Google'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -156,11 +159,11 @@ export function Profile() {
         <div className="fs-profile-guest-banner">
           <div className="fs-guest-banner-info">
             <div className="fs-guest-banner-icon-wrap">
-              <GoogleIcon size={26} />
+              <GoogleIcon size={24} />
             </div>
             <div>
               <h3>Connect or Create Account</h3>
-              <p>Keep your playlists, liked songs, and listening history safely synchronized across all devices.</p>
+              <p>Keep your playlists, liked songs, and listening history synchronized across devices.</p>
             </div>
           </div>
           <div className="fs-guest-actions">
@@ -169,127 +172,150 @@ export function Profile() {
             </Link>
             <button
               type="button"
-              className="btn btn-primary fs-guest-connect-btn"
+              className="btn btn-primary"
               onClick={handleGoogleSignIn}
               disabled={isGoogleLoading}
             >
-              <span>{isGoogleLoading ? 'Connecting...' : 'Google Sign In'}</span>
+              <span>{isGoogleLoading ? 'Connecting...' : 'Continue with Google'}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Spotify-Style Stats Counter (3 Columns Horizontal Always) */}
-      <div className="fs-profile-stats-row">
-        <div className="fs-stat-box">
+      {/* Spotify-Style Segmented Stats Card */}
+      <div className="fs-profile-stats-card">
+        <div className="fs-stat-item">
           <div className="fs-stat-icon-wrap">
-            <Heart size={20} className="text-brand" />
+            <Heart size={18} className="text-brand" />
           </div>
-          <span className="fs-stat-number">{likedSongs.length}</span>
-          <span className="fs-stat-label">Liked Songs</span>
+          <div className="fs-stat-meta">
+            <span className="fs-stat-number">{likedSongs.length}</span>
+            <span className="fs-stat-label">Liked Songs</span>
+          </div>
         </div>
 
-        <div className="fs-stat-box">
+        <div className="fs-stat-separator" />
+
+        <div className="fs-stat-item">
           <div className="fs-stat-icon-wrap">
-            <ListMusic size={20} className="text-brand" />
+            <ListMusic size={18} className="text-brand" />
           </div>
-          <span className="fs-stat-number">{playlists.length}</span>
-          <span className="fs-stat-label">Playlists</span>
+          <div className="fs-stat-meta">
+            <span className="fs-stat-number">{playlists.length}</span>
+            <span className="fs-stat-label">Playlists</span>
+          </div>
         </div>
 
-        <div className="fs-stat-box">
+        <div className="fs-stat-separator" />
+
+        <div className="fs-stat-item">
           <div className="fs-stat-icon-wrap">
-            <Sparkles size={20} className="text-brand" />
+            <Sparkles size={18} className="text-brand" />
           </div>
-          <span className="fs-stat-number">{history.length}</span>
-          <span className="fs-stat-label">Streamed</span>
+          <div className="fs-stat-meta">
+            <span className="fs-stat-number">{history.length}</span>
+            <span className="fs-stat-label">Streamed</span>
+          </div>
         </div>
       </div>
 
-      {/* Account Info & Security */}
-      <div className="fs-profile-section">
-        <h3 className="fs-section-title">Account Information</h3>
-        <div className="fs-account-details-grid">
-          <div className="fs-account-detail-card">
-            <span className="fs-detail-label">Authentication</span>
-            <div className="fs-detail-value">
+      {/* Account Information (Structured Spotify Settings Style) */}
+      <div className="fs-profile-group">
+        <h3 className="fs-group-header">Account Information</h3>
+        <div className="fs-group-container">
+          <div className="fs-group-row">
+            <div className="fs-row-left">
+              <span className="fs-row-label">Authentication</span>
+            </div>
+            <div className="fs-row-right">
               {user?.provider === 'google' ? (
-                <>
-                  <GoogleIcon size={16} />
+                <span className="fs-meta-tag fs-tag-google">
+                  <GoogleIcon size={13} />
                   <span>Google OAuth (Verified)</span>
-                </>
+                </span>
               ) : isAuthenticated ? (
-                <>
-                  <CheckCircle2 size={16} className="text-brand" />
+                <span className="fs-meta-tag fs-tag-brand">
+                  <CheckCircle2 size={13} />
                   <span>Email Account</span>
-                </>
+                </span>
               ) : (
-                <span>Guest / Local Profile</span>
+                <span className="fs-meta-tag">Guest / Local Profile</span>
               )}
             </div>
           </div>
 
-          <div className="fs-account-detail-card">
-            <span className="fs-detail-label">Password Login</span>
-            <div className="fs-detail-value">
+          <div className="fs-group-row">
+            <div className="fs-row-left">
+              <span className="fs-row-label">Password Login</span>
+            </div>
+            <div className="fs-row-right">
               {hasPasswordState ? (
-                <>
-                  <CheckCircle2 size={16} className="text-brand" />
+                <span className="fs-meta-tag fs-tag-brand">
+                  <CheckCircle2 size={13} />
                   <span>Configured (Cross-Device)</span>
-                </>
+                </span>
               ) : isAuthenticated ? (
-                <Link to="/settings" className="fs-set-pw-link">
-                  <Lock size={15} />
+                <Link to="/settings" className="fs-row-action-link">
+                  <Lock size={13} />
                   <span>Set Password in Settings</span>
+                  <ChevronRight size={14} />
                 </Link>
               ) : (
-                <span>Not Configured</span>
+                <span className="fs-meta-tag">Not Configured</span>
               )}
             </div>
           </div>
 
-          <div className="fs-account-detail-card">
-            <span className="fs-detail-label">Streaming Quality</span>
-            <div className="fs-detail-value">
-              <CheckCircle2 size={16} className="text-brand" />
-              <span>Hi-Fi Master (320kbps)</span>
+          <div className="fs-group-row">
+            <div className="fs-row-left">
+              <span className="fs-row-label">Streaming Quality</span>
+            </div>
+            <div className="fs-row-right">
+              <span className="fs-meta-tag fs-tag-brand">
+                <CheckCircle2 size={13} />
+                <span>Hi-Fi Master (320kbps)</span>
+              </span>
             </div>
           </div>
 
-          <div className="fs-account-detail-card">
-            <span className="fs-detail-label">AMOLED True Black</span>
-            <div className="fs-detail-value">
-              <CheckCircle2 size={16} className="text-brand" />
-              <span>Active (#000000)</span>
+          <div className="fs-group-row">
+            <div className="fs-row-left">
+              <span className="fs-row-label">Theme Experience</span>
+            </div>
+            <div className="fs-row-right">
+              <span className="fs-meta-tag fs-tag-brand">
+                <CheckCircle2 size={13} />
+                <span>AMOLED True Black</span>
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Settings & Preferences Link */}
-      <div className="fs-profile-section">
-        <h3 className="fs-section-title">Preferences & Security</h3>
-        <div className="fs-prefs-list">
-          <Link to="/settings" className="fs-pref-item">
-            <div className="fs-pref-info">
-              <div className="fs-pref-icon-wrap">
-                <Settings size={20} />
+      {/* Preferences & Security (Structured Spotify List Items) */}
+      <div className="fs-profile-group">
+        <h3 className="fs-group-header">Preferences & Security</h3>
+        <div className="fs-group-container">
+          <Link to="/settings" className="fs-group-row fs-group-row-link">
+            <div className="fs-row-left">
+              <div className="fs-row-icon-box">
+                <Settings size={18} />
               </div>
-              <div>
-                <h4>Audio & Streaming Settings</h4>
-                <p>High-fidelity bitrates, inactivity timer, autoplay recommendations</p>
+              <div className="fs-row-text">
+                <h4>Audio & Playback Settings</h4>
+                <p>High-fidelity bitrates, sleep timer, autoplay recommendations</p>
               </div>
             </div>
-            <ChevronRight size={18} className="fs-pref-arrow" />
+            <ChevronRight size={18} className="fs-row-arrow" />
           </Link>
 
           {isAuthenticated && (
-            <Link to="/settings" className="fs-pref-item">
-              <div className="fs-pref-info">
-                <div className="fs-pref-icon-wrap">
-                  <Lock size={20} />
+            <Link to="/settings" className="fs-group-row fs-group-row-link">
+              <div className="fs-row-left">
+                <div className="fs-row-icon-box">
+                  <Lock size={18} />
                 </div>
-                <div>
+                <div className="fs-row-text">
                   <h4>Security & Password</h4>
                   <p>
                     {hasPasswordState
@@ -298,27 +324,26 @@ export function Profile() {
                   </p>
                 </div>
               </div>
-              <ChevronRight size={18} className="fs-pref-arrow" />
+              <ChevronRight size={18} className="fs-row-arrow" />
             </Link>
           )}
         </div>
       </div>
 
-      {/* Spotify-Style Sign Out Section at the Very Bottom */}
+      {/* Spotify-Style Minimal Sign Out Button at Bottom */}
       {isAuthenticated && (
-        <div className="fs-profile-bottom-section">
+        <div className="fs-profile-logout-footer">
           <button
             type="button"
-            className="fs-profile-bottom-logout-btn"
+            className="fs-profile-logout-pill-btn"
             onClick={handleLogout}
-            title="Sign out of FreeSong"
           >
-            <LogOut size={16} />
+            <LogOut size={15} />
             <span>Sign Out</span>
           </button>
-          <span className="fs-profile-bottom-meta">
+          <p className="fs-profile-logout-caption">
             Signed in as {displayEmail}
-          </span>
+          </p>
         </div>
       )}
     </div>
@@ -326,4 +351,3 @@ export function Profile() {
 }
 
 export default Profile;
-

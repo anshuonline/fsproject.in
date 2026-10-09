@@ -23,6 +23,7 @@ import { Settings } from './pages/Settings/Settings';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
+import { ResetPassword } from './pages/ResetPassword/ResetPassword';
 import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
@@ -69,6 +70,7 @@ export default function App() {
                   <Route element={<AuthLayout />}>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                   </Route>
 
                   {/* Fallback to Home */}

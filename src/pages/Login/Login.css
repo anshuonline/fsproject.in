@@ -144,3 +144,283 @@
   letter-spacing: 0.05em;
   font-weight: 600;
 }
+
+.fs-form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fs-forgot-pw-link {
+  background: transparent;
+  border: none;
+  color: var(--color-primary, #00C853);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.fs-forgot-pw-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+/* Modal styles for Forgot Password */
+.fs-forgot-modal-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: var(--radius-lg, 16px);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9);
+}
+
+.fs-forgot-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fs-forgot-modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.fs-forgot-close-btn {
+  background: transparent;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.2s ease;
+}
+
+.fs-forgot-close-btn:hover {
+  color: #ffffff;
+}
+
+.fs-forgot-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #afafaf);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.fs-forgot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fs-forgot-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.fs-forgot-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-forgot-success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.fs-forgot-success-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: rgba(0, 200, 83, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.fs-forgot-success-content h4 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.fs-forgot-success-content p {
+  font-size: 0.875rem;
+  color: #afafaf;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.fs-forgot-notice-box {
+  background-color: #161616;
+  border: 1px solid #262626;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: #888888;
+  text-align: left;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* Smart Auth Alert Cards (Spotify AMOLED Style) */
+.fs-auth-smart-alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 12px);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  animation: fsAlertFadeIn 0.25s ease-out;
+}
+
+@keyframes fsAlertFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fs-auth-alert-icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fs-auth-alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.fs-auth-alert-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.fs-auth-alert-text {
+  font-size: 0.8125rem;
+  color: #cccccc;
+  margin: 0;
+}
+
+.fs-auth-alert-subtext {
+  font-size: 0.775rem;
+  color: #999999;
+  margin: 0;
+}
+
+.fs-auth-alert-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.fs-auth-alert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 999px;
+  margin-top: 4px;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.fs-auth-alert-link {
+  background: transparent;
+  border: none;
+  color: var(--color-primary, #00C853);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  text-decoration: underline;
+  transition: opacity var(--transition-fast, 0.2s);
+}
+
+.fs-auth-alert-link:hover {
+  opacity: 0.85;
+}
+
+/* Alert Variants */
+.fs-auth-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fde68a;
+}
+.fs-auth-alert-warning .fs-auth-alert-icon-col {
+  color: #f59e0b;
+}
+
+.fs-auth-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+.fs-auth-alert-danger .fs-auth-alert-icon-col,
+.fs-auth-alert-danger > svg {
+  color: #ef4444;
+}
+
+.fs-auth-alert-info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #bfdbfe;
+}
+.fs-auth-alert-info .fs-auth-alert-icon-col {
+  color: #3b82f6;
+}
+
+/* Security Tag in modal */
+.fs-forgot-security-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #161616;
+  border: 1px solid #282828;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: #aaaaaa;
+  font-weight: 500;
+  align-self: flex-start;
+}

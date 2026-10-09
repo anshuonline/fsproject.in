@@ -144,3 +144,87 @@
   letter-spacing: 0.05em;
   font-weight: 600;
 }
+
+/* Smart Auth Alert Cards (Spotify AMOLED Style) */
+.fs-auth-smart-alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 12px);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  animation: fsAlertFadeIn 0.25s ease-out;
+}
+
+@keyframes fsAlertFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fs-auth-alert-icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fs-auth-alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.fs-auth-alert-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.fs-auth-alert-text {
+  font-size: 0.8125rem;
+  color: #cccccc;
+  margin: 0;
+}
+
+.fs-auth-alert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 999px;
+  margin-top: 4px;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+/* Alert Variants */
+.fs-auth-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fde68a;
+}
+.fs-auth-alert-warning .fs-auth-alert-icon-col {
+  color: #f59e0b;
+}
+
+.fs-auth-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+.fs-auth-alert-danger .fs-auth-alert-icon-col,
+.fs-auth-alert-danger > svg {
+  color: #ef4444;
+}
