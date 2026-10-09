@@ -71,6 +71,7 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
       setSelectedArtists(current?.artists || []);
       setStep(1);
       setSearchQuery('');
+      setActiveCategory('All');
     }
   }, [isOpen]);
 
@@ -260,42 +261,58 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
               </div>
 
               {/* Grid of Artist Circles */}
-              <div className="fs-artists-circle-grid">
-                {filteredArtists.map((artist) => {
-                  const isSelected = selectedArtists.includes(artist.name);
-                  return (
-                    <div
-                      key={artist.id}
-                      className={`fs-artist-spotify-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => toggleArtist(artist.name)}
-                    >
-                      <div className="fs-artist-circle-wrap">
-                        <img
-                          src={artist.image}
-                          alt={artist.name}
-                          className="fs-artist-circle-img"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = getArtistAvatarFallback(artist.name);
-                          }}
-                        />
-                        {isSelected && (
-                          <div className="fs-artist-check-pill">
-                            <Check size={13} strokeWidth={3} />
-                          </div>
-                        )}
+              {filteredArtists.length === 0 ? (
+                <div className="fs-artists-empty">
+                  <p>No artists found matching "{searchQuery}"</p>
+                  <button
+                    className="btn btn-secondary fs-back-pill-btn"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setActiveCategory('All');
+                    }}
+                  >
+                    Reset filters
+                  </button>
+                </div>
+              ) : (
+                <div className="fs-artists-circle-grid">
+                  {filteredArtists.map((artist) => {
+                    const isSelected = selectedArtists.includes(artist.name);
+                    return (
+                      <div
+                        key={artist.id}
+                        className={`fs-artist-spotify-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleArtist(artist.name)}
+                      >
+                        <div className="fs-artist-circle-wrap">
+                          <img
+                            src={artist.image}
+                            alt={artist.name}
+                            className="fs-artist-circle-img"
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = getArtistAvatarFallback(artist.name);
+                            }}
+                          />
+                          {isSelected && (
+                            <div className="fs-artist-check-pill">
+                              <Check size={13} strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+                        <span className="fs-artist-circle-name truncate" title={artist.name}>
+                          {artist.name}
+                        </span>
+                        <span className="fs-artist-circle-genre truncate" title={artist.genre}>
+                          {artist.genre}
+                        </span>
                       </div>
-                      <span className="fs-artist-circle-name truncate" title={artist.name}>
-                        {artist.name}
-                      </span>
-                      <span className="fs-artist-circle-genre truncate">
-                        {artist.genre}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
