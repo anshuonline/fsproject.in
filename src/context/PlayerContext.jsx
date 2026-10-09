@@ -246,6 +246,13 @@ export function PlayerProvider({ children }) {
     } else if (event.data === 2) {
       setIsPlaying(false);
       setIsLoading(false);
+      // Browser-forced pause while page is hidden (mobile background) → auto-resume once
+      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (isHidden && !isTransitioningRef.current && !crossfadeRampRef.current) {
+        setTimeout(() => {
+          try { event.target.playVideo(); } catch (e) {}
+        }, 400);
+      }
     } else if (event.data === 3) {
       setIsLoading(true);
     } else if (event.data === 0) {
