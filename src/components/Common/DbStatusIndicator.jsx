@@ -168,6 +168,16 @@ export function DbStatusIndicator() {
 
                 <div className="fs-db-stat-card">
                   <div className="fs-db-stat-label">
+                    <Database size={12} />
+                    <span>User Preferences</span>
+                  </div>
+                  <div className="fs-db-stat-val">
+                    {status?.stats?.preferences ?? 0}
+                  </div>
+                </div>
+
+                <div className="fs-db-stat-card">
+                  <div className="fs-db-stat-label">
                     <Activity size={12} />
                     <span>Ping Latency</span>
                   </div>

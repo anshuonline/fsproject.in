@@ -38,6 +38,23 @@ export function AuthProvider({ children }) {
     }
   }, [user?.email]);
 
+  // Sync taste preferences with Hostinger Cloud MySQL
+  useEffect(() => {
+    if (user?.email || user?.dbId) {
+      const identifier = user.dbId || user.email || user.id;
+      api.getUserPreferences(identifier).then((cloudPrefs) => {
+        if (cloudPrefs && (cloudPrefs.genres?.length || cloudPrefs.artists?.length)) {
+          storage.savePreferences(cloudPrefs);
+        } else {
+          const localPrefs = storage.getPreferences();
+          if (localPrefs && (localPrefs.genres?.length || localPrefs.artists?.length)) {
+            api.saveUserPreferences(identifier, localPrefs, user.email).catch(console.warn);
+          }
+        }
+      }).catch(console.warn);
+    }
+  }, [user?.email, user?.dbId]);
+
   // Listen to Firebase auth state changes (restores Google session automatically)
   useEffect(() => {
     if (!auth) return;

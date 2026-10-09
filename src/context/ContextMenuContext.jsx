@@ -157,7 +157,13 @@ export function useContextMenu() {
 export function useToast() {
   const context = useContext(ContextMenuContext);
   if (!context) {
-    throw new Error('useToast must be used within a ContextMenuProvider');
+    return {
+      showToast: (msg, type = 'info') => {
+        if (typeof console !== 'undefined') console.log(`[Toast ${type}]:`, msg);
+      },
+      removeToast: () => {},
+      toasts: []
+    };
   }
   return {
     showToast: context.showToast,

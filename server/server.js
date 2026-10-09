@@ -1001,6 +1001,8 @@ app.get('/api/db/status', async (req, res) => {
     const [usersRes] = await query('SELECT COUNT(*) as count FROM users');
     const [likesRes] = await query('SELECT COUNT(*) as count FROM user_likes');
     const [historyRes] = await query('SELECT COUNT(*) as count FROM user_play_history');
+    const [prefsRes] = await query('SELECT COUNT(*) as count FROM user_preferences');
+    const [playlistsRes] = await query('SELECT COUNT(*) as count FROM user_playlists');
     const [logsRes] = await query('SELECT COUNT(*) as count FROM user_login_logs');
 
     res.json({
@@ -1014,6 +1016,8 @@ app.get('/api/db/status', async (req, res) => {
         users: Number(usersRes?.count || 0),
         likes: Number(likesRes?.count || 0),
         history: Number(historyRes?.count || 0),
+        preferences: Number(prefsRes?.count || 0),
+        playlists: Number(playlistsRes?.count || 0),
         logins: Number(logsRes?.count || 0)
       },
       timestamp: new Date().toISOString()
@@ -1233,6 +1237,221 @@ app.delete('/api/user/likes', async (req, res) => {
     res.json({ success: true, userId: resolvedUserId });
   } catch (err) {
     console.warn('Like delete error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch Sync Likes (Syncs all local liked songs to Hostinger MySQL in one go)
+app.post('/api/user/likes/batch', async (req, res) => {
+  const { userId, email, songs } = req.body;
+  if (!Array.isArray(songs) || songs.length === 0) {
+    return res.json({ success: true, count: 0, likes: [] });
+  }
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    for (const s of songs) {
+      if (!s?.videoId) continue;
+      await query(`
+        INSERT INTO user_likes (user_id, video_id, title, artist, album, thumbnail, duration, duration_text, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          title = VALUES(title),
+          artist = VALUES(artist),
+          thumbnail = VALUES(thumbnail)
+      `, [
+        resolvedUserId,
+        s.videoId,
+        s.title || 'Unknown Title',
+        s.artist || 'Unknown Artist',
+        s.album || '',
+        s.thumbnail || '',
+        s.duration || 0,
+        s.durationText || ''
+      ]);
+    }
+
+    const allLikes = await query(
+      'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, created_at as likedAt FROM user_likes WHERE user_id = ? ORDER BY created_at DESC',
+      [resolvedUserId]
+    );
+
+    res.json({ success: true, count: allLikes.length, likes: allLikes });
+  } catch (err) {
+    console.warn('Batch likes sync error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── User Preferences Endpoints ───────────────────────────────────────────────
+
+app.get('/api/user/:userId/preferences', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const resolvedUserId = await resolveUserId(userId);
+    if (!resolvedUserId) return res.json({ preferences: null });
+
+    const rows = await query('SELECT * FROM user_preferences WHERE user_id = ?', [resolvedUserId]);
+    if (rows.length === 0) return res.json({ preferences: null });
+
+    const p = rows[0];
+    let genres = [];
+    let artists = [];
+    if (Array.isArray(p.selected_genres)) {
+      genres = p.selected_genres;
+    } else {
+      try { genres = JSON.parse(p.selected_genres || '[]'); } catch { genres = []; }
+    }
+    if (Array.isArray(p.selected_artists)) {
+      artists = p.selected_artists;
+    } else {
+      try { artists = JSON.parse(p.selected_artists || '[]'); } catch { artists = []; }
+    }
+
+    res.json({
+      preferences: {
+        genres,
+        artists,
+        volume: Number(p.volume || 0.8),
+        theme: p.theme || 'amoled-black',
+        autoplay: Boolean(p.autoplay),
+        updatedAt: p.updated_at
+      }
+    });
+  } catch (err) {
+    console.warn('Get preferences error:', err.message);
+    res.status(500).json({ preferences: null });
+  }
+});
+
+app.post('/api/user/preferences', async (req, res) => {
+  const { userId, email, genres, artists, volume, theme, autoplay } = req.body;
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    const genresJson = JSON.stringify(Array.isArray(genres) ? genres : []);
+    const artistsJson = JSON.stringify(Array.isArray(artists) ? artists : []);
+    const vol = typeof volume === 'number' ? volume : 0.8;
+    const thm = theme || 'amoled-black';
+    const auto = autoplay !== undefined ? (autoplay ? 1 : 0) : 1;
+
+    await query(`
+      INSERT INTO user_preferences (user_id, selected_genres, selected_artists, volume, theme, autoplay, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE
+        selected_genres = VALUES(selected_genres),
+        selected_artists = VALUES(selected_artists),
+        volume = VALUES(volume),
+        theme = VALUES(theme),
+        autoplay = VALUES(autoplay),
+        updated_at = NOW()
+    `, [resolvedUserId, genresJson, artistsJson, vol, thm, auto]);
+
+    res.json({ success: true, userId: resolvedUserId });
+  } catch (err) {
+    console.warn('Save preferences error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Custom Playlists Endpoints ───────────────────────────────────────────────
+
+app.get('/api/user/:userId/playlists', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const resolvedUserId = await resolveUserId(userId);
+    if (!resolvedUserId) return res.json({ playlists: [] });
+
+    const playlists = await query(
+      'SELECT id, name, description, is_public as isPublic, cover_url as coverImage, created_at as createdAt, updated_at as updatedAt FROM user_playlists WHERE user_id = ? ORDER BY id DESC',
+      [resolvedUserId]
+    );
+
+    const fullPlaylists = [];
+    for (const pl of playlists) {
+      const songs = await query(
+        'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText FROM user_playlist_songs WHERE playlist_id = ? ORDER BY sort_order ASC, id ASC',
+        [pl.id]
+      );
+      fullPlaylists.push({
+        id: `pl-${pl.id}`,
+        dbId: pl.id,
+        name: pl.name,
+        description: pl.description || '',
+        coverImage: pl.coverImage,
+        tracksCount: songs.length,
+        songs,
+        updatedAt: 'Just now'
+      });
+    }
+
+    res.json({ playlists: fullPlaylists });
+  } catch (err) {
+    console.warn('Get playlists error:', err.message);
+    res.status(500).json({ playlists: [] });
+  }
+});
+
+app.post('/api/user/playlists/sync', async (req, res) => {
+  const { userId, email, playlists } = req.body;
+  if (!Array.isArray(playlists)) return res.status(400).json({ error: 'Playlists array required' });
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    for (const pl of playlists) {
+      if (!pl.name) continue;
+      let plId = pl.dbId;
+      if (!plId) {
+        const existing = await query('SELECT id FROM user_playlists WHERE user_id = ? AND name = ? LIMIT 1', [resolvedUserId, pl.name.trim()]);
+        if (existing.length > 0) {
+          plId = existing[0].id;
+        } else {
+          const insertRes = await query(
+            'INSERT INTO user_playlists (user_id, name, description, cover_url, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+            [resolvedUserId, pl.name.trim(), pl.description || '', pl.coverImage || null]
+          );
+          plId = insertRes.insertId;
+        }
+      }
+
+      if (plId && Array.isArray(pl.songs)) {
+        await query('DELETE FROM user_playlist_songs WHERE playlist_id = ?', [plId]);
+        for (let i = 0; i < pl.songs.length; i++) {
+          const s = pl.songs[i];
+          if (!s?.videoId) continue;
+          await query(`
+            INSERT INTO user_playlist_songs (playlist_id, video_id, title, artist, album, thumbnail, duration, duration_text, sort_order, added_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `, [
+            plId,
+            s.videoId,
+            s.title || 'Unknown Title',
+            s.artist || 'Unknown Artist',
+            s.album || '',
+            s.thumbnail || '',
+            s.duration || 0,
+            s.durationText || '',
+            i
+          ]);
+        }
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('Playlist sync error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

@@ -3,16 +3,57 @@ import {
   Check,
   Search,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   Music,
-  Users,
+  Film,
+  Flame,
+  Activity,
+  Zap,
+  Heart,
+  Disc,
+  Volume2,
+  Coffee,
+  Mic,
+  Headphones,
+  Radio,
+  BookOpen,
+  Sliders,
+  Moon,
+  Compass,
   X
 } from 'lucide-react';
 import { TOP_100_ARTISTS, GENRES_LIST } from '../../data/artistsData';
 import { storage } from '../../services/storage';
+import { api } from '../../services/api';
 import { useToast } from '../../context/ContextMenuContext';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './OnboardingModal.css';
+
+const GENRE_ICON_COMPONENTS = {
+  Film,
+  Flame,
+  Activity,
+  Zap,
+  Heart,
+  Music,
+  Disc,
+  Volume2,
+  Coffee,
+  Mic,
+  Headphones,
+  Radio,
+  Sparkles,
+  BookOpen,
+  Sliders,
+  Moon,
+  Compass
+};
+
+function renderGenreIcon(iconName) {
+  const IconComp = GENRE_ICON_COMPONENTS[iconName] || Music;
+  return <IconComp size={24} className="fs-genre-spotify-svg" />;
+}
 
 export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const { showToast } = useToast();
@@ -22,7 +63,7 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  // Re-sync with current preferences whenever modal is reopened
+  // Re-sync with current preferences whenever modal is opened
   useEffect(() => {
     if (isOpen) {
       const current = storage.getPreferences();
@@ -57,7 +98,7 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
 
   const handleFinish = () => {
     if (selectedGenres.length === 0) {
-      showToast('Please select at least 1 genre', 'error');
+      showToast('Please select at least 1 genre to continue', 'error');
       setStep(1);
       return;
     }
@@ -72,6 +113,13 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
       updatedAt: new Date().toISOString()
     };
     storage.savePreferences(preferences);
+
+    // Save to Hostinger Cloud MySQL
+    const currentUser = storage.getUser();
+    if (currentUser?.email || currentUser?.dbId) {
+      api.saveUserPreferences(currentUser.dbId || currentUser.email || currentUser.id, preferences, currentUser.email).catch(console.warn);
+    }
+
     showToast('Taste profile personalized successfully!', 'success');
     if (onComplete) onComplete(preferences);
   };
@@ -102,61 +150,79 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
 
   return (
     <div className="fs-onboarding-backdrop">
-      <div className="fs-onboarding-modal">
-        {/* Header */}
+      <div className="fs-onboarding-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Spotify-style Top Stepper Progress Line */}
+        <div className="fs-onboarding-progress-track">
+          <div className={`fs-onboarding-progress-bar ${step >= 1 ? 'active' : ''}`} />
+          <div className={`fs-onboarding-progress-bar ${step >= 2 ? 'active' : ''}`} />
+        </div>
+
+        {/* Modal Header (No Close Button - Mandatory Selection) */}
         <div className="fs-onboarding-header">
           <div className="fs-onboarding-brand">
             <img src="/images/freesonglogowebp.webp" alt="FreeSong" className="fs-onboarding-logo" />
             <div className="fs-onboarding-title-wrap">
-              <span className="fs-onboarding-step-badge">STEP {step} OF 2</span>
+              <div className="fs-onboarding-badge-row">
+                <span className="fs-onboarding-step-badge">
+                  STEP {step} OF 2 • {step === 1 ? 'PICK YOUR GENRES' : 'FAVORITE ARTISTS'}
+                </span>
+                <span className="fs-onboarding-counter-badge">
+                  {step === 1
+                    ? selectedGenres.length === 0
+                      ? 'Required: 1+'
+                      : `${selectedGenres.length} selected`
+                    : selectedArtists.length === 0
+                      ? 'Required: 1+'
+                      : `${selectedArtists.length} followed`}
+                </span>
+              </div>
               <h2 className="fs-onboarding-title">
                 {step === 1 ? 'What music do you love?' : 'Follow your favorite artists'}
               </h2>
               <p className="fs-onboarding-subtitle">
                 {step === 1
-                  ? 'Pick 3 or more genres to personalize your feed algorithm'
-                  : 'Select artists to tailor your daily mixes, playlists, and recommendations'}
+                  ? 'Choose genres you like to customize your recommendations and daily mixes'
+                  : 'Select artists to tailor your personalized algorithmic shelves'}
               </p>
             </div>
           </div>
-          {onClose && (
-            <button className="btn-icon fs-onboarding-close" onClick={onClose} aria-label="Close">
-              <X size={20} />
-            </button>
-          )}
         </div>
 
         {/* Modal Body */}
         <div className="fs-onboarding-body">
           {step === 1 ? (
-            /* ─── Step 1: Genres Grid ────────────────────────────────── */
+            /* ─── Step 1: Spotify-Style Vibrant Genre Tiles ───────────── */
             <div className="fs-onboarding-genres-grid">
-              {GENRES_LIST.map(genre => {
+              {GENRES_LIST.map((genre) => {
                 const isSelected = selectedGenres.includes(genre.id);
                 return (
                   <div
                     key={genre.id}
-                    className={`fs-genre-select-card ${isSelected ? 'selected' : ''}`}
+                    className={`fs-genre-spotify-card ${isSelected ? 'selected' : ''}`}
                     style={{
-                      borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
-                      backgroundColor: isSelected ? 'rgba(0, 200, 83, 0.12)' : 'var(--color-card)'
+                      background: `linear-gradient(135deg, ${genre.color} 0%, rgba(18, 18, 18, 0.94) 115%)`
                     }}
                     onClick={() => toggleGenre(genre.id)}
                   >
-                    <div
-                      className="fs-genre-dot"
-                      style={{ backgroundColor: genre.color }}
-                    />
-                    <span className="fs-genre-label">{genre.name}</span>
-                    <div className="fs-genre-check">
-                      {isSelected ? <Check size={14} className="text-brand" /> : null}
+                    <div className="fs-genre-card-top">
+                      <span className="fs-genre-spotify-name">{genre.name}</span>
+                      {isSelected && (
+                        <div className="fs-genre-check-pill">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="fs-genre-card-bottom">
+                      <div className="fs-genre-icon-bubble">
+                        {renderGenreIcon(genre.icon)}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            /* ─── Step 2: 100 Artists Grid with Spotify Pictures ─────── */
+            /* ─── Step 2: 100 Artists Grid with Spotify Styling ───────── */
             <div className="fs-onboarding-artists-container">
               {/* Search and Filters */}
               <div className="fs-artists-toolbar">
@@ -169,13 +235,22 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="fs-artists-search-input"
                   />
+                  {searchQuery && (
+                    <button
+                      className="btn-icon fs-search-clear-btn"
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="fs-artists-cat-chips">
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <button
                       key={cat}
-                      className={`filter-chip ${activeCategory === cat ? 'active' : ''}`}
+                      className={`fs-cat-chip ${activeCategory === cat ? 'active' : ''}`}
                       onClick={() => setActiveCategory(cat)}
                     >
                       {cat}
@@ -186,12 +261,12 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
 
               {/* Grid of Artist Circles */}
               <div className="fs-artists-circle-grid">
-                {filteredArtists.map(artist => {
+                {filteredArtists.map((artist) => {
                   const isSelected = selectedArtists.includes(artist.name);
                   return (
                     <div
                       key={artist.id}
-                      className={`fs-artist-circle-card ${isSelected ? 'selected' : ''}`}
+                      className={`fs-artist-spotify-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => toggleArtist(artist.name)}
                     >
                       <div className="fs-artist-circle-wrap">
@@ -206,8 +281,8 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
                           }}
                         />
                         {isSelected && (
-                          <div className="fs-artist-circle-badge">
-                            <Check size={16} />
+                          <div className="fs-artist-check-pill">
+                            <Check size={13} strokeWidth={3} />
                           </div>
                         )}
                       </div>
@@ -227,27 +302,41 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
 
         {/* Modal Footer Controls */}
         <div className="fs-onboarding-footer">
-          <div className="fs-onboarding-stats">
-            {step === 1 ? (
-              <span>{selectedGenres.length} genres chosen</span>
-            ) : (
-              <span>{selectedArtists.length} artists followed</span>
+          <div className="fs-onboarding-footer-left">
+            {step === 2 && (
+              <button
+                className="btn btn-secondary fs-back-pill-btn"
+                onClick={() => setStep(1)}
+              >
+                <ArrowLeft size={16} />
+                <span>Back</span>
+              </button>
             )}
+            <div className="fs-onboarding-stats-note">
+              {step === 1 ? (
+                selectedGenres.length === 0 ? (
+                  <span className="text-muted">Select at least 1 genre to continue</span>
+                ) : (
+                  <span className="text-brand-light">
+                    {selectedGenres.length} genre{selectedGenres.length === 1 ? '' : 's'} selected
+                  </span>
+                )
+              ) : selectedArtists.length === 0 ? (
+                <span className="text-muted">Select at least 1 artist to complete</span>
+              ) : (
+                <span className="text-brand-light">
+                  {selectedArtists.length} artist{selectedArtists.length === 1 ? '' : 's'} followed
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="fs-onboarding-actions">
-            {step === 2 && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setStep(1)}
-              >
-                Back to Genres
-              </button>
-            )}
-
             {step === 1 ? (
               <button
-                className="btn btn-primary"
+                className={`btn btn-primary fs-continue-pill-btn ${
+                  selectedGenres.length === 0 ? 'btn-dimmed' : ''
+                }`}
                 onClick={handleContinueToArtists}
               >
                 <span>Continue to Artists</span>
@@ -255,11 +344,13 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
               </button>
             ) : (
               <button
-                className="btn btn-primary fs-finish-btn"
+                className={`btn btn-primary fs-finish-pill-btn ${
+                  selectedArtists.length === 0 ? 'btn-dimmed' : ''
+                }`}
                 onClick={handleFinish}
               >
                 <Sparkles size={16} />
-                <span>Start Listening & Personalize</span>
+                <span>Start Listening</span>
               </button>
             )}
           </div>

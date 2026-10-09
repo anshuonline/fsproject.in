@@ -248,6 +248,87 @@ export const api = {
       console.warn('getUserHistory API error:', err);
       return [];
     }
+  },
+
+  async syncUserLikes(userId, songs, email = null) {
+    if (!Array.isArray(songs) || songs.length === 0) return [];
+    try {
+      const res = await fetch(`${API_BASE}/user/likes/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, songs })
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.likes || [];
+    } catch (err) {
+      console.warn('syncUserLikes API error:', err);
+      return [];
+    }
+  },
+
+  async getUserPreferences(userId) {
+    if (!userId) return null;
+    try {
+      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/preferences`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.preferences || null;
+    } catch (err) {
+      console.warn('getUserPreferences API error:', err);
+      return null;
+    }
+  },
+
+  async saveUserPreferences(userId, prefs, email = null) {
+    if (!prefs) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email,
+          genres: prefs.genres || [],
+          artists: (prefs.artists || []).map(a => typeof a === 'string' ? a : a.name),
+          volume: prefs.volume,
+          theme: prefs.theme,
+          autoplay: prefs.autoplay
+        })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('saveUserPreferences API error:', err);
+      return false;
+    }
+  },
+
+  async getUserPlaylists(userId) {
+    if (!userId) return [];
+    try {
+      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/playlists`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.playlists || [];
+    } catch (err) {
+      console.warn('getUserPlaylists API error:', err);
+      return [];
+    }
+  },
+
+  async syncUserPlaylists(userId, playlists, email = null) {
+    if (!Array.isArray(playlists)) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/playlists/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, playlists })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('syncUserPlaylists API error:', err);
+      return false;
+    }
   }
 };
 

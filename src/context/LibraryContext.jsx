@@ -20,50 +20,72 @@ export function LibraryProvider({ children }) {
     storage.savePlaylists(playlists);
   }, [playlists]);
 
-  // Sync likes from Hostinger MySQL cloud when user logs in or dbId resolves
+  // Sync likes and playlists from Hostinger MySQL cloud when user logs in or dbId resolves
   useEffect(() => {
-    if (user?.email || user?.dbId) {
-      const identifier = user.dbId || user.email || user.id;
+    const currentUser = user || storage.getUser();
+    if (!currentUser?.email && !currentUser?.dbId) return;
+
+    const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+
+    // 1. Batch sync local likes to cloud first, then pull full cloud likes
+    const localLikes = storage.getLikedSongs();
+    if (Array.isArray(localLikes) && localLikes.length > 0) {
+      api.syncUserLikes(identifier, localLikes, currentUser.email).then((cloudLikes) => {
+        if (Array.isArray(cloudLikes) && cloudLikes.length > 0) {
+          setLikedSongs(cloudLikes);
+          storage.saveLikedSongs(cloudLikes);
+        }
+      }).catch(console.warn);
+    } else {
       api.getUserLikes(identifier).then((cloudLikes) => {
         if (Array.isArray(cloudLikes) && cloudLikes.length > 0) {
-          setLikedSongs((localLikes) => {
-            const map = new Map();
-            // Local likes first
-            (localLikes || []).forEach(s => {
-              if (s?.videoId) map.set(s.videoId, s);
-            });
-            // Merge in cloud likes
-            cloudLikes.forEach(s => {
-              if (s?.videoId && !map.has(s.videoId)) {
-                map.set(s.videoId, s);
-              }
-            });
-            const merged = Array.from(map.values());
-            storage.saveLikedSongs(merged);
-            return merged;
-          });
+          setLikedSongs(cloudLikes);
+          storage.saveLikedSongs(cloudLikes);
         }
-      }).catch(err => {
-        console.warn('Could not sync cloud likes:', err);
-      });
+      }).catch(console.warn);
     }
+
+    // 2. Playlists sync
+    const localPlaylists = storage.getPlaylists();
+    if (Array.isArray(localPlaylists) && localPlaylists.length > 0) {
+      api.syncUserPlaylists(identifier, localPlaylists, currentUser.email).catch(console.warn);
+    }
+    api.getUserPlaylists(identifier).then((cloudPlaylists) => {
+      if (Array.isArray(cloudPlaylists) && cloudPlaylists.length > 0) {
+        setPlaylists((prev) => {
+          const map = new Map();
+          (prev || []).forEach(p => map.set(p.name, p));
+          cloudPlaylists.forEach(p => {
+            if (!map.has(p.name)) map.set(p.name, p);
+          });
+          const merged = Array.from(map.values());
+          storage.savePlaylists(merged);
+          return merged;
+        });
+      }
+    }).catch(console.warn);
   }, [user?.email, user?.dbId]);
 
   const toggleLike = (song) => {
     if (!song || !song.videoId) return;
 
+    const currentUser = user || storage.getUser();
     const exists = likedSongs.some(s => s.videoId === song.videoId);
 
     if (exists) {
-      setLikedSongs(prev => prev.filter(s => s.videoId !== song.videoId));
-      if (user?.email || user?.dbId) {
-        api.removeLike(user.dbId || user.email || user.id, song.videoId, user.email).catch(console.warn);
+      const updated = likedSongs.filter(s => s.videoId !== song.videoId);
+      setLikedSongs(updated);
+      storage.saveLikedSongs(updated);
+      if (currentUser?.email || currentUser?.dbId) {
+        api.removeLike(currentUser.dbId || currentUser.email || currentUser.id, song.videoId, currentUser.email).catch(console.warn);
       }
     } else {
       const newSong = { ...song, likedAt: new Date().toISOString() };
-      setLikedSongs(prev => [newSong, ...prev]);
-      if (user?.email || user?.dbId) {
-        api.addLike(user.dbId || user.email || user.id, newSong, user.email).catch(console.warn);
+      const updated = [newSong, ...likedSongs];
+      setLikedSongs(updated);
+      storage.saveLikedSongs(updated);
+      if (currentUser?.email || currentUser?.dbId) {
+        api.addLike(currentUser.dbId || currentUser.email || currentUser.id, newSong, currentUser.email).catch(console.warn);
       }
     }
   };
