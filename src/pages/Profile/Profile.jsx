@@ -176,8 +176,7 @@ export function Profile() {
             </div>
             <div>
               <h3>Connect or Create Account</h3>
-              <p>Keep your playlists, liked songs, and listening history synchronized across devices.</p>
-            </div>
+              <p>Keep your playlists, liked songs, and listening history synchronized across devices.</p>            </div>
           </div>
           <div className="fs-guest-actions">
             <Link to="/login" className="btn btn-secondary">
@@ -226,7 +225,8 @@ export function Profile() {
             <Sparkles size={18} className="text-brand" />
           </div>
           <div className="fs-stat-meta">
-            <span className="fs-stat-number">{formatCompactNumber(Math.max(totalPlays ?? 0, history.length))}</span>
+            {/* DB lifetime counter only — local history is capped at 100 and must never cap this stat */}
+            <span className="fs-stat-number">{formatCompactNumber(totalPlays ?? history.length ?? 0)}</span>
             <span className="fs-stat-label">Streamed</span>
           </div>
         </div>

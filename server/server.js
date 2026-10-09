@@ -1843,49 +1843,42 @@ app.get('/api/user/stats', async (req, res) => {
       const uidRows = await query('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1', [String(userId)]).catch(() => []);
       if (uidRows && uidRows.length > 0) resolvedUserId = uidRows[0].id;
     }
+    if (!resolvedUserId && email) {
+      const emailRows = await query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]).catch(() => []);
+      if (emailRows && emailRows.length > 0) resolvedUserId = emailRows[0].id;
+    }
+    if (!resolvedUserId) return res.json({ totalPlays: 0 });
 
-    const counts = [];
+    // 1. total_plays column = true lifetime counter (incremented 1+1+ on every play, never trimmed)
+    let total = 0;
+    const statRows = await query('SELECT total_plays FROM users WHERE id = ? LIMIT 1', [resolvedUserId]).catch(() => []);
+    if (statRows && statRows.length > 0 && statRows[0].total_plays != null) {
+      total = Number(statRows[0].total_plays) || 0;
+    }
 
-    // 1. Legacy total_plays column on users table (if present)
+    // 2. Self-heal from analytics stream log (untrimmed lifetime count since tracking began):
+    //    if analytics has more plays than the counter, seed the counter up so per-play
+    //    increments continue from the true lifetime total
     try {
-      let rows = [];
-      if (resolvedUserId) {
-        rows = await query('SELECT total_plays FROM users WHERE id = ? LIMIT 1', [resolvedUserId]).catch(() => []);
-      }
-      if ((!rows || rows.length === 0) && email) {
-        rows = await query('SELECT total_plays FROM users WHERE email = ? LIMIT 1', [email]).catch(() => []);
-      }
-      if (rows && rows.length > 0 && rows[0].total_plays != null) {
-        counts.push(Number(rows[0].total_plays));
-      }
-    } catch {}
-
-    // 2. Lifetime plays from the analytics stream log (untrimmed, per user)
-    try {
-      const visitorIds = new Set();
-      if (resolvedUserId) visitorIds.add(`usr_${resolvedUserId}`);
+      const visitorIds = new Set([`usr_${resolvedUserId}`]);
       if (email) {
         visitorIds.add(String(email));
         visitorIds.add(String(email).toLowerCase());
       }
-      if (visitorIds.size > 0) {
-        const ids = Array.from(visitorIds);
-        const placeholders = ids.map(() => '?').join(', ');
-        const rows = await query(
-          `SELECT COUNT(*) AS c FROM analytics_plays WHERE visitor_id IN (${placeholders})`,
-          ids
-        ).catch(() => []);
-        if (rows && rows.length > 0) counts.push(Number(rows[0].c));
+      const ids = Array.from(visitorIds);
+      const placeholders = ids.map(() => '?').join(', ');
+      const analyticsRows = await query(
+        `SELECT COUNT(*) AS c FROM analytics_plays WHERE visitor_id IN (${placeholders})`,
+        ids
+      ).catch(() => []);
+      const analyticsCount = Number(analyticsRows?.[0]?.c) || 0;
+      if (analyticsCount > total) {
+        total = analyticsCount;
+        await query('UPDATE users SET total_plays = ? WHERE id = ?', [total, resolvedUserId]).catch(() => {});
       }
     } catch {}
 
-    // 3. Play history count fallback (capped at 100 rows per user)
-    if (resolvedUserId) {
-      const rows = await query('SELECT COUNT(*) AS c FROM user_play_history WHERE user_id = ?', [resolvedUserId]).catch(() => []);
-      if (rows && rows.length > 0) counts.push(Number(rows[0].c));
-    }
-
-    res.json({ totalPlays: counts.length > 0 ? Math.max(...counts) : 0 });
+    res.json({ totalPlays: total });
   } catch (err) {
     console.warn('User stats error:', err.message);
     res.json({ totalPlays: 0 });
