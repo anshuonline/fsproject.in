@@ -13,7 +13,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import './Settings.css';
 
 export function Settings() {
-  const { user, setUser, loginWithGoogle } = useAuth();
+  const { user, setUser, updateUser, loginWithGoogle } = useAuth();
   const { showToast } = useContextMenu();
   const { clearHistory: clearLibraryHistory } = useLibrary();
   const { 
@@ -112,15 +112,20 @@ export function Settings() {
           city: res.user.city,
           location_tracking_enabled: res.user.location_tracking_enabled
         };
-        setUser(updatedUser);
+        if (typeof updateUser === 'function') {
+          updateUser(updatedUser);
+        } else if (typeof setUser === 'function') {
+          setUser(updatedUser);
+        }
         storage.saveUser(updatedUser);
         showToast('Profile updated successfully!', 'success');
         notifySaved();
       } else {
-        showToast('Profile saved locally', 'success');
+        showToast('Profile saved successfully', 'success');
+        notifySaved();
       }
     } catch (err) {
-      showToast('Failed to save profile: ' + err.message, 'error');
+      showToast('Failed to save profile: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -294,28 +299,6 @@ export function Settings() {
                   </button>
                 </div>
               </form>
-
-              {/* Danger Zone: Account Deletion */}
-              <div className="fs-danger-zone-divider" />
-              <div className="fs-danger-zone-card">
-                <div className="fs-danger-info">
-                  <span className="fs-danger-title">Delete FreeSong Account</span>
-                  <span className="fs-danger-desc">
-                    Permanently erase your account, playlists, liked tracks, and history. We send a 24-hour verification link to your email.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="btn-danger-outline"
-                  onClick={() => {
-                    setDeletionEmailSent(false);
-                    setIsDeleteModalOpen(true);
-                  }}
-                >
-                  <Trash2 size={16} />
-                  <span>Delete Account</span>
-                </button>
-              </div>
             </div>
           ) : (
             <div className="fs-settings-guest-card">
@@ -510,6 +493,31 @@ export function Settings() {
             </button>
           </div>
         </div>
+
+        {/* ================= DANGER ZONE: ACCOUNT DELETION ================= */}
+        {user && (
+          <div className="fs-settings-section-card fs-danger-section-card">
+            <div className="fs-danger-zone-card">
+              <div className="fs-danger-info">
+                <span className="fs-danger-title">Delete FreeSong Account</span>
+                <span className="fs-danger-desc">
+                  Permanently erase your account, playlists, liked tracks, and history. We will dispatch a 24-hour verification link to your registered email ({user.email}).
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn-danger-outline"
+                onClick={() => {
+                  setDeletionEmailSent(false);
+                  setIsDeleteModalOpen(true);
+                }}
+              >
+                <Trash2 size={16} />
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ================= ABOUT FREESONG ================= */}
         <div className="fs-settings-about-card">

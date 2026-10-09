@@ -204,10 +204,12 @@ export const api = {
     }
   },
 
-  async getUserLikes(userId) {
-    if (!userId) return [];
+  async getUserLikes(userId, email = null) {
+    if (!userId && !email) return [];
     try {
-      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/likes`);
+      let url = `${API_BASE}/user/${encodeURIComponent(userId || email)}/likes`;
+      if (email) url += `?email=${encodeURIComponent(email)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       return data.likes || [];
@@ -357,10 +359,12 @@ export const api = {
     }
   },
 
-  async getUserPlaylists(userId) {
-    if (!userId) return [];
+  async getUserPlaylists(userId, email = null) {
+    if (!userId && !email) return [];
     try {
-      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/playlists`);
+      let url = `${API_BASE}/user/${encodeURIComponent(userId || email)}/playlists`;
+      if (email) url += `?email=${encodeURIComponent(email)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       return data.playlists || [];

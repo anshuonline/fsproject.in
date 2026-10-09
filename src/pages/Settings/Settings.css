@@ -369,10 +369,15 @@ input:checked + .fs-slider:before {
 }
 
 /* Danger Zone */
-.fs-danger-zone-divider {
-  height: 1px;
-  background-color: rgba(255, 255, 255, 0.08);
-  margin: 8px 0;
+.fs-danger-section-card {
+  border: 1px solid rgba(229, 57, 53, 0.25);
+  background-color: #121212;
+  padding: 16px 20px;
+  border-radius: 16px;
+}
+
+.fs-danger-section-card:hover {
+  border-color: rgba(229, 57, 53, 0.45);
 }
 
 .fs-danger-zone-card {
@@ -380,10 +385,9 @@ input:checked + .fs-slider:before {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background-color: rgba(229, 57, 53, 0.05);
-  border: 1px solid rgba(229, 57, 53, 0.25);
-  border-radius: 12px;
-  padding: 18px 20px;
+  background-color: transparent;
+  border: none;
+  padding: 0;
 }
 
 .fs-danger-info {

@@ -77,6 +77,9 @@ export function AuthProvider({ children }) {
         } catch {}
         setUser(profileData);
         storage.saveUser(profileData);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: profileData }));
+        }
       }
     });
 
@@ -102,6 +105,9 @@ export function AuthProvider({ children }) {
       } catch {}
       setUser(profile);
       storage.saveUser(profile);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: profile }));
+      }
       setIsGoogleModalOpen(false);
       return profile;
     }
@@ -130,6 +136,9 @@ export function AuthProvider({ children }) {
       } catch {}
       setUser(profileData);
       storage.saveUser(profileData);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: profileData }));
+      }
       setIsGoogleModalOpen(false);
       return profileData;
     } catch (error) {
@@ -157,6 +166,9 @@ export function AuthProvider({ children }) {
     } catch {}
     setUser(profileData);
     storage.saveUser(profileData);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: profileData }));
+    }
     return profileData;
   }, []);
 
@@ -169,6 +181,9 @@ export function AuthProvider({ children }) {
     }
     setUser(null);
     storage.clearUser();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fs_user_logged_out'));
+    }
   }, []);
 
   // Update existing user profile
@@ -186,6 +201,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    setUser,
     isAuthenticated: Boolean(user),
     loginWithGoogle,
     loginWithEmail,

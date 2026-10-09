@@ -20,42 +20,45 @@ export function LibraryProvider({ children }) {
     storage.savePlaylists(playlists);
   }, [playlists]);
 
-  // Sync likes and playlists from Hostinger MySQL cloud when user logs in or dbId resolves
-  useEffect(() => {
-    const currentUser = user || storage.getUser();
+  // Sync likes, playlists, and history from Hostinger MySQL cloud
+  const syncWithCloud = React.useCallback(async (targetUser = null) => {
+    const currentUser = targetUser || user || storage.getUser();
     if (!currentUser?.email && !currentUser?.dbId) return;
 
     const identifier = currentUser.dbId || currentUser.email || currentUser.id;
 
-    // 1. Batch sync local likes to cloud first, then pull full cloud likes
-    const localLikes = storage.getLikedSongs();
-    if (Array.isArray(localLikes) && localLikes.length > 0) {
-      api.syncUserLikes(identifier, localLikes, currentUser.email).then((cloudLikes) => {
+    // 1. Likes Sync
+    try {
+      const localLikes = storage.getLikedSongs();
+      if (Array.isArray(localLikes) && localLikes.length > 0) {
+        const cloudLikes = await api.syncUserLikes(identifier, localLikes, currentUser.email);
         if (Array.isArray(cloudLikes) && cloudLikes.length > 0) {
           setLikedSongs(cloudLikes);
           storage.saveLikedSongs(cloudLikes);
         }
-      }).catch(console.warn);
-    } else {
-      api.getUserLikes(identifier).then((cloudLikes) => {
+      } else {
+        const cloudLikes = await api.getUserLikes(identifier, currentUser.email);
         if (Array.isArray(cloudLikes) && cloudLikes.length > 0) {
           setLikedSongs(cloudLikes);
           storage.saveLikedSongs(cloudLikes);
         }
-      }).catch(console.warn);
+      }
+    } catch (e) {
+      console.warn('Likes sync notice:', e);
     }
 
-    // 2. Playlists sync
-    const localPlaylists = storage.getPlaylists();
-    if (Array.isArray(localPlaylists) && localPlaylists.length > 0) {
-      api.syncUserPlaylists(identifier, localPlaylists, currentUser.email).catch(console.warn);
-    }
-    api.getUserPlaylists(identifier).then((cloudPlaylists) => {
+    // 2. Playlists Sync
+    try {
+      const localPlaylists = storage.getPlaylists();
+      if (Array.isArray(localPlaylists) && localPlaylists.length > 0) {
+        await api.syncUserPlaylists(identifier, localPlaylists, currentUser.email).catch(() => {});
+      }
+      const cloudPlaylists = await api.getUserPlaylists(identifier, currentUser.email);
       if (Array.isArray(cloudPlaylists) && cloudPlaylists.length > 0) {
         setPlaylists((prev) => {
           const map = new Map();
-          (prev || []).forEach(p => map.set(p.name, p));
-          cloudPlaylists.forEach(p => {
+          cloudPlaylists.forEach(p => map.set(p.name, p));
+          (prev || []).forEach(p => {
             if (!map.has(p.name)) map.set(p.name, p);
           });
           const merged = Array.from(map.values());
@@ -63,29 +66,63 @@ export function LibraryProvider({ children }) {
           return merged;
         });
       }
-    }).catch(console.warn);
-
-    // 3. Play History sync (Batch upload local history first, then pull full cloud history)
-    const localHistory = storage.getHistory();
-    const deletedIds = storage.getDeletedHistoryIds();
-    if (Array.isArray(localHistory) && localHistory.length > 0) {
-      api.syncUserHistory(identifier, localHistory, currentUser.email).then((cloudHistory) => {
-        if (Array.isArray(cloudHistory)) {
-          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
-          setHistory(cleanHistory);
-          storage.saveHistory(cleanHistory);
-        }
-      }).catch(console.warn);
-    } else {
-      api.getUserHistory(identifier, currentUser.email).then((cloudHistory) => {
-        if (Array.isArray(cloudHistory)) {
-          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
-          setHistory(cleanHistory);
-          storage.saveHistory(cleanHistory);
-        }
-      }).catch(console.warn);
+    } catch (e) {
+      console.warn('Playlists sync notice:', e);
     }
-  }, [user?.email, user?.dbId]);
+
+    // 3. Play History Sync
+    try {
+      const localHistory = storage.getHistory();
+      const deletedIds = storage.getDeletedHistoryIds();
+      if (Array.isArray(localHistory) && localHistory.length > 0) {
+        const cloudHistory = await api.syncUserHistory(identifier, localHistory, currentUser.email);
+        if (Array.isArray(cloudHistory)) {
+          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
+          setHistory(cleanHistory);
+          storage.saveHistory(cleanHistory);
+        }
+      } else {
+        const cloudHistory = await api.getUserHistory(identifier, currentUser.email);
+        if (Array.isArray(cloudHistory)) {
+          const cleanHistory = cloudHistory.filter(s => !deletedIds.has(s.videoId || s.id));
+          setHistory(cleanHistory);
+          storage.saveHistory(cleanHistory);
+        }
+      }
+    } catch (e) {
+      console.warn('History sync notice:', e);
+    }
+  }, [user]);
+
+  // Trigger sync on user change
+  useEffect(() => {
+    if (user?.email || user?.dbId) {
+      syncWithCloud(user);
+    }
+  }, [user?.email, user?.dbId, syncWithCloud]);
+
+  // Real-time listener for login and logout events
+  useEffect(() => {
+    const handleLogin = (e) => {
+      syncWithCloud(e.detail || storage.getUser());
+    };
+    const handleLogout = () => {
+      setLikedSongs([]);
+      setPlaylists([]);
+      setHistory([]);
+      storage.saveLikedSongs([]);
+      storage.savePlaylists([]);
+      storage.clearHistory();
+    };
+
+    window.addEventListener('fs_user_logged_in', handleLogin);
+    window.addEventListener('fs_user_logged_out', handleLogout);
+
+    return () => {
+      window.removeEventListener('fs_user_logged_in', handleLogin);
+      window.removeEventListener('fs_user_logged_out', handleLogout);
+    };
+  }, [syncWithCloud]);
 
   const toggleLike = (song) => {
     if (!song || !song.videoId) return;
@@ -297,7 +334,8 @@ export function LibraryProvider({ children }) {
         addToHistory,
         removeFromHistory,
         refreshHistory,
-        clearHistory
+        clearHistory,
+        syncWithCloud
       }}
     >
       {children}

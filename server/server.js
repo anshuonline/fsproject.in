@@ -1369,7 +1369,7 @@ app.delete('/api/user/history/item', async (req, res) => {
 app.get('/api/user/:userId/likes', async (req, res) => {
   const { userId } = req.params;
   try {
-    const resolvedUserId = await resolveUserId(userId);
+    const resolvedUserId = await resolveUserId(userId, req.query.email);
     if (!resolvedUserId) return res.json({ likes: [] });
 
     const likes = await query(
@@ -1474,6 +1474,115 @@ app.post('/api/user/likes/batch', async (req, res) => {
     res.json({ success: true, count: allLikes.length, likes: allLikes });
   } catch (err) {
     console.warn('Batch likes sync error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User Playlists: Get and Sync
+app.get('/api/user/:userId/playlists', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const resolvedUserId = await resolveUserId(userId, req.query.email);
+    if (!resolvedUserId) return res.json({ playlists: [] });
+
+    const playlists = await query(
+      'SELECT id, name, description, is_public as isPublic, cover_url as coverUrl, created_at as createdAt FROM user_playlists WHERE user_id = ? ORDER BY id DESC',
+      [resolvedUserId]
+    );
+
+    const fullPlaylists = await Promise.all(playlists.map(async (pl) => {
+      const songs = await query(
+        'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText FROM user_playlist_songs WHERE playlist_id = ? ORDER BY sort_order ASC, id ASC',
+        [pl.id]
+      );
+      const firstThumb = songs[0]?.thumbnail || (songs[0]?.videoId ? `https://i.ytimg.com/vi/${songs[0].videoId}/hqdefault.jpg` : null);
+      return {
+        id: `pl-${pl.id}`,
+        name: pl.name,
+        title: pl.name,
+        description: pl.description || '',
+        coverImage: pl.coverUrl || firstThumb || null,
+        coverUrl: pl.coverUrl || firstThumb || null,
+        tracksCount: songs ? songs.length : 0,
+        songs: songs || []
+      };
+    }));
+
+    res.json({ playlists: fullPlaylists });
+  } catch (err) {
+    console.warn('Get playlists error:', err.message);
+    res.status(500).json({ playlists: [] });
+  }
+});
+
+app.post('/api/user/playlists/sync', async (req, res) => {
+  const { userId, email, playlists } = req.body;
+  if (!Array.isArray(playlists)) return res.json({ success: true, playlists: [] });
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) return res.status(404).json({ error: 'User not found in database' });
+
+    for (const pl of playlists) {
+      if (!pl?.name) continue;
+      const existing = await query('SELECT id FROM user_playlists WHERE user_id = ? AND name = ?', [resolvedUserId, pl.name]);
+      let playlistId;
+      if (existing && existing.length > 0) {
+        playlistId = existing[0].id;
+        if (pl.coverImage || pl.coverUrl || pl.description) {
+          await query('UPDATE user_playlists SET description = COALESCE(?, description), cover_url = COALESCE(?, cover_url) WHERE id = ?', [
+            pl.description || null, pl.coverImage || pl.coverUrl || null, playlistId
+          ]).catch(() => {});
+        }
+      } else {
+        const insertRes = await query(
+          'INSERT INTO user_playlists (user_id, name, description, cover_url, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+          [resolvedUserId, pl.name, pl.description || '', pl.coverImage || pl.coverUrl || null]
+        );
+        playlistId = insertRes.insertId;
+      }
+
+      if (Array.isArray(pl.songs) && pl.songs.length > 0) {
+        for (let i = 0; i < pl.songs.length; i++) {
+          const s = pl.songs[i];
+          if (!s?.videoId) continue;
+          await query(`
+            INSERT INTO user_playlist_songs (playlist_id, video_id, title, artist, album, thumbnail, duration, duration_text, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order), title = VALUES(title), artist = VALUES(artist), thumbnail = VALUES(thumbnail)
+          `, [
+            playlistId, s.videoId, s.title || '', s.artist || '', s.album || '', s.thumbnail || '', s.duration || 0, s.durationText || '', i
+          ]).catch(() => {});
+        }
+      }
+    }
+
+    const dbPlaylists = await query(
+      'SELECT id, name, description, is_public as isPublic, cover_url as coverUrl FROM user_playlists WHERE user_id = ? ORDER BY id DESC',
+      [resolvedUserId]
+    );
+
+    const fullPlaylists = await Promise.all(dbPlaylists.map(async (pl) => {
+      const songs = await query(
+        'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText FROM user_playlist_songs WHERE playlist_id = ? ORDER BY sort_order ASC, id ASC',
+        [pl.id]
+      );
+      const firstThumb = songs[0]?.thumbnail || (songs[0]?.videoId ? `https://i.ytimg.com/vi/${songs[0].videoId}/hqdefault.jpg` : null);
+      return {
+        id: `pl-${pl.id}`,
+        name: pl.name,
+        title: pl.name,
+        description: pl.description || '',
+        coverImage: pl.coverUrl || firstThumb || null,
+        coverUrl: pl.coverUrl || firstThumb || null,
+        tracksCount: songs ? songs.length : 0,
+        songs: songs || []
+      };
+    }));
+
+    res.json({ success: true, count: fullPlaylists.length, playlists: fullPlaylists });
+  } catch (err) {
+    console.warn('Sync playlists error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
