@@ -435,15 +435,20 @@ export function generateShelfPlan(preferences = {}, history = []) {
       });
 
       if (recentItem.artist) {
-        shelves.push({
-          id: 'shelf-history-artist-0',
-          eyebrow: `MORE FROM ${(recentItem.artist || '').toUpperCase()}`,
-          title: `More from ${recentItem.artist}`,
-          searchQuery: `${recentItem.artist} new songs`,
-          artistFilter: recentItem.artist,
-          type: 'artist_songs',
-          category: 'history'
-        });
+        const isFollowed = primaryArtists.some(
+          a => a.toLowerCase() === (recentItem.artist || '').toLowerCase()
+        );
+        if (!isFollowed) {
+          shelves.push({
+            id: 'shelf-history-artist-0',
+            eyebrow: `MORE FROM ${(recentItem.artist || '').toUpperCase()}`,
+            title: `More from ${recentItem.artist}`,
+            searchQuery: `${recentItem.artist} new songs`,
+            artistFilter: recentItem.artist,
+            type: 'artist_songs',
+            category: 'history'
+          });
+        }
       }
     }
 
@@ -524,30 +529,19 @@ export function generateShelfPlan(preferences = {}, history = []) {
     category: 'artist'
   });
 
-  // 8. Signature Artist Latest Tracks
+  // 8. Signature Artist Playlist & Essentials
   shelves.push({
-    id: 'shelf-art-latest-main',
-    eyebrow: `NEW FROM ${mainArtist.toUpperCase()}`,
-    title: `${mainArtist} New Releases & Singles`,
-    searchQuery: `${mainArtist} new songs`,
-    artistFilter: mainArtist,
-    type: 'artist_songs',
+    id: 'shelf-art-special-0',
+    eyebrow: `${mainArtist.toUpperCase()} ESSENTIALS`,
+    title: `${mainArtist} Radio & Mixes`,
+    searchQuery: `${mainArtist} official playlist`,
+    type: 'playlists',
     category: 'artist'
   });
 
-  // 9. Secondary Followed Artists
+  // 9. Secondary Followed Artists (Each gets 1 Best Of shelf + 1 Curated Spotlight shelf)
   if (primaryArtists.length > 1) {
     primaryArtists.slice(1, 4).forEach((artist, idx) => {
-      shelves.push({
-        id: `shelf-art-latest-${idx + 1}`,
-        eyebrow: 'LATEST FROM ' + artist.toUpperCase(),
-        title: `${artist} New Tracks & Hits`,
-        searchQuery: `${artist} new songs`,
-        artistFilter: artist,
-        type: 'artist_songs',
-        category: 'latest'
-      });
-
       shelves.push({
         id: `shelf-art-best-${idx + 1}`,
         eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
@@ -726,47 +720,52 @@ export function generateShelfPlan(preferences = {}, history = []) {
       chillQuery: `${genre} chill songs`
     };
 
-    // Genre Latest Releases (Uses official editorial new music playlist if available)
-    if (EDITORIAL_NEW_RELEASES[genre.toLowerCase()]) {
-      shelves.push({
-        id: `shelf-genre-latest-${idx}`,
-        eyebrow: 'NEW DROPS',
-        title: meta.latest,
-        genre: genre.toLowerCase(),
-        type: 'latest_releases',
-        category: 'latest'
-      });
-    } else {
-      shelves.push({
-        id: `shelf-genre-latest-${idx}`,
-        eyebrow: 'NEW DROPS',
-        title: meta.latest,
-        searchQuery: meta.latestQuery,
-        type: 'songs',
-        category: 'latest'
-      });
-    }
+    const isMainGenre = genre.toLowerCase() === mainGenre.toLowerCase();
 
-    // Genre Trending Hits (Powered by official editorial hitlists!)
-    const effectiveChartKey = meta.chartKey || (OFFICIAL_CHARTS[genre.toLowerCase()] ? genre.toLowerCase() : null);
-    if (effectiveChartKey && OFFICIAL_CHARTS[effectiveChartKey]) {
-      shelves.push({
-        id: `shelf-genre-chart-${idx}`,
-        eyebrow: 'OFFICIAL CHART',
-        title: meta.hits,
-        chartKey: effectiveChartKey,
-        type: 'chart_songs',
-        category: 'hits'
-      });
-    } else {
-      shelves.push({
-        id: `shelf-genre-latest-hits-${idx}`,
-        eyebrow: 'TRENDING HITS',
-        title: meta.hits,
-        searchQuery: meta.hitsQuery,
-        type: 'songs',
-        category: 'hits'
-      });
+    // Only add latest & chart shelves for secondary genres (mainGenre already has top shelves)
+    if (!isMainGenre) {
+      // Genre Latest Releases (Uses official editorial new music playlist if available)
+      if (EDITORIAL_NEW_RELEASES[genre.toLowerCase()]) {
+        shelves.push({
+          id: `shelf-genre-latest-${idx}`,
+          eyebrow: 'NEW DROPS',
+          title: meta.latest,
+          genre: genre.toLowerCase(),
+          type: 'latest_releases',
+          category: 'latest'
+        });
+      } else {
+        shelves.push({
+          id: `shelf-genre-latest-${idx}`,
+          eyebrow: 'NEW DROPS',
+          title: meta.latest,
+          searchQuery: meta.latestQuery,
+          type: 'songs',
+          category: 'latest'
+        });
+      }
+
+      // Genre Trending Hits (Powered by official editorial hitlists!)
+      const effectiveChartKey = meta.chartKey || (OFFICIAL_CHARTS[genre.toLowerCase()] ? genre.toLowerCase() : null);
+      if (effectiveChartKey && OFFICIAL_CHARTS[effectiveChartKey]) {
+        shelves.push({
+          id: `shelf-genre-chart-${idx}`,
+          eyebrow: 'OFFICIAL CHART',
+          title: meta.hits,
+          chartKey: effectiveChartKey,
+          type: 'chart_songs',
+          category: 'hits'
+        });
+      } else {
+        shelves.push({
+          id: `shelf-genre-latest-hits-${idx}`,
+          eyebrow: 'TRENDING HITS',
+          title: meta.hits,
+          searchQuery: meta.hitsQuery,
+          type: 'songs',
+          category: 'hits'
+        });
+      }
     }
 
     // Curated Playlists
@@ -911,7 +910,7 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
       // ── TYPE: artist_songs (Strict matching for artist-dedicated shelves) ──
       if (plan.type === 'artist_songs' && plan.artistFilter) {
         const targetArtist = plan.artistFilter;
-        const cacheKey = `shelf_artist_songs_v6_${targetArtist.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        const cacheKey = `shelf_art_songs_v7_${targetArtist.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${plan.id || 'default'}`;
         const cached = cacheGet(cacheKey);
         if (cached && cached.length > 0) {
           return { ...plan, items: cached };
@@ -1283,8 +1282,30 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
     })
   );
 
-  // Filter out any empty shelves
-  const validShelves = populatedShelves.filter(s => s.items && s.items.length > 0);
+  // Filter out empty shelves and deduplicate identical shelf content
+  const seenShelvesFingerprint = new Set();
+  const validShelves = [];
+
+  for (const shelf of populatedShelves) {
+    if (!shelf.items || shelf.items.length === 0) continue;
+
+    // Create a signature based on top 4 items to prevent identical duplicate shelves
+    const topSign = shelf.items
+      .slice(0, 4)
+      .map(it => it.videoId || it.id || it.title)
+      .filter(Boolean)
+      .join('|');
+
+    if (topSign && seenShelvesFingerprint.has(topSign)) {
+      console.warn(`[AlgoFeed] Dropping duplicate shelf "${shelf.title}" (${shelf.id}) matching earlier shelf`);
+      continue;
+    }
+
+    if (topSign) {
+      seenShelvesFingerprint.add(topSign);
+    }
+    validShelves.push(shelf);
+  }
 
   return {
     sections: validShelves,

@@ -99,7 +99,7 @@ app.get('/api/home', async (req, res) => {
   } catch {}
 
   const historyKey = (userHistory[0]?.videoId || userHistory[0]?.title || userHistory[0]?.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cacheKey = `home_algo_v5_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}`;
+  const cacheKey = `home_algo_v7_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 

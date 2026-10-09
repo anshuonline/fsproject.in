@@ -5,7 +5,7 @@ let transporterInstance = null;
 
 export function getTransporter() {
   const user = process.env.SMTP_USER || 'support@ganatube.in';
-  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '';
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || 'Ganatube1234@.com';
 
   if (!pass) {
     return null;
