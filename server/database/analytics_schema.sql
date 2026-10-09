@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS `analytics_admins`;
 DROP TABLE IF EXISTS `analytics_plays`;
 DROP TABLE IF EXISTS `analytics_searches`;
 DROP TABLE IF EXISTS `analytics_visits`;
+DROP TABLE IF EXISTS `analytics_presence`;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 0a. analytics_admins Table (GAnalytics dashboard login)
@@ -45,7 +46,28 @@ CREATE TABLE `analytics_admin_logs` (
   KEY `idx_admin_logs_admin` (`admin_id`, `logged_in_at` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 1. analytics_visits Table (Daily unique visitors: guests & registered)
+-- 4. analytics_presence Table (Live Now: who is online, from where, playing what)
+CREATE TABLE `analytics_presence` (
+  `visitor_id` VARCHAR(128) NOT NULL COMMENT 'Email / usr_{dbId} for registered, guest_xxx for guests',
+  `is_registered` TINYINT(1) NOT NULL DEFAULT 0,
+  `display_name` VARCHAR(100) NULL,
+  `current_video_id` VARCHAR(64) NULL COMMENT 'NULL = idle, not playing',
+  `current_title` VARCHAR(255) NULL,
+  `current_artist` VARCHAR(255) NULL,
+  `current_thumbnail` VARCHAR(500) NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `country` VARCHAR(100) NULL,
+  `city` VARCHAR(100) NULL,
+  `user_agent` VARCHAR(500) NULL,
+  `first_seen_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`visitor_id`),
+  KEY `idx_presence_last_seen` (`last_seen_at`),
+  KEY `idx_presence_registered` (`is_registered`, `last_seen_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. analytics_visits Table (Daily unique visitors: guests & registered)
 CREATE TABLE `analytics_visits` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `visitor_id` VARCHAR(128) NOT NULL COMMENT 'Email for registered users, guest_xxx id for guests',

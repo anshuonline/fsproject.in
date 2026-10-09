@@ -95,6 +95,23 @@ export function trackPlay(track, user = null) {
   });
 }
 
+// Presence heartbeat (Live Now: online status, location, now playing — every 60s)
+export function trackPresence(user = null, song = null) {
+  if (isBotEnvironment()) return Promise.resolve(null);
+  const isRegistered = Boolean(user?.email || user?.dbId);
+  return post('/analytics/track/presence', {
+    visitorId: isRegistered ? (user.dbId ? `usr_${user.dbId}` : user.email) : getAnalyticsVisitorId(),
+    isRegistered,
+    displayName: isRegistered ? (user.name || user.email?.split('@')[0] || null) : null,
+    song: song ? {
+      videoId: song.videoId,
+      title: song.title,
+      artist: song.artist,
+      thumbnail: song.thumbnail || ''
+    } : null
+  });
+}
+
 // ── GAnalytics Admin Dashboard ───────────────────────────────────────────────
 
 export function getSavedAdminToken() {
@@ -173,5 +190,23 @@ export async function getAdminLogs(token) {
     if (err.status === 401) throw err;
     console.warn('Admin logs error:', err);
     return [];
+  }
+}
+
+// Fetch Live Now users (token protected)
+export async function getLiveUsers(token) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/live?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch live users');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data?.data || null;
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('Live users error:', err);
+    return null;
   }
 }

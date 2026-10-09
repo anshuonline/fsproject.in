@@ -17,6 +17,7 @@ import { Favorites } from './pages/Favorites/Favorites';
 import { PlaylistDetail } from './pages/PlaylistDetail/PlaylistDetail';
 import { AlbumDetail } from './pages/AlbumDetail/AlbumDetail';
 import { ArtistDetail } from './pages/ArtistDetail/ArtistDetail';
+import { Followed } from './pages/Followed/Followed';
 import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
@@ -67,6 +68,7 @@ export default function App() {
                     <Route path="/playlist/:id" element={<PlaylistDetail />} />
                     <Route path="/album/:id" element={<AlbumDetail />} />
                     <Route path="/artist/:id" element={<ArtistDetail />} />
+                    <Route path="/followed" element={<Followed />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />

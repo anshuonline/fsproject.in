@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine, MoreVertical, History } from 'lucide-react';
+import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine, MoreVertical, History, Users } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePWA } from '../../context/PWAContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -122,6 +122,16 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose, isCollapse
           >
             <History size={22} className="fs-nav-icon" />
             <span>{isCollapsed ? 'History' : 'Listen history'}</span>
+          </NavLink>
+
+          <NavLink
+            to="/followed"
+            className={({ isActive }) => `fs-nav-item ${isActive ? 'active' : ''}`}
+            onClick={onClose}
+            title="Artists you follow"
+          >
+            <Users size={22} className="fs-nav-icon" />
+            <span>Followed artists</span>
           </NavLink>
 
           {!isInstalled && (

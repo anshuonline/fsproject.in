@@ -13,7 +13,7 @@ import { Toast } from '../components/Common/Toast';
 import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
-import { trackVisit } from '../services/analyticsService';
+import { trackVisit, trackPresence } from '../services/analyticsService';
 import './MainLayout.css';
 
 export function MainLayout() {
@@ -49,6 +49,17 @@ export function MainLayout() {
   useEffect(() => {
     trackVisit(isAuthenticated ? user : null);
   }, [isAuthenticated]);
+
+  // Live presence heartbeat (online status + now playing, every 60s, skipped when tab hidden)
+  useEffect(() => {
+    const sendPresence = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      trackPresence(isAuthenticated ? user : null, currentSong);
+    };
+    sendPresence();
+    const interval = setInterval(sendPresence, 60000);
+    return () => clearInterval(interval);
+  }, [currentSong, isAuthenticated, user]);
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 

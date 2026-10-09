@@ -120,6 +120,10 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
       updatedAt: new Date().toISOString()
     };
     storage.savePreferences(preferences);
+    // Notify followed-feed listeners (Followed page, Home shelf)
+    try {
+      window.dispatchEvent(new CustomEvent('fs_followed_changed'));
+    } catch {}
 
     // Save to Hostinger Cloud MySQL
     const currentUser = storage.getUser();

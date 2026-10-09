@@ -205,6 +205,27 @@ export const storage = {
     }
   },
 
+  getFollowedArtists() {
+    const prefs = this.getPreferences();
+    return Array.isArray(prefs.artists) ? prefs.artists : [];
+  },
+
+  // Toggle followed artist, persist, and notify listeners (Followed feed etc.)
+  toggleFollowedArtist(artistName) {
+    if (!artistName) return this.getFollowedArtists();
+    const prefs = this.getPreferences();
+    const artists = Array.isArray(prefs.artists) ? prefs.artists : [];
+    const isFollowing = artists.includes(artistName);
+    const next = isFollowing
+      ? artists.filter(a => a !== artistName)
+      : [...artists, artistName];
+    this.savePreferences({ ...prefs, artists: next, updatedAt: new Date().toISOString() });
+    try {
+      window.dispatchEvent(new CustomEvent('fs_followed_changed'));
+    } catch {}
+    return next;
+  },
+
   hasCompletedOnboarding() {
     try {
       return localStorage.getItem('fs_onboarding_completed') === 'true';

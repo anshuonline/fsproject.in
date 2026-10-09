@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Play, UserCheck, UserPlus, Loader2, User } from 'lucide-react';
 import { api } from '../../services/api';
+import { storage } from '../../services/storage';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
@@ -20,9 +21,20 @@ export function ArtistDetail() {
     setLoading(true);
     api.getArtist(id).then(res => {
       setArtist(res);
+      if (res?.name) {
+        setIsFollowing(storage.getFollowedArtists().includes(res.name));
+      }
       setLoading(false);
     });
   }, [id]);
+
+  // Toggle follow: persists to preferences (localStorage) + cloud DB for logged-in users
+  const handleToggleFollow = () => {
+    if (!artist?.name) return;
+    const next = storage.toggleFollowedArtist(artist.name);
+    setIsFollowing(next.includes(artist.name));
+    api.syncUserPreferences(storage.getPreferences());
+  };
 
   // Ensure user always lands directly at the top artist banner
   useEffect(() => {
@@ -84,7 +96,7 @@ export function ArtistDetail() {
 
           <div className="fs-artist-info">
             <span className="fs-artist-badge">VERIFIED ARTIST</span>
-            <h1 className="fs-artist-name">{artist?.name}</h1>
+            <h1 className="fs-artist-hero-name">{artist?.name}</h1>
             <p className="fs-artist-subs">{artist?.subscribers || '1.2M listeners'}</p>
 
             <div className="fs-artist-actions">
@@ -99,7 +111,7 @@ export function ArtistDetail() {
 
               <button
                 className={`btn ${isFollowing ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={() => setIsFollowing(prev => !prev)}
+                onClick={handleToggleFollow}
               >
                 {isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}
                 <span>{isFollowing ? 'Following' : 'Follow'}</span>

@@ -1,0 +1,257 @@
+.fs-followed-page {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ─── Hero Banner ─────────────────────────────────────────────────────── */
+.fs-followed-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, rgba(0, 200, 83, 0.08) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 1px solid rgba(0, 200, 83, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.fs-followed-hero-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fs-followed-hero-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 200, 83, 0.15);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.fs-followed-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--color-white);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.fs-followed-sub {
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+  margin: 2px 0 0 0;
+}
+
+.fs-followed-tune-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.fs-followed-tune-btn:hover {
+  background-color: var(--color-primary);
+  color: #000000;
+  border-color: var(--color-primary);
+}
+
+/* ─── Shelves ─────────────────────────────────────────────────────────── */
+.fs-followed-shelf {
+  display: flex;
+  flex-direction: column;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+}
+
+.fs-followed-shelf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.fs-followed-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fs-followed-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.fs-followed-shelf-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--color-white);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* ─── Artists Grid ────────────────────────────────────────────────────── */
+.fs-followed-artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px 12px;
+  padding: 4px 4px 8px;
+}
+
+/* ─── Songs Grid (Home quickpicks style) ──────────────────────────────── */
+.fs-followed-songs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  padding: 4px 4px 8px;
+}
+
+/* ─── Albums Grid ─────────────────────────────────────────────────────── */
+.fs-followed-albums-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px 12px;
+  padding: 4px 4px 8px;
+}
+
+/* ─── Playlists Row (horizontal scroll) ───────────────────────────────── */
+.fs-followed-playlist-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 4px 12px;
+}
+
+.fs-followed-playlist-row::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-followed-pl-col {
+  flex: 0 0 200px;
+  min-width: 180px;
+  max-width: 240px;
+}
+
+/* ─── Loading Bar ─────────────────────────────────────────────────────── */
+.fs-followed-loading-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  border-radius: var(--radius-full);
+  color: var(--color-white);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.fs-followed-loading-bar .spin {
+  color: var(--color-primary);
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────────── */
+.fs-followed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.fs-followed-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.fs-followed-empty h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-white);
+  margin: 0;
+}
+
+.fs-followed-empty p {
+  max-width: 420px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.fs-followed-empty-btn {
+  margin-top: 8px;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .fs-followed-page {
+    gap: 28px;
+  }
+
+  .fs-followed-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .fs-followed-tune-btn {
+    align-self: flex-start;
+  }
+
+  .fs-followed-shelf-title {
+    font-size: 1.2rem;
+  }
+
+  .fs-followed-artists-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 16px 8px;
+  }
+
+  .fs-followed-songs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-followed-albums-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px 8px;
+  }
+
+  .fs-followed-pl-col {
+    flex: 0 0 calc((100% - 16px) / 2.3);
+    min-width: 150px;
+  }
+}
