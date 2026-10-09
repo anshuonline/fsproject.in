@@ -4,6 +4,7 @@ import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, AlertCircle } from 
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
+import { isEasyPassword } from '../../services/api';
 import './Register.css';
 
 export function Register() {
@@ -50,7 +51,18 @@ export function Register() {
     }
 
     if (password.length < 6) {
+      setErrorInfo({ code: 'PASSWORD_TOO_SHORT', message: 'Password must be at least 6 characters long', email: email.trim() });
       showToast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+
+    if (isEasyPassword(password)) {
+      setErrorInfo({
+        code: 'EASY_PASSWORD',
+        message: 'This password is too easy or common. Please choose a stronger password with letters and numbers.',
+        email: email.trim()
+      });
+      showToast('Password is too easy or common. Please choose a stronger password.', 'error');
       return;
     }
 
@@ -141,7 +153,7 @@ export function Register() {
 
         <div className="fs-form-group">
           <label className="fs-form-label">Email address</label>
-          <div className="fs-input-wrap">
+          <div className={`fs-input-wrap ${errorInfo?.code === 'ACCOUNT_EXISTS' ? 'fs-input-error' : ''}`}>
             <Mail size={18} className="fs-input-icon" />
             <input
               type="email"
@@ -156,16 +168,28 @@ export function Register() {
               required
             />
           </div>
+          {errorInfo?.code === 'ACCOUNT_EXISTS' && (
+            <span className="fs-field-error-text">
+              An account with this email already exists.{' '}
+              <button
+                type="button"
+                className="fs-error-inline-link"
+                onClick={() => navigate('/login', { state: { email: errorInfo.email } })}
+              >
+                Sign in instead
+              </button>
+            </span>
+          )}
         </div>
 
         <div className="fs-form-group">
           <label className="fs-form-label">Password</label>
-          <div className="fs-input-wrap">
+          <div className={`fs-input-wrap ${errorInfo?.code === 'EASY_PASSWORD' || errorInfo?.code === 'PASSWORD_TOO_SHORT' ? 'fs-input-error' : ''}`}>
             <Lock size={18} className="fs-input-icon" />
             <input
               type={showPassword ? 'text' : 'password'}
               className="fs-input-field"
-              placeholder="At least 6 characters"
+              placeholder="At least 6 characters (not easy)"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -179,16 +203,46 @@ export function Register() {
               className="fs-password-toggle-btn"
               onClick={() => setShowPassword(!showPassword)}
               tabIndex={-1}
+              title={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+          {errorInfo?.code === 'EASY_PASSWORD' && (
+            <span className="fs-field-error-text">{errorInfo.message}</span>
+          )}
+          {errorInfo?.code === 'PASSWORD_TOO_SHORT' && (
+            <span className="fs-field-error-text">{errorInfo.message}</span>
+          )}
         </div>
+
+        {/* Existing Account Highlight above submit button */}
+        {errorInfo?.code === 'ACCOUNT_EXISTS' && (
+          <div className="fs-auth-smart-alert fs-auth-alert-warning" style={{ marginTop: '4px' }}>
+            <div className="fs-auth-alert-icon-col">
+              <AlertCircle size={20} />
+            </div>
+            <div className="fs-auth-alert-body">
+              <h4 className="fs-auth-alert-title">Account Already Exists</h4>
+              <p className="fs-auth-alert-text">
+                An account with <strong>{errorInfo.email}</strong> already exists on FreeSong.
+              </p>
+              <button
+                type="button"
+                className="btn btn-secondary fs-auth-alert-btn"
+                onClick={() => navigate('/login', { state: { email: errorInfo.email } })}
+              >
+                <span>Sign In with this Email</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
 
         <button
           type="submit"
           className="btn btn-primary fs-auth-submit"
-          disabled={isRegistering || isGoogleLoading}
+          disabled={isRegistering}
         >
           {isRegistering ? (
             <>

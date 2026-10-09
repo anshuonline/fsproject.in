@@ -1,6 +1,27 @@
 const API_BASE = '/api';
 const activeSyncUserPromises = new Map();
 
+// Helper to check for common, weak, or easy-to-guess passwords
+export function isEasyPassword(password) {
+  if (!password || typeof password !== 'string') return true;
+  const p = password.trim().toLowerCase();
+  if (p.length < 6) return true;
+
+  const commonWeak = [
+    '123456', '1234567', '12345678', '123456789', '1234567890',
+    'password', 'password123', 'pass123', 'qwerty', 'qwertyuiop',
+    '111111', '000000', '112233', '123123', 'admin123', 'welcome',
+    'welcome123', 'iloveyou', 'abc123', '654321', '987654321',
+    'freesong', 'freesong123', 'monkey', 'dragon', 'football',
+    'letmein', 'master', 'sunshine', 'princess'
+  ];
+  if (commonWeak.includes(p)) return true;
+  if (/^(.)\1+$/.test(p)) return true;
+  if (/^(012345|123456|234567|345678|456789|567890|654321|543210|987654)$/.test(p)) return true;
+  if (/^\d+$/.test(p) && p.length < 8) return true;
+  return false;
+}
+
 export const api = {
   async getHomeFeed(prefs = null, history = null) {
     try {
@@ -452,14 +473,18 @@ export const api = {
     }
   },
 
-  async setPassword(userId, email, newPassword) {
+  async setPassword(userId, email, newPassword, currentPassword = null) {
     const res = await fetch(`${API_BASE}/user/set-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, email, newPassword })
+      body: JSON.stringify({ userId, email, newPassword, currentPassword })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update password');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Failed to update password');
+      err.code = data.code;
+      throw err;
+    }
     return data;
   },
 

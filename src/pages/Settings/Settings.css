@@ -737,7 +737,7 @@ input:checked + .fs-slider:before {
 
 .fs-password-inputs-row {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
 }
 
@@ -750,6 +750,19 @@ input:checked + .fs-slider:before {
 .fs-password-input-wrapper .fs-field-input {
   width: 100%;
   padding-right: 40px;
+}
+
+.fs-password-input-wrapper.fs-input-error .fs-field-input {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.06);
+}
+
+.fs-field-error-text {
+  font-size: 0.775rem;
+  color: #ef4444;
+  margin-top: 4px;
+  font-weight: 600;
+  display: block;
 }
 
 .fs-pw-toggle-inline {

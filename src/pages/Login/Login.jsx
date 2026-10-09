@@ -217,16 +217,16 @@ export function Login() {
               <AlertCircle size={20} />
             </div>
             <div className="fs-auth-alert-body">
-              <h4 className="fs-auth-alert-title">Incorrect Password</h4>
+              <h4 className="fs-auth-alert-title">Wrong Password</h4>
               <p className="fs-auth-alert-text">
-                The password you entered does not match our records.
+                The password you entered is incorrect. Please check your password or reset it.
               </p>
               <button
                 type="button"
                 className="fs-auth-alert-link"
                 onClick={openForgotModal}
               >
-                <span>Forgot your password? Reset it here</span>
+                <span>Forgot password? Reset it here</span>
                 <ArrowRight size={14} />
               </button>
             </div>
@@ -241,7 +241,7 @@ export function Login() {
         <form onSubmit={handleSubmit} className="fs-auth-form">
           <div className="fs-form-group">
             <label className="fs-form-label">Email address</label>
-            <div className="fs-input-wrap">
+            <div className={`fs-input-wrap ${loginError?.code === 'USER_NOT_FOUND' ? 'fs-input-error' : ''}`}>
               <Mail size={18} className="fs-input-icon" />
               <input
                 type="email"
@@ -256,6 +256,9 @@ export function Login() {
                 required
               />
             </div>
+            {loginError?.code === 'USER_NOT_FOUND' && (
+              <span className="fs-field-error-text">No FreeSong account found with this email</span>
+            )}
           </div>
 
           <div className="fs-form-group">
@@ -270,7 +273,7 @@ export function Login() {
                 Forgot password?
               </button>
             </div>
-            <div className="fs-input-wrap">
+            <div className={`fs-input-wrap ${loginError?.code === 'INVALID_PASSWORD' ? 'fs-input-error' : ''}`}>
               <Lock size={18} className="fs-input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -294,12 +297,15 @@ export function Login() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {loginError?.code === 'INVALID_PASSWORD' && (
+              <span className="fs-field-error-text">Password wrong: The password you entered is incorrect</span>
+            )}
           </div>
 
           <button
             type="submit"
             className="btn btn-primary fs-auth-submit"
-            disabled={isLoggingIn || isGoogleLoading}
+            disabled={isLoggingIn}
           >
             {isLoggingIn ? (
               <>

@@ -1102,6 +1102,27 @@ function verifyPassword(password, storedHash) {
   return false;
 }
 
+// Reject overly simple or common passwords
+function isEasyPassword(password) {
+  if (!password || typeof password !== 'string') return true;
+  const p = password.trim().toLowerCase();
+  if (p.length < 6) return true;
+
+  const commonWeak = [
+    '123456', '1234567', '12345678', '123456789', '1234567890',
+    'password', 'password123', 'pass123', 'qwerty', 'qwertyuiop',
+    '111111', '000000', '112233', '123123', 'admin123', 'welcome',
+    'welcome123', 'iloveyou', 'abc123', '654321', '987654321',
+    'freesong', 'freesong123', 'monkey', 'dragon', 'football',
+    'letmein', 'master', 'sunshine', 'princess'
+  ];
+  if (commonWeak.includes(p)) return true;
+  if (/^(.)\1+$/.test(p)) return true;
+  if (/^(012345|123456|234567|345678|456789|567890|654321|543210|987654)$/.test(p)) return true;
+  if (/^\d+$/.test(p) && p.length < 8) return true;
+  return false;
+}
+
 // Check if user has set a password
 app.get('/api/user/has-password', async (req, res) => {
   const { userId, email } = req.query;
@@ -1116,17 +1137,45 @@ app.get('/api/user/has-password', async (req, res) => {
   }
 });
 
-// Set or Update Password for Logged-In User
+// Set or Update Password for Logged-In User (Verifies current password if already set)
 app.post('/api/user/set-password', async (req, res) => {
-  const { userId, email, newPassword } = req.body;
+  const { userId, email, currentPassword, newPassword } = req.body;
   if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    return res.status(400).json({ error: 'Password must be at least 6 characters long', code: 'PASSWORD_TOO_SHORT' });
+  }
+
+  if (isEasyPassword(newPassword)) {
+    return res.status(400).json({
+      error: 'This password is too easy or common. Please choose a stronger password with letters and numbers.',
+      code: 'EASY_PASSWORD'
+    });
   }
 
   try {
     const resolvedUserId = await resolveUserId(userId, email);
     if (!resolvedUserId) {
-      return res.status(404).json({ error: 'User account not found' });
+      return res.status(404).json({ error: 'User account not found', code: 'USER_NOT_FOUND' });
+    }
+
+    const users = await query('SELECT password_hash FROM users WHERE id = ?', [resolvedUserId]);
+    const existingUser = users && users[0];
+
+    // If account already has a password, verify currentPassword!
+    if (existingUser && existingUser.password_hash) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          error: 'Current password is required to change password.',
+          code: 'CURRENT_PASSWORD_REQUIRED'
+        });
+      }
+
+      const isMatch = verifyPassword(currentPassword, existingUser.password_hash);
+      if (!isMatch) {
+        return res.status(401).json({
+          error: 'Incorrect current password. Please enter your valid current password.',
+          code: 'WRONG_PASSWORD'
+        });
+      }
     }
 
     const hashedPassword = hashPassword(newPassword);
@@ -1225,7 +1274,14 @@ app.post('/api/user/register-password', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
   if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    return res.status(400).json({ error: 'Password must be at least 6 characters long', code: 'PASSWORD_TOO_SHORT' });
+  }
+
+  if (isEasyPassword(password)) {
+    return res.status(400).json({
+      error: 'This password is too easy or common. Please choose a stronger password with letters and numbers.',
+      code: 'EASY_PASSWORD'
+    });
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -1403,7 +1459,14 @@ app.post('/api/user/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token) return res.status(400).json({ error: 'Reset token is required' });
   if (!newPassword || newPassword.length < 6) {
-    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    return res.status(400).json({ error: 'New password must be at least 6 characters long', code: 'PASSWORD_TOO_SHORT' });
+  }
+
+  if (isEasyPassword(newPassword)) {
+    return res.status(400).json({
+      error: 'This password is too easy or common. Please choose a stronger password with letters and numbers.',
+      code: 'EASY_PASSWORD'
+    });
   }
 
   try {

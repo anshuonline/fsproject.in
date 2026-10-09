@@ -11,6 +11,16 @@ export function AuthProvider({ children }) {
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // Safety timeout so isGoogleLoading can NEVER stay stuck
+  useEffect(() => {
+    if (isGoogleLoading) {
+      const timer = setTimeout(() => {
+        setIsGoogleLoading(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [isGoogleLoading]);
+
   // Sync user changes to storage
   useEffect(() => {
     storage.saveUser(user);
@@ -201,9 +211,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Set or update password for logged-in account
-  const setPassword = useCallback(async (newPassword) => {
+  const setPassword = useCallback(async (newPassword, currentPassword = null) => {
     if (!user) throw new Error('You must be signed in to set a password');
-    const res = await api.setPassword(user.dbId || user.id, user.email, newPassword);
+    const res = await api.setPassword(user.dbId || user.id, user.email, newPassword, currentPassword);
     setUser((prev) => {
       if (!prev) return null;
       const updated = { ...prev, hasPassword: true };

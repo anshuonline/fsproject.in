@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Volume2, Zap, Trash2, CheckCircle2, User, Shield, 
   MapPin, Calendar, Clock, AlertTriangle, Mail, Loader2, 
-  Search, LogIn, ExternalLink, RefreshCw, Lock, KeyRound, Eye, EyeOff 
+  Search, LogIn, ExternalLink, RefreshCw, Lock, KeyRound, Eye, EyeOff, AlertCircle 
 } from 'lucide-react';
 import { storage } from '../../services/storage';
-import { api } from '../../services/api';
+import { api, isEasyPassword } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
@@ -37,12 +37,16 @@ export function Settings() {
   );
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Password Setup State
+  // Password Setup / Change State
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [hasPasswordState, setHasPasswordState] = useState(Boolean(user?.hasPassword));
+  const [passwordError, setPasswordError] = useState(null);
 
   // Delete Account Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -82,29 +86,56 @@ export function Settings() {
   // Save / Update User Password
   const handleSavePassword = async (e) => {
     e.preventDefault();
+    setPasswordError(null);
+
     if (!user) {
       showToast('Please sign in to set a password', 'error');
       return;
     }
+
+    if (hasPasswordState && !currentPassword) {
+      setPasswordError({ code: 'CURRENT_PASSWORD_REQUIRED', message: 'Please enter your current password to change it' });
+      showToast('Please enter your current password', 'error');
+      return;
+    }
+
     if (!newPassword || newPassword.length < 6) {
+      setPasswordError({ code: 'PASSWORD_TOO_SHORT', message: 'New password must be at least 6 characters long' });
       showToast('Password must be at least 6 characters long', 'error');
       return;
     }
+
+    if (isEasyPassword(newPassword)) {
+      setPasswordError({
+        code: 'EASY_PASSWORD',
+        message: 'This password is too easy or common. Please choose a stronger password with letters and numbers.'
+      });
+      showToast('Password is too easy or common. Please choose a stronger password.', 'error');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
+      setPasswordError({ code: 'PASSWORD_MISMATCH', message: 'New passwords do not match' });
       showToast('Passwords do not match', 'error');
       return;
     }
 
     setSavingPassword(true);
     try {
-      await setPassword(newPassword);
+      await setPassword(newPassword, hasPasswordState ? currentPassword : null);
       setHasPasswordState(true);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      showToast('Password saved successfully! You can now log into FreeSong using email and password on any device.', 'success');
+      setPasswordError(null);
+      showToast(hasPasswordState ? 'Password updated successfully!' : 'Password set successfully!', 'success');
       notifySaved();
     } catch (err) {
-      showToast(err.message || 'Failed to save password', 'error');
+      setPasswordError({
+        code: err.code || 'UNKNOWN',
+        message: err.message || 'Failed to update password'
+      });
+      showToast(err.message || 'Failed to update password', 'error');
     } finally {
       setSavingPassword(false);
     }
@@ -374,9 +405,13 @@ export function Settings() {
                 <Lock size={20} className="text-brand" />
               </div>
               <div>
-                <h2 className="fs-settings-section-heading">Security & Password</h2>
+                <h2 className="fs-settings-section-heading">
+                  {hasPasswordState ? 'Change Password' : 'Set Account Password'}
+                </h2>
                 <p className="fs-settings-section-sub">
-                  Set or change your password to log in directly with your email without Google OAuth
+                  {hasPasswordState
+                    ? 'Update your account password or verify your current password'
+                    : 'Set a password to log in directly with your email on any device without Google OAuth'}
                 </p>
               </div>
             </div>
@@ -392,7 +427,7 @@ export function Settings() {
                   </strong>
                   <span>
                     {hasPasswordState
-                      ? `Your account (${user.email}) is protected with a password. You can update it below or log into any device via Email & Password.`
+                      ? `Your account (${user.email}) is protected with a password. Enter your current password below to change it.`
                       : `Set a password below so you can sign into FreeSong with your email (${user.email}) on any laptop or PC without needing Google sign-in.`}
                   </span>
                 </div>
@@ -401,8 +436,53 @@ export function Settings() {
                 </span>
               </div>
 
+              {passwordError && (
+                <div className={`fs-auth-smart-alert ${passwordError.code === 'WRONG_PASSWORD' ? 'fs-auth-alert-danger' : 'fs-auth-alert-warning'}`}>
+                  <div className="fs-auth-alert-icon-col">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div className="fs-auth-alert-body">
+                    <h4 className="fs-auth-alert-title">
+                      {passwordError.code === 'WRONG_PASSWORD' ? 'Wrong Current Password' : 'Password Error'}
+                    </h4>
+                    <p className="fs-auth-alert-text">{passwordError.message}</p>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSavePassword} className="fs-password-edit-form">
                 <div className="fs-password-inputs-row">
+                  {hasPasswordState && (
+                    <div className="fs-form-field">
+                      <label className="fs-field-label">Current Password</label>
+                      <div className={`fs-password-input-wrapper ${passwordError?.code === 'WRONG_PASSWORD' ? 'fs-input-error' : ''}`}>
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          className="fs-field-input"
+                          placeholder="Enter current password"
+                          value={currentPassword}
+                          onChange={(e) => {
+                            setCurrentPassword(e.target.value);
+                            if (passwordError) setPasswordError(null);
+                          }}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="fs-pw-toggle-inline"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          tabIndex={-1}
+                          title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {passwordError?.code === 'WRONG_PASSWORD' && (
+                        <span className="fs-field-error-text">Password wrong: The current password you entered is incorrect</span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="fs-form-field">
                     <label className="fs-field-label">
                       {hasPasswordState ? 'New Password' : 'Set Account Password'}
@@ -411,9 +491,12 @@ export function Settings() {
                       <input
                         type={showNewPassword ? 'text' : 'password'}
                         className="fs-field-input"
-                        placeholder="At least 6 characters"
+                        placeholder="At least 6 characters (not easy)"
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          if (passwordError) setPasswordError(null);
+                        }}
                         minLength={6}
                         required
                       />
@@ -422,6 +505,7 @@ export function Settings() {
                         className="fs-pw-toggle-inline"
                         onClick={() => setShowNewPassword(!showNewPassword)}
                         tabIndex={-1}
+                        title={showNewPassword ? 'Hide password' : 'Show password'}
                       >
                         {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -432,14 +516,26 @@ export function Settings() {
                     <label className="fs-field-label">Confirm Password</label>
                     <div className="fs-password-input-wrapper">
                       <input
-                        type={showNewPassword ? 'text' : 'password'}
+                        type={showConfirmPassword ? 'text' : 'password'}
                         className="fs-field-input"
                         placeholder="Confirm password"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (passwordError) setPasswordError(null);
+                        }}
                         minLength={6}
                         required
                       />
+                      <button
+                        type="button"
+                        className="fs-pw-toggle-inline"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                        title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -448,17 +544,17 @@ export function Settings() {
                   <button
                     type="submit"
                     className="btn btn-primary fs-btn-save-profile"
-                    disabled={savingPassword || !newPassword || !confirmPassword}
+                    disabled={savingPassword || (hasPasswordState && !currentPassword) || !newPassword || !confirmPassword}
                   >
                     {savingPassword ? (
                       <>
                         <Loader2 size={16} className="spin" />
-                        <span>Saving Password...</span>
+                        <span>Updating Password...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 size={16} />
-                        <span>{hasPasswordState ? 'Update Password' : 'Save Password'}</span>
+                        <span>{hasPasswordState ? 'Change Password' : 'Set Password'}</span>
                       </>
                     )}
                   </button>
