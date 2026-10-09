@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Check,
   Search,
@@ -62,6 +62,7 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const [selectedArtists, setSelectedArtists] = useState(() => storage.getPreferences()?.artists || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const bodyRef = useRef(null);
 
   // Re-sync with current preferences whenever modal is opened
   useEffect(() => {
@@ -74,6 +75,11 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
       setActiveCategory('All');
     }
   }, [isOpen]);
+
+  // Reset body scroll when switching steps
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [step]);
 
   if (!isOpen) return null;
 
@@ -189,8 +195,46 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
           </div>
         </div>
 
+        {/* Step 2: Artist search toolbar pinned OUTSIDE the scroll body so the
+            artist grid scrolls cleanly beneath it without peeking above */}
+        {step === 2 && (
+          <div className="fs-artists-toolbar">
+            <div className="fs-artists-search-wrap">
+              <Search size={16} className="fs-search-icon-sm" />
+              <input
+                type="text"
+                placeholder="Search 100+ top artists..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="fs-artists-search-input"
+              />
+              {searchQuery && (
+                <button
+                  className="btn-icon fs-search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="fs-artists-cat-chips">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  className={`fs-cat-chip ${activeCategory === cat ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Modal Body */}
-        <div className="fs-onboarding-body">
+        <div className="fs-onboarding-body" ref={bodyRef}>
           {step === 1 ? (
             /* ─── Step 1: Spotify-Style Vibrant Genre Tiles ───────────── */
             <div className="fs-onboarding-genres-grid">
@@ -225,41 +269,6 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
           ) : (
             /* ─── Step 2: 100 Artists Grid with Spotify Styling ───────── */
             <div className="fs-onboarding-artists-container">
-              {/* Search and Filters */}
-              <div className="fs-artists-toolbar">
-                <div className="fs-artists-search-wrap">
-                  <Search size={16} className="fs-search-icon-sm" />
-                  <input
-                    type="text"
-                    placeholder="Search 100+ top artists..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="fs-artists-search-input"
-                  />
-                  {searchQuery && (
-                    <button
-                      className="btn-icon fs-search-clear-btn"
-                      onClick={() => setSearchQuery('')}
-                      aria-label="Clear search"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-
-                <div className="fs-artists-cat-chips">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      className={`fs-cat-chip ${activeCategory === cat ? 'active' : ''}`}
-                      onClick={() => setActiveCategory(cat)}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Grid of Artist Circles */}
               {filteredArtists.length === 0 ? (
                 <div className="fs-artists-empty">

@@ -19,7 +19,8 @@ const dbConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 10000
+  keepAliveInitialDelay: 10000,
+  dateStrings: true
 };
 
 let pool = null;
@@ -61,6 +62,90 @@ export async function testDbConnection() {
     } catch {}
     try {
       await connection.query('ALTER TABLE users ADD COLUMN last_reset_request_at DATETIME NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN total_plays INT UNSIGNED NOT NULL DEFAULT 0');
+    } catch {}
+    // Safe auto-migration: ensure GAnalytics tables exist
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_visits (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          visitor_id VARCHAR(128) NOT NULL,
+          is_registered TINYINT(1) NOT NULL DEFAULT 0,
+          ip_address VARCHAR(45) NULL,
+          country VARCHAR(100) NULL,
+          city VARCHAR(100) NULL,
+          user_agent VARCHAR(500) NULL,
+          visited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_visits_visitor_date (visitor_id, visited_at DESC),
+          KEY idx_visits_date (visited_at),
+          KEY idx_visits_registered (is_registered, visited_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_searches (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          query VARCHAR(255) NOT NULL,
+          visitor_id VARCHAR(128) NULL,
+          is_registered TINYINT(1) NOT NULL DEFAULT 0,
+          result_count INT UNSIGNED NOT NULL DEFAULT 0,
+          searched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_searches_date (searched_at),
+          KEY idx_searches_query (query(100))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_plays (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          video_id VARCHAR(64) NOT NULL,
+          title VARCHAR(255) NULL,
+          artist VARCHAR(255) NULL,
+          thumbnail VARCHAR(500) NULL,
+          visitor_id VARCHAR(128) NULL,
+          is_registered TINYINT(1) NOT NULL DEFAULT 0,
+          played_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_plays_date (played_at),
+          KEY idx_plays_video_id (video_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_admins (
+          id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          admin_id VARCHAR(64) NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          name VARCHAR(100) NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_analytics_admin (admin_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_admin_logs (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          admin_id VARCHAR(64) NOT NULL,
+          ip_address VARCHAR(45) NULL,
+          country VARCHAR(100) NULL,
+          city VARCHAR(100) NULL,
+          user_agent VARCHAR(500) NULL,
+          status ENUM('success', 'failed') NOT NULL DEFAULT 'success',
+          logged_in_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_admin_logs_date (logged_in_at),
+          KEY idx_admin_logs_admin (admin_id, logged_in_at DESC)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
     } catch {}
     connection.release();
     return true;

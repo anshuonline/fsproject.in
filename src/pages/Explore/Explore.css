@@ -2,130 +2,411 @@
   display: flex;
   flex-direction: column;
   gap: 36px;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
 }
 
+/* ─── Page Header ─────────────────────────────────────────────────────────── */
 .fs-explore-header {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .fs-explore-heading {
   font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px 0;
 }
 
 .fs-explore-sub {
   color: var(--color-text-secondary);
+  margin: 0;
+  font-size: 0.95rem;
 }
 
-.fs-explore-loading {
+.fs-explore-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background-color: rgba(0, 200, 83, 0.1);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-top: 6px;
+}
+
+/* ─── Spotlight Hero ──────────────────────────────────────────────────────── */
+.fs-explore-spotlight {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, rgba(0, 200, 83, 0.14) 0%, rgba(17, 17, 17, 0.85) 55%, rgba(8, 8, 8, 0.95) 100%);
+  border: 1px solid rgba(0, 200, 83, 0.22);
+  transition: border-color var(--transition-normal);
+}
+
+.fs-explore-spotlight.playing {
+  border-color: rgba(0, 200, 83, 0.5);
+}
+
+.fs-spotlight-art {
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevated);
+}
+
+.fs-spotlight-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fs-spotlight-info {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fs-spotlight-eyebrow {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  height: 350px;
+  gap: 7px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+}
+
+.fs-spotlight-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-white);
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fs-spotlight-artist {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.fs-spotlight-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.fs-spotlight-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 22px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: #000000;
+  font-size: 0.92rem;
+  font-weight: 800;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.fs-spotlight-play-btn:hover {
+  background-color: var(--color-primary-hover);
+  transform: scale(1.03);
+}
+
+.fs-spotlight-radio-btn {
+  padding: 11px 20px;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.fs-spotlight-radio-btn:hover {
+  color: var(--color-white);
+  border-color: var(--color-text-muted);
+  background-color: var(--color-card);
+}
+
+/* ─── Moods & Genres Browse Grid (Spotify style tiles) ────────────────────── */
+.fs-shelf-block-body > .fs-moods-grid {
+  grid-column: 1 / -1;
+}
+
+.fs-moods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.fs-mood-tile {
+  position: relative;
+  height: 104px;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+  text-align: left;
+}
+
+.fs-mood-tile:hover {
+  transform: scale(1.02);
+  filter: brightness(1.12);
+}
+
+.fs-mood-tile-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1.25;
+  max-width: 80%;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+  z-index: 1;
+}
+
+.fs-mood-tile-icon {
+  position: absolute;
+  right: -8px;
+  bottom: -10px;
+  color: rgba(255, 255, 255, 0.85);
+  transform: rotate(-22deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+  transition: transform var(--transition-normal);
+  pointer-events: none;
+}
+
+.fs-mood-tile-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.fs-mood-tile:hover .fs-mood-tile-icon {
+  transform: rotate(-14deg) scale(1.08);
+}
+
+/* ─── Carousel card column (matches Home shelf col widths) ────────────────── */
+.fs-explore-card-col {
+  flex: 0 0 calc((100% - (5 * 16px)) / 6);
+  min-width: 180px;
+  max-width: 240px;
+}
+
+/* ─── Skeleton Loading ────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg, #111111 25%, #1c1c1c 50%, #111111 75%);
+  background-size: 200% 100%;
+  animation: fs-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes fs-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.fs-skeleton-spotlight {
+  width: 100%;
+  height: 238px;
+  border-radius: var(--radius-lg);
+}
+
+.fs-skeleton-section {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 
-.fs-explore-section {
+.fs-skeleton-line {
+  border-radius: var(--radius-sm);
+}
+
+.fs-skeleton-row {
+  display: flex;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.fs-skeleton-tile {
+  flex: 0 0 190px;
+  height: 250px;
+  border-radius: var(--radius-md);
+}
+
+.fs-skeleton-mood {
+  height: 104px;
+  border-radius: var(--radius-md);
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────────────── */
+.fs-explore-empty {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.fs-explore-section-title {
-  font-size: 1.4rem;
-}
-
-.fs-genres-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.fs-genre-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 20px;
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-left-width: 4px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-sizing: border-box;
-}
-
-.fs-genre-card:hover {
-  background-color: var(--color-card-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-subtle);
-}
-
-.fs-genre-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.fs-genre-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.fs-explore-songs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 10px;
-  width: 100%;
-  box-sizing: border-box;
+  min-height: 380px;
+  text-align: center;
+}
+
+.fs-explore-empty h2 {
+  margin: 6px 0 0;
+  font-size: 1.3rem;
+}
+
+.fs-explore-empty p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.fs-explore-retry {
+  margin-top: 12px;
+  padding: 10px 26px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: #000000;
+  font-weight: 700;
+  transition: background-color var(--transition-fast);
+}
+
+.fs-explore-retry:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1300px) {
+  .fs-explore-card-col {
+    flex: 0 0 calc((100% - (4 * 16px)) / 5);
+  }
+}
+
+@media (max-width: 1050px) {
+  .fs-explore-card-col {
+    flex: 0 0 calc((100% - (3 * 16px)) / 4);
+    min-width: 170px;
+  }
 }
 
 @media (max-width: 768px) {
   .fs-explore-page {
-    gap: 24px;
+    gap: 28px;
+  }
+
+  .fs-explore-header {
+    flex-direction: column;
+    gap: 12px;
   }
 
   .fs-explore-heading {
     font-size: 1.6rem;
   }
 
-  .fs-genres-grid {
+  .fs-explore-live-badge {
+    margin-top: 0;
+    align-self: flex-start;
+  }
+
+  .fs-explore-spotlight {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 18px;
+  }
+
+  .fs-spotlight-art {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    aspect-ratio: 1;
+    align-self: center;
+  }
+
+  .fs-spotlight-title {
+    font-size: 1.25rem;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .fs-spotlight-eyebrow {
+    font-size: 0.7rem;
+  }
+
+  .fs-moods-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
-  .fs-genre-card {
-    padding: 12px 10px;
-    gap: 10px;
+  .fs-mood-tile {
+    height: 88px;
+    padding: 10px 12px;
   }
 
-  .fs-genre-icon-wrap {
-    width: 36px;
-    height: 36px;
+  .fs-mood-tile-name {
+    font-size: 0.8rem;
   }
 
-  .fs-genre-name {
-    font-size: 0.8125rem;
+  .fs-mood-tile-icon {
+    right: -5px;
+    bottom: -7px;
   }
 
-  .fs-explore-songs-grid {
-    grid-template-columns: 1fr;
-    width: 100%;
+  .fs-mood-tile-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .fs-skeleton-mood {
+    height: 88px;
+  }
+
+  .fs-explore-card-col {
+    flex: 0 0 calc((100% - 16px) / 2.3);
+    min-width: 150px;
+  }
+
+  .fs-skeleton-spotlight {
+    height: 300px;
+  }
+
+  .fs-skeleton-tile {
+    flex: 0 0 160px;
+    height: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-explore-card-col {
+    flex: 0 0 calc((100% - 12px) / 2.15);
+    min-width: 140px;
   }
 }

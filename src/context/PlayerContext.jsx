@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { storage } from '../services/storage';
 import { api } from '../services/api';
+import { trackPlay } from '../services/analyticsService';
 import { useAuth } from './AuthContext';
 import { useLibrary } from './LibraryContext';
 
@@ -19,7 +20,7 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(() => storage.getSettings().volume ?? 0.8);
+  const [volume, setVolume] = useState(() => storage.getSettings().volume ?? 1);
   const [isMuted, setIsMuted] = useState(false);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(-1);
@@ -36,6 +37,7 @@ export function PlayerProvider({ children }) {
     return val !== undefined ? Number(val) : 60;
   });
   const [isInactiveModalOpen, setIsInactiveModalOpen] = useState(false);
+  const [stableVolume, setStableVolumeState] = useState(() => storage.getSettings().stableVolume === true);
 
   const audioQualityRef = useRef(audioQuality);
   const inactivityTimeoutRef = useRef(inactivityTimeout);
@@ -50,6 +52,8 @@ export function PlayerProvider({ children }) {
   const fetchedVideoIdsRef = useRef(new Set());
   const isTransitioningRef = useRef(false);
   const isAutoplayRef = useRef(true);
+  const volumeRef = useRef(volume);
+  const stableVolumeRef = useRef(stableVolume);
 
   // Synchronized refs to prevent stale closures in YouTube Player callbacks
   const userRef = useRef(user);
@@ -74,6 +78,25 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     isAutoplayRef.current = isAutoplay;
   }, [isAutoplay]);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    stableVolumeRef.current = stableVolume;
+  }, [stableVolume]);
+
+  // Apply volume to the YT player with optional stable-volume leveling
+  const applyPlayerVolume = useCallback((vol) => {
+    const target = playerRef.current;
+    if (!target || typeof target.setVolume !== 'function') return;
+    let effective = Math.max(0, Math.min(1, vol));
+    if (stableVolumeRef.current && effective > 0) {
+      effective = effective <= 0.5 ? effective * 1.15 : 0.575 + (effective - 0.5) * 0.55;
+    }
+    target.setVolume(Math.round(effective * 100));
+  }, []);
 
   // Keep refs synchronized on every update
   useEffect(() => {
@@ -199,7 +222,7 @@ export function PlayerProvider({ children }) {
               onReady: (event) => {
                 playerRef.current = event.target;
                 playerInitPromiseRef.current = null;
-                event.target.setVolume(volume * 100);
+                applyPlayerVolume(volumeRef.current);
                 if (typeof event.target.setPlaybackQuality === 'function') {
                   event.target.setPlaybackQuality(quality);
                 }
@@ -248,7 +271,7 @@ export function PlayerProvider({ children }) {
     });
 
     return playerInitPromiseRef.current;
-  }, [volume]);
+  }, [applyPlayerVolume]);
 
   // Track progress ticker + fallback threshold detector
   useEffect(() => {
@@ -328,6 +351,9 @@ export function PlayerProvider({ children }) {
         api.recordHistory(identifier, song, currentUser.email).catch(console.warn);
       }
     }
+
+    // Track play for GAnalytics (fire and forget)
+    trackPlay(song, userRef.current || user || storage.getUser());
 
     let initialQueue = [song];
     let initialIdx = 0;
@@ -645,21 +671,27 @@ export function PlayerProvider({ children }) {
     const clamped = Math.max(0, Math.min(1, val));
     setVolume(clamped);
     setIsMuted(clamped === 0);
-    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-      playerRef.current.setVolume(clamped * 100);
-    }
+    applyPlayerVolume(clamped);
     storage.saveSettings({ ...storage.getSettings(), volume: clamped });
-  }, []);
+  }, [applyPlayerVolume]);
 
   const toggleMute = useCallback(() => {
     if (isMuted) {
       setIsMuted(false);
-      setVolumeLevel(volume || 0.8);
+      setVolumeLevel(volume || 1);
     } else {
       setIsMuted(true);
       if (playerRef.current?.setVolume) playerRef.current.setVolume(0);
     }
   }, [isMuted, volume, setVolumeLevel]);
+
+  const setStableVolume = useCallback((enabled) => {
+    const val = Boolean(enabled);
+    setStableVolumeState(val);
+    stableVolumeRef.current = val;
+    storage.saveSettings({ ...storage.getSettings(), stableVolume: val });
+    applyPlayerVolume(volumeRef.current);
+  }, [applyPlayerVolume]);
 
   const toggleShuffle = useCallback(() => {
     setIsShuffle(prev => !prev);
@@ -776,6 +808,8 @@ export function PlayerProvider({ children }) {
         duration,
         volume,
         isMuted,
+        stableVolume,
+        setStableVolume,
         queue,
         queueIndex,
         isShuffle,

@@ -22,7 +22,9 @@ export function Settings() {
     inactivityTimeout, 
     setInactivityTimeout,
     isAutoplay,
-    toggleAutoplay
+    toggleAutoplay,
+    stableVolume,
+    setStableVolume
   } = usePlayer();
 
   const [settings, setSettings] = useState(() => storage.getSettings());
@@ -351,7 +353,7 @@ export function Settings() {
                     className="fs-field-input"
                     value={profileDob}
                     onChange={(e) => setProfileDob(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
+                    max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
                   />
                   <span className="fs-field-helper">Used to tailor release anniversaries and music charts</span>
                 </div>
@@ -652,6 +654,26 @@ export function Settings() {
                 onChange={() => {
                   toggleAutoplay();
                   notifySaved();
+                }}
+              />
+              <span className="fs-slider" />
+            </label>
+          </div>
+          {/* Stable Volume Switch */}
+          <div className="fs-setting-row">
+            <div className="fs-setting-info">
+              <span className="fs-setting-label">Stable Volume</span>
+              <span className="fs-setting-desc">
+                Evens out loudness jumps between tracks and softens sudden blasts for consistent listening, just like YouTube Music
+              </span>
+            </div>
+            <label className="fs-switch">
+              <input
+                type="checkbox"
+                checked={stableVolume}
+                onChange={(e) => {
+                  setStableVolume(e.target.checked);
+                  showToast(e.target.checked ? 'Stable volume enabled' : 'Stable volume disabled', 'info');
                 }}
               />
               <span className="fs-slider" />

@@ -34,7 +34,10 @@ CREATE TABLE `users` (
   `avatar_url` VARCHAR(500) NULL,
   `auth_provider` ENUM('google', 'email', 'guest') NOT NULL DEFAULT 'google',
   `firebase_uid` VARCHAR(128) NULL COMMENT 'Firebase Google Auth UID',
-  
+
+  -- Lifetime listening stats (never trimmed, unlike play history)
+  `total_plays` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Lifetime total songs streamed',
+
   -- Tracking Registration Data (Kab join kiya, IP address, Kaha se join kiya)
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'User join date & time',
   `registered_ip` VARCHAR(45) NOT NULL DEFAULT '127.0.0.1' COMMENT 'IPv4 / IPv6 at registration',

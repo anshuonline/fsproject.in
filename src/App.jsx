@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PlayerProvider } from './context/PlayerContext';
 import { LibraryProvider } from './context/LibraryContext';
@@ -20,6 +20,7 @@ import { ArtistDetail } from './pages/ArtistDetail/ArtistDetail';
 import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
+import { GAnalytics } from './pages/GAnalytics/GAnalytics';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
@@ -29,6 +30,20 @@ import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
 
 export default function App() {
+  // Suppress native browser context menu app-wide (custom GlobalContextMenu
+  // handles right-click on cards/player). Editable fields keep native paste/copy.
+  useEffect(() => {
+    const suppressNativeMenu = (e) => {
+      const t = e.target;
+      const isEditable =
+        t instanceof HTMLElement &&
+        (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (!isEditable) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', suppressNativeMenu, true);
+    return () => document.removeEventListener('contextmenu', suppressNativeMenu, true);
+  }, []);
+
   return (
     <BrowserRouter>
       <ScrollToTop />
@@ -55,6 +70,7 @@ export default function App() {
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/ganalytics" element={<GAnalytics />} />
                     <Route path="/confirm-delete" element={<ConfirmDelete />} />
 
                     {/* Legal, AdSense & Policy Routes */}

@@ -13,7 +13,8 @@ const DEFAULT_SETTINGS = {
   locationTracking: true,
   autoplay: true,
   crossfade: 0,
-  volume: 0.8
+  volume: 1,
+  stableVolume: false
 };
 
 const DEFAULT_PLAYLISTS = [];

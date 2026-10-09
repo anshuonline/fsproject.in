@@ -13,8 +13,10 @@
   overflow-y: auto;
   contain: layout style;
   transform: translate3d(0, 0, 0);
-  will-change: width, transform;
-  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+  /* Width snaps instantly on desktop (synced with content margin snap) to avoid
+     per-frame reflow; mobile drawer slide below still animates via GPU transform */
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Collapsed Mode (YouTube Music style) */

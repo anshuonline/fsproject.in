@@ -270,6 +270,75 @@ export function matchesArtist(songArtist, targetArtist, songTitle = '') {
   return false;
 }
 
+// ─── Taste Profile Builder (Likes + History + Onboarding Signals) ──────────
+// Learns what the user loves: artist frequency analysis with weighted signals.
+// Likes = strongest engagement signal, recent plays weighted heavier than old.
+export function buildTasteProfile(preferences = {}, history = [], likes = []) {
+  const artistScores = new Map();
+
+  const bumpArtist = (rawName, weight) => {
+    if (!rawName || typeof rawName !== 'string') return;
+    // Primary artist only (strip collab/featured suffixes after commas)
+    const name = normalizeArtist(rawName.split(',')[0].trim());
+    if (!name || name === 'artist' || name === 'unknown artist' || name === 'various artists') return;
+    artistScores.set(name, (artistScores.get(name) || 0) + weight);
+  };
+
+  // 1. Explicit onboarding choices (declared taste, strongest signal)
+  (preferences.artists || []).filter(Boolean).forEach(a => bumpArtist(typeof a === 'string' ? a : a?.name, 3));
+
+  // 2. Liked songs (deliberate engagement signal)
+  (likes || []).forEach(l => bumpArtist(l?.artist, 2.5));
+
+  // 3. Play history with recency decay: last 5 plays weigh double
+  (history || []).forEach((h, i) => bumpArtist(h?.artist, i < 5 ? 2 : 1));
+
+  // Ranked artists, deduplicated via fuzzy alias matching
+  const ranked = Array.from(artistScores.entries()).sort((a, b) => b[1] - a[1]);
+  const topArtists = [];
+  for (const [name] of ranked) {
+    if (topArtists.length >= 6) break;
+    if (topArtists.some(t => matchesArtist(t, name) || matchesArtist(name, t))) continue;
+    topArtists.push(name);
+  }
+
+  // Last played unique songs (most recent first)
+  const seenVids = new Set();
+  const recentSongs = [];
+  for (const h of history || []) {
+    if (!h?.videoId || seenVids.has(h.videoId)) continue;
+    seenVids.add(h.videoId);
+    recentSongs.push({
+      videoId: h.videoId,
+      title: cleanSongTitle(h.title) || h.title,
+      artist: h.artist || 'Artist'
+    });
+    if (recentSongs.length >= 4) break;
+  }
+
+  // Most recent liked songs
+  const seenLiked = new Set();
+  const topLikedSongs = [];
+  for (const l of likes || []) {
+    if (!l?.videoId || seenLiked.has(l.videoId)) continue;
+    seenLiked.add(l.videoId);
+    topLikedSongs.push({
+      videoId: l.videoId,
+      title: cleanSongTitle(l.title) || l.title,
+      artist: l.artist || 'Artist'
+    });
+    if (topLikedSongs.length >= 3) break;
+  }
+
+  return {
+    topArtists,
+    recentSongs,
+    topLikedSongs,
+    likedArtists: topLikedSongs.map(s => s.artist).filter(Boolean),
+    hasSignals: topArtists.length > 0 || recentSongs.length > 0 || topLikedSongs.length > 0
+  };
+}
+
 // ─── Model Formatters ───────────────────────────────────────────────────────
 function formatSong(s) {
   if (!s || !s.videoId) return null;
@@ -405,13 +474,67 @@ export async function fetchOfficialChart(yt, browseIdOrIds, cacheGet, cacheSet) 
   }
 }
 
+// ─── Fetch Official New Album Releases Directly from YouTube Music ─────────
+export async function fetchOfficialNewAlbums(yt, cacheGet, cacheSet) {
+  const cacheKey = 'official_new_albums_v2';
+  if (cacheGet) {
+    const cached = cacheGet(cacheKey);
+    if (cached && cached.length > 0) return cached;
+  }
+
+  try {
+    const relData = await yt.constructRequest('browse', { browseId: 'FEmusic_new_releases_albums' }).catch(() => null);
+    const gridItems = relData?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items || [];
+    const albums = gridItems.map(it => {
+      const twoRow = it.musicTwoRowItemRenderer;
+      if (!twoRow) return null;
+      const title = twoRow.title?.runs?.[0]?.text;
+      const subRuns = twoRow.subtitle?.runs || [];
+      const subText = subRuns.map(r => r.text).join('');
+      const artist = subRuns.length > 2 ? subRuns.slice(2).map(r => r.text).join('').trim() : subRuns[0]?.text;
+      const albumId = twoRow.navigationEndpoint?.browseEndpoint?.browseId;
+      const thumbs = twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+      const rawThumb = thumbs[thumbs.length - 1]?.url || '';
+      return {
+        id: albumId || `alb-${Math.random().toString(36).substring(7)}`,
+        albumId,
+        title: title || 'New Release',
+        artist: artist || 'Artist',
+        creator: artist || 'Artist',
+        year: SYSTEM_YEAR,
+        views: subText || `Released ${SYSTEM_YEAR}`,
+        thumbnail: toHDThumbnail(rawThumb),
+        type: 'album',
+        badge: (artist || title || 'A')[0].toUpperCase(),
+        trackCount: subText.toLowerCase().includes('single') ? 1 : (subText.toLowerCase().includes('ep') ? 4 : 8)
+      };
+    }).filter(Boolean);
+
+    if (albums.length > 0 && cacheSet) {
+      cacheSet(cacheKey, albums, 30 * 60 * 1000);
+    }
+    return albums;
+  } catch (err) {
+    console.warn('fetchOfficialNewAlbums failed:', err.message);
+    return [];
+  }
+}
+
 // ─── Shelf Plan Generator ───────────────────────────────────────────────────
-export function generateShelfPlan(preferences = {}, history = []) {
+export function generateShelfPlan(preferences = {}, history = [], likes = []) {
   const userArtists = (preferences.artists || []).filter(Boolean);
   const userGenres = (preferences.genres || []).filter(Boolean);
 
-  // Defaults if empty
-  const primaryArtists = userArtists.length > 0 ? userArtists : ['Arijit Singh', 'Diljit Dosanjh', 'Taylor Swift'];
+  // Smart taste profile: learns from liked songs, play history & onboarding choices
+  const taste = buildTasteProfile(preferences, history, likes);
+
+  // Artist pool: onboarding choices first, then artists inferred from likes & history
+  const primaryArtists = [...userArtists];
+  taste.topArtists.forEach(a => {
+    if (!primaryArtists.some(x => matchesArtist(x, a))) primaryArtists.push(a);
+  });
+  if (primaryArtists.length === 0) primaryArtists.push('Arijit Singh', 'Diljit Dosanjh', 'Taylor Swift');
+
   const primaryGenres = userGenres.length > 0 ? userGenres : ['bollywood', 'punjabi', 'lofi'];
 
   const shelves = [];
@@ -436,7 +559,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
 
       if (recentItem.artist) {
         const isFollowed = primaryArtists.some(
-          a => a.toLowerCase() === (recentItem.artist || '').toLowerCase()
+          a => matchesArtist(a, recentItem.artist)
         );
         if (!isFollowed) {
           shelves.push({
@@ -467,6 +590,24 @@ export function generateShelfPlan(preferences = {}, history = []) {
       });
     }
   }
+
+  // 1b. "Because you liked" shelves — algorithmic radio seeded from user's liked songs
+  const usedRadioIds = new Set(
+    shelves.filter(s => s.type === 'radio_songs').map(s => s.videoId)
+  );
+  taste.topLikedSongs.slice(0, 2).forEach((likedSong, idx) => {
+    if (!likedSong?.videoId || usedRadioIds.has(likedSong.videoId)) return;
+    usedRadioIds.add(likedSong.videoId);
+    shelves.push({
+      id: `shelf-liked-radio-${idx}`,
+      eyebrow: 'BASED ON YOUR LIKES',
+      title: `Because you liked ${likedSong.title}`,
+      videoId: likedSong.videoId,
+      artistHint: likedSong.artist,
+      type: 'radio_songs',
+      category: 'likes'
+    });
+  });
 
   // 2. QUICK PICKS (Directly near top like YouTube Music)
   shelves.push({
@@ -863,7 +1004,7 @@ export function generateShelfPlan(preferences = {}, history = []) {
 }
 
 // ─── Feed Builder with YTMusic Client ───────────────────────────────────────
-export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, cacheSet) {
+export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, cacheSet, likes = []) {
   // 1. Retrieve or fetch YouTube Music official home sections
   let homeSections = [];
   const homeSecCacheKey = 'yt_home_sections_v5';
@@ -884,8 +1025,8 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
   const officialNewReleasesSec = homeSections.find(s => s.title?.toLowerCase().includes('new releases'));
   const officialQuickPicksSec = homeSections.find(s => s.title?.toLowerCase().includes('quick picks'));
 
-  // 2. Generate customized shelf plan
-  const shelfPlan = generateShelfPlan(preferences, history);
+  // 2. Generate customized shelf plan (learns from history + likes)
+  const shelfPlan = generateShelfPlan(preferences, history, likes);
 
   // 3. Populate shelves concurrently
   const populatedShelves = await Promise.all(
@@ -1151,49 +1292,9 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
 
       // ── TYPE: official_albums (Direct official album releases from YouTube Music) ──
       if (plan.type === 'official_albums') {
-        const cacheKey = 'shelf_official_albums_v6';
-        const cached = cacheGet(cacheKey);
-        if (cached && cached.length > 0) {
-          return { ...plan, items: cached };
-        }
-
-        try {
-          const relData = await yt.constructRequest('browse', { browseId: 'FEmusic_new_releases_albums' }).catch(() => null);
-          const gridItems = relData?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.gridRenderer?.items || [];
-          if (gridItems.length > 0) {
-            const albums = gridItems.map(it => {
-              const twoRow = it.musicTwoRowItemRenderer;
-              if (!twoRow) return null;
-              const title = twoRow.title?.runs?.[0]?.text;
-              const subRuns = twoRow.subtitle?.runs || [];
-              const subText = subRuns.map(r => r.text).join('');
-              const artist = subRuns.length > 2 ? subRuns.slice(2).map(r => r.text).join('').trim() : subRuns[0]?.text;
-              const albumId = twoRow.navigationEndpoint?.browseEndpoint?.browseId;
-              const thumbs = twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-              const rawThumb = thumbs[thumbs.length - 1]?.url || '';
-              return {
-                id: albumId || `alb-${Math.random().toString(36).substring(7)}`,
-                albumId,
-                title: title || 'New Release',
-                artist: artist || 'Artist',
-                creator: artist || 'Artist',
-                year: SYSTEM_YEAR,
-                views: subText || `Released ${SYSTEM_YEAR}`,
-                thumbnail: toHDThumbnail(rawThumb),
-                type: 'album',
-                badge: (artist || title || 'A')[0].toUpperCase(),
-                trackCount: subText.toLowerCase().includes('single') ? 1 : (subText.toLowerCase().includes('ep') ? 4 : 8)
-              };
-            }).filter(Boolean);
-
-            if (albums.length > 0) {
-              const topAlbums = albums.slice(0, 16);
-              cacheSet(cacheKey, topAlbums, 30 * 60 * 1000);
-              return { ...plan, items: topAlbums };
-            }
-          }
-        } catch (albErr) {
-          console.warn('Official albums browse failed:', albErr.message);
+        const albums = await fetchOfficialNewAlbums(yt, cacheGet, cacheSet);
+        if (albums.length > 0) {
+          return { ...plan, items: albums.slice(0, 16) };
         }
 
         if (officialNewReleasesSec?.contents?.length > 0) {

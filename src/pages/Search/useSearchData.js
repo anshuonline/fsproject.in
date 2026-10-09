@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
+import { trackSearch } from '../../services/analyticsService';
 
 export function useSearchData() {
   const [searchParams] = useSearchParams();
@@ -25,6 +26,8 @@ export function useSearchData() {
         if (isMounted) {
           setResults(res);
           setError(null);
+          const total = (res.songs?.length || 0) + (res.albums?.length || 0) + (res.playlists?.length || 0) + (res.artists?.length || 0);
+          trackSearch(query, total);
         }
       })
       .catch(err => {

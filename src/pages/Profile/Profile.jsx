@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
 import { api } from '../../services/api';
+import { formatCompactNumber } from '../../utils/formatNumber';
 import { Link } from 'react-router-dom';
 import './Profile.css';
 
@@ -17,6 +18,9 @@ export function Profile() {
   const { showToast } = useToast();
   const [imgError, setImgError] = useState(false);
   const [hasPasswordState, setHasPasswordState] = useState(Boolean(user?.hasPassword));
+  const [totalPlays, setTotalPlays] = useState(() =>
+    user?.totalPlays !== undefined ? Number(user.totalPlays) : null
+  );
 
   // Reset imgError if user picture changes
   useEffect(() => {
@@ -35,6 +39,15 @@ export function Profile() {
       }
     }
   }, [user?.email, user?.dbId, user?.hasPassword]);
+
+  // Fetch lifetime total plays (survives the 100-song history cap)
+  useEffect(() => {
+    if (user?.dbId || user?.id || user?.email) {
+      api.getUserStats(user.dbId || user.id, user.email).then(total => {
+        if (total !== null) setTotalPlays(total);
+      }).catch(() => {});
+    }
+  }, [user?.dbId, user?.id, user?.email]);
 
   const handleLogout = async () => {
     await logout();
@@ -189,7 +202,7 @@ export function Profile() {
             <Heart size={18} className="text-brand" />
           </div>
           <div className="fs-stat-meta">
-            <span className="fs-stat-number">{likedSongs.length}</span>
+            <span className="fs-stat-number">{formatCompactNumber(likedSongs.length)}</span>
             <span className="fs-stat-label">Liked Songs</span>
           </div>
         </div>
@@ -201,7 +214,7 @@ export function Profile() {
             <ListMusic size={18} className="text-brand" />
           </div>
           <div className="fs-stat-meta">
-            <span className="fs-stat-number">{playlists.length}</span>
+            <span className="fs-stat-number">{formatCompactNumber(playlists.length)}</span>
             <span className="fs-stat-label">Playlists</span>
           </div>
         </div>
@@ -213,7 +226,7 @@ export function Profile() {
             <Sparkles size={18} className="text-brand" />
           </div>
           <div className="fs-stat-meta">
-            <span className="fs-stat-number">{history.length}</span>
+            <span className="fs-stat-number">{formatCompactNumber(Math.max(totalPlays ?? 0, history.length))}</span>
             <span className="fs-stat-label">Streamed</span>
           </div>
         </div>

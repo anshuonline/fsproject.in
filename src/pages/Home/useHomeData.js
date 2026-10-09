@@ -14,7 +14,8 @@ export function useHomeData() {
       setLoading(true);
       const prefs = customPrefs || storage.getPreferences();
       const history = storage.getHistory() || [];
-      const res = await api.getHomeFeed(prefs, history);
+      const likes = storage.getLikedSongs() || [];
+      const res = await api.getHomeFeed(prefs, history, likes);
       setData(res || { sections: [] });
       setError(null);
     } catch (err) {

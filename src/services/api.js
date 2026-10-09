@@ -23,13 +23,20 @@ export function isEasyPassword(password) {
 }
 
 export const api = {
-  async getHomeFeed(prefs = null, history = null) {
+  async getHomeFeed(prefs = null, history = null, likes = null) {
     try {
       let url = `${API_BASE}/home`;
       const params = new URLSearchParams();
       if (prefs?.genres?.length) params.set('genres', prefs.genres.join(','));
       if (prefs?.artists?.length) params.set('artists', prefs.artists.map(a => typeof a === 'string' ? a : a.name).join(','));
       if (history?.length) params.set('history', JSON.stringify(history.slice(0, 5)));
+      if (likes?.length) {
+        params.set('likes', JSON.stringify(
+          likes.slice(0, 10)
+            .map(s => ({ videoId: s.videoId, title: s.title, artist: s.artist }))
+            .filter(s => s.videoId)
+        ));
+      }
       params.set('_t', Date.now().toString());
 
       const qs = params.toString();
@@ -75,7 +82,7 @@ export const api = {
       return await res.json();
     } catch (err) {
       console.warn('Explore API error:', err);
-      return { categories: [], featuredTracks: [], lofiTracks: [] };
+      return { categories: [], spotlight: null, trendingNow: [], freshDrops: [], newAlbums: [], moodShelves: [] };
     }
   },
 
@@ -278,6 +285,19 @@ export const api = {
     } catch (err) {
       console.warn('getUserHistory API error:', err);
       return [];
+    }
+  },
+
+  async getUserStats(userId, email = null) {
+    try {
+      let url = `${API_BASE}/user/stats?userId=${encodeURIComponent(userId || '')}`;
+      if (email) url += `&email=${encodeURIComponent(email)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return Number(data.totalPlays) || 0;
+    } catch {
+      return null;
     }
   },
 

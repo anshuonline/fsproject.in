@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import YTMusic from 'ytmusic-api';
-import { buildAlgorithmicFeed } from './recommendationEngine.js';
+import { buildAlgorithmicFeed, fetchOfficialChart, fetchOfficialNewAlbums, isSpamOrJunkSong, cleanSongTitle, OFFICIAL_CHARTS, EDITORIAL_NEW_RELEASES } from './recommendationEngine.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
@@ -99,8 +99,16 @@ app.get('/api/home', async (req, res) => {
     }
   } catch {}
 
+  let userLikes = [];
+  try {
+    if (req.query.likes) {
+      userLikes = JSON.parse(req.query.likes);
+    }
+  } catch {}
+
   const historyKey = (userHistory[0]?.videoId || userHistory[0]?.title || userHistory[0]?.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cacheKey = `home_algo_v7_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}`;
+  const likesKey = userLikes.slice(0, 8).map(l => l?.videoId || '').filter(Boolean).join('_');
+  const cacheKey = `home_algo_v8_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}_${likesKey}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -111,7 +119,8 @@ app.get('/api/home', async (req, res) => {
       { artists: userArtists, genres: userGenres },
       userHistory,
       getCached,
-      setCache
+      setCache,
+      userLikes
     );
 
     setCache(cacheKey, feed, 10 * 60 * 1000); // 10 min cache
@@ -473,50 +482,103 @@ app.get('/api/related/:videoId', async (req, res) => {
 
 // Explore Feeds (Genres, Moods, Curated Picks)
 app.get('/api/explore', async (req, res) => {
-  const cacheKey = 'explore_feed';
+  const cacheKey = 'explore_feed_v2';
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
   try {
     const yt = await getYTMusic();
-    const [popSongs, lofiSongs, romanticSongs, indieSongs] = await Promise.all([
-      yt.searchSongs('Top Bollywood Pop').catch(() => []),
-      yt.searchSongs('Hindi Lo-Fi Chill').catch(() => []),
-      yt.searchSongs('Romantic Hindi Love').catch(() => []),
-      yt.searchSongs('Indian Indie Hits').catch(() => [])
+
+    // Dedupe, clean & spam-filter raw search results
+    const cleanSongs = (rawList, limit = 14) => {
+      const seen = new Set();
+      const out = [];
+      for (const raw of rawList || []) {
+        const s = formatSong(raw);
+        if (!s || !s.videoId || isSpamOrJunkSong(s)) continue;
+        if (seen.has(s.videoId)) continue;
+        seen.add(s.videoId);
+        s.title = cleanSongTitle(s.title) || s.title;
+        out.push(s);
+        if (out.length >= limit) break;
+      }
+      return out;
+    };
+
+    // Official YouTube Music live chart songs (editorial hitlists)
+    const chartSongs = async (chartKey, limit = 14) => {
+      const browseId = OFFICIAL_CHARTS[chartKey];
+      if (!browseId) return [];
+      const songs = await fetchOfficialChart(yt, browseId, getCached, setCache).catch(() => []);
+      return songs.slice(0, limit);
+    };
+
+    // Smart natural search queries (zero year pollution, spam filtered)
+    const searchSmart = async (q, limit = 14) => {
+      const raw = await yt.searchSongs(q).catch(() => []);
+      return cleanSongs(raw, limit);
+    };
+
+    const [
+      trendingSongs, bollywoodSongs, punjabiSongs, indieSongs, hiphopSongs,
+      freshDropSongs, albums, lofiSongs, romanticSongs, partySongs, workoutSongs
+    ] = await Promise.all([
+      chartSongs('trending_india', 16),
+      chartSongs('bollywood'),
+      chartSongs('punjabi'),
+      chartSongs('indie'),
+      chartSongs('desihiphop'),
+      fetchOfficialChart(yt, EDITORIAL_NEW_RELEASES.hindi, getCached, setCache).catch(() => []),
+      fetchOfficialNewAlbums(yt, getCached, setCache).catch(() => []),
+      searchSmart('hindi lofi chill songs'),
+      searchSmart('romantic hindi love songs'),
+      searchSmart('bollywood party dance hits'),
+      searchSmart('bollywood workout motivation songs')
     ]);
+
+    const moodShelves = [
+      { id: 'bollywood', title: 'Bollywood Bliss', eyebrow: 'BOLLYWOOD HITLIST • OFFICIAL CHART', icon: 'Film', color: '#E91E63', songs: bollywoodSongs },
+      { id: 'punjabi', title: 'Punjabi Fire', eyebrow: 'PUNJAB FIRE • OFFICIAL CHART', icon: 'Flame', color: '#FF9800', songs: punjabiSongs },
+      { id: 'indie', title: 'Indie Rising', eyebrow: 'FRESH FINDS • OFFICIAL CHART', icon: 'Music', color: '#26C6DA', songs: indieSongs },
+      { id: 'desihiphop', title: 'Desi Hip Hop', eyebrow: 'EKDUM FRESH • OFFICIAL CHART', icon: 'Mic', color: '#4CAF50', songs: hiphopSongs },
+      { id: 'lofi', title: 'Lo-Fi & Chill Vibes', eyebrow: 'CHILL & STUDY', icon: 'Coffee', color: '#7E57C2', songs: lofiSongs },
+      { id: 'romantic', title: 'Romantic Melodies', eyebrow: 'LOVE & ROMANCE', icon: 'Heart', color: '#EC407A', songs: romanticSongs },
+      { id: 'party', title: 'Party & Club Hits', eyebrow: 'TURN IT UP', icon: 'Volume2', color: '#AB47BC', songs: partySongs },
+      { id: 'workout', title: 'Workout Energy', eyebrow: 'PUMP IT UP', icon: 'Zap', color: '#E64A19', songs: workoutSongs }
+    ].filter(shelf => Array.isArray(shelf.songs) && shelf.songs.length >= 4);
 
     const result = {
       categories: [
-        { id: 'bollywood', name: 'Bollywood Hits', color: '#E91E63', icon: 'Film' },
-        { id: 'punjabi', name: 'Punjabi Beats', color: '#FF9800', icon: 'Flame' },
-        { id: 'tamil', name: 'Tamil Hits (Kollywood)', color: '#FF3366', icon: 'Flame' },
-        { id: 'telugu', name: 'Telugu Hits (Tollywood)', color: '#FF6B00', icon: 'Activity' },
-        { id: 'haryanvi', name: 'Haryanvi Ragni & Beats', color: '#FF5722', icon: 'Zap' },
-        { id: 'bengali', name: 'Bengali Melodies & Folk', color: '#9C27B0', icon: 'Heart' },
-        { id: 'malayalam', name: 'Malayalam Hits', color: '#00BCD4', icon: 'Music' },
-        { id: 'kannada', name: 'Kannada Hits', color: '#FFC107', icon: 'Disc' },
-        { id: 'bhojpuri', name: 'Bhojpuri Tadka', color: '#F44336', icon: 'Volume2' },
-        { id: 'lofi', name: 'Lo-Fi & Chill', color: '#7E57C2', icon: 'Coffee' },
-        { id: 'romantic', name: 'Romantic & Love', color: '#EC407A', icon: 'Heart' },
-        { id: 'desihiphop', name: 'Desi Hip Hop', color: '#4CAF50', icon: 'Mic' },
-        { id: 'indie', name: 'Indian Indie', color: '#26C6DA', icon: 'Music' },
-        { id: 'englishpop', name: 'English Pop', color: '#2196F3', icon: 'Headphones' },
-        { id: 'hiphoprap', name: 'Global Rap / Hip Hop', color: '#673AB7', icon: 'Radio' },
-        { id: 'devotional', name: 'Devotional & Spiritual', color: '#FFB300', icon: 'Sparkles' },
-        { id: 'workout', name: 'Workout & Energy', color: '#E64A19', icon: 'Zap' },
-        { id: 'party', name: 'Party & Club Hits', color: '#AB47BC', icon: 'Volume2' },
-        { id: '90s', name: '90s Bollywood Nostalgia', color: '#8D6E63', icon: 'Disc' },
-        { id: 'ghazals', name: 'Ghazals & Sufi', color: '#78909C', icon: 'BookOpen' },
-        { id: 'edm', name: 'EDM & Electronic', color: '#00E676', icon: 'Sliders' },
-        { id: 'rock', name: 'Rock & Alternative', color: '#FF3D00', icon: 'Flame' },
-        { id: 'sleep', name: 'Sleep & Ambient', color: '#3F51B5', icon: 'Moon' },
-        { id: 'focus', name: 'Focus & Study', color: '#009688', icon: 'Compass' }
+        { id: 'bollywood', name: 'Bollywood Hits', color: '#E91E63', icon: 'Film', query: 'bollywood hit songs' },
+        { id: 'punjabi', name: 'Punjabi Beats', color: '#FF9800', icon: 'Flame', query: 'top punjabi songs' },
+        { id: 'tamil', name: 'Tamil Hits (Kollywood)', color: '#FF3366', icon: 'Flame', query: 'tamil hit songs kollywood' },
+        { id: 'telugu', name: 'Telugu Hits (Tollywood)', color: '#FF6B00', icon: 'Activity', query: 'telugu hit songs tollywood' },
+        { id: 'haryanvi', name: 'Haryanvi Ragni & Beats', color: '#FF5722', icon: 'Zap', query: 'haryanvi hit songs' },
+        { id: 'bengali', name: 'Bengali Melodies & Folk', color: '#9C27B0', icon: 'Heart', query: 'bengali hit songs' },
+        { id: 'malayalam', name: 'Malayalam Hits', color: '#00BCD4', icon: 'Music', query: 'malayalam hit songs' },
+        { id: 'kannada', name: 'Kannada Hits', color: '#FFC107', icon: 'Disc', query: 'kannada hit songs' },
+        { id: 'bhojpuri', name: 'Bhojpuri Tadka', color: '#F44336', icon: 'Volume2', query: 'bhojpuri hit songs' },
+        { id: 'lofi', name: 'Lo-Fi & Chill', color: '#7E57C2', icon: 'Coffee', query: 'lofi chill songs' },
+        { id: 'romantic', name: 'Romantic & Love', color: '#EC407A', icon: 'Heart', query: 'romantic love songs' },
+        { id: 'desihiphop', name: 'Desi Hip Hop', color: '#4CAF50', icon: 'Mic', query: 'desi hip hop songs' },
+        { id: 'indie', name: 'Indian Indie', color: '#26C6DA', icon: 'Music', query: 'indian indie songs' },
+        { id: 'englishpop', name: 'English Pop', color: '#2196F3', icon: 'Headphones', query: 'english pop hits' },
+        { id: 'hiphoprap', name: 'Global Rap / Hip Hop', color: '#673AB7', icon: 'Radio', query: 'rap hip hop hits' },
+        { id: 'devotional', name: 'Devotional & Spiritual', color: '#FFB300', icon: 'Sparkles', query: 'devotional bhakti songs' },
+        { id: 'workout', name: 'Workout & Energy', color: '#E64A19', icon: 'Zap', query: 'workout motivation songs' },
+        { id: 'party', name: 'Party & Club Hits', color: '#AB47BC', icon: 'Volume2', query: 'party dance hits' },
+        { id: '90s', name: '90s Bollywood Nostalgia', color: '#8D6E63', icon: 'Disc', query: '90s bollywood hits' },
+        { id: 'ghazals', name: 'Ghazals & Sufi', color: '#78909C', icon: 'BookOpen', query: 'ghazal sufi songs' },
+        { id: 'edm', name: 'EDM & Electronic', color: '#00E676', icon: 'Sliders', query: 'edm electronic dance songs' },
+        { id: 'rock', name: 'Rock & Alternative', color: '#FF3D00', icon: 'Flame', query: 'rock alternative hits' },
+        { id: 'sleep', name: 'Sleep & Ambient', color: '#3F51B5', icon: 'Moon', query: 'sleep ambient music' },
+        { id: 'focus', name: 'Focus & Study', color: '#009688', icon: 'Compass', query: 'focus study music' }
       ],
-      featuredTracks: popSongs.slice(0, 8).map(formatSong),
-      lofiTracks: lofiSongs.slice(0, 8).map(formatSong),
-      romanticTracks: romanticSongs.slice(0, 8).map(formatSong),
-      indieTracks: indieSongs.slice(0, 8).map(formatSong)
+      spotlight: trendingSongs[0] ? { ...trendingSongs[0], chartLabel: 'India Trending #1' } : null,
+      trendingNow: trendingSongs,
+      freshDrops: freshDropSongs.slice(0, 14),
+      newAlbums: albums.slice(0, 14),
+      moodShelves
     };
 
     setCache(cacheKey, result);
@@ -1666,6 +1728,9 @@ app.post('/api/user/history', async (req, res) => {
         )
     `, [resolvedUserId, resolvedUserId]).catch(() => {});
 
+    // Lifetime play counter (never trimmed, unlike history)
+    await query('UPDATE users SET total_plays = total_plays + 1 WHERE id = ?', [resolvedUserId]).catch(() => {});
+
     res.json({ success: true, userId: resolvedUserId });
   } catch (err) {
     console.warn('History save error:', err.message);
@@ -1730,6 +1795,12 @@ app.post('/api/user/history/batch', async (req, res) => {
         )
     `, [resolvedUserId, resolvedUserId]).catch(() => {});
 
+    // Lifetime play counter: batch adds every valid song (never trimmed)
+    const insertedCount = reversed.filter(s => s?.videoId).length;
+    if (insertedCount > 0) {
+      await query('UPDATE users SET total_plays = total_plays + ? WHERE id = ?', [insertedCount, resolvedUserId]).catch(() => {});
+    }
+
     const history = await query(
       'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, played_at as playedAt FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',
       [resolvedUserId]
@@ -1739,6 +1810,27 @@ app.post('/api/user/history/batch', async (req, res) => {
   } catch (err) {
     console.warn('Batch history sync error:', err.message);
     res.status(500).json({ error: 'Failed to batch sync history' });
+  }
+});
+
+// User Listening Stats: lifetime total plays (survives history trimming)
+app.get('/api/user/stats', async (req, res) => {
+  const { userId, email } = req.query;
+  if (!userId && !email) return res.json({ totalPlays: 0 });
+
+  try {
+    let rows = [];
+    const numericId = parseInt(userId, 10);
+    if (!isNaN(numericId)) {
+      rows = await query('SELECT total_plays FROM users WHERE id = ? LIMIT 1', [numericId]).catch(() => []);
+    }
+    if ((!rows || rows.length === 0) && email) {
+      rows = await query('SELECT total_plays FROM users WHERE email = ? LIMIT 1', [email]).catch(() => []);
+    }
+    res.json({ totalPlays: Number(rows?.[0]?.total_plays) || 0 });
+  } catch (err) {
+    console.warn('User stats error:', err.message);
+    res.json({ totalPlays: 0 });
   }
 });
 
@@ -2200,6 +2292,275 @@ app.all('/api/admin/test-welcome-email', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GAnalytics Endpoints (Visit / Search / Play Tracking + Overview) ─────────
+
+// In-memory session tokens (server restart logs out admins)
+const analyticsSessions = new Map();
+const ANALYTICS_SESSION_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+function createAnalyticsSession(adminId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  analyticsSessions.set(token, { adminId, expires: Date.now() + ANALYTICS_SESSION_TTL });
+  return token;
+}
+
+function getAnalyticsSession(token) {
+  if (!token) return null;
+  const session = analyticsSessions.get(token);
+  if (!session || session.expires < Date.now()) {
+    analyticsSessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function sanitizeAnalyticsQuery(q) {
+  return (q || '').trim().slice(0, 255);
+}
+
+// Admin Login (validates MD5 password against MySQL analytics_admins, logs every attempt)
+app.post('/api/analytics/login', async (req, res) => {
+  const { adminId, password } = req.body;
+  if (!adminId || !password) {
+    return res.status(400).json({ error: 'Admin ID and password are required' });
+  }
+
+  const cleanAdminId = String(adminId).trim().slice(0, 64);
+  const ip = getClientIp(req);
+  const userAgent = (req.headers['user-agent'] || '').slice(0, 500);
+
+  try {
+    const admins = await query('SELECT * FROM analytics_admins WHERE admin_id = ?', [cleanAdminId]);
+    const admin = admins && admins[0];
+    const isMatch = admin && verifyPassword(password, admin.password_hash);
+
+    if (!isMatch) {
+      await query(
+        'INSERT INTO analytics_admin_logs (admin_id, ip_address, user_agent, status, logged_in_at) VALUES (?, ?, ?, ?, NOW())',
+        [cleanAdminId, ip, userAgent, 'failed']
+      ).catch(() => {});
+      return res.status(401).json({ error: 'Invalid admin ID or password' });
+    }
+
+    const token = createAnalyticsSession(admin.admin_id);
+
+    await query(
+      'INSERT INTO analytics_admin_logs (admin_id, ip_address, user_agent, status, logged_in_at) VALUES (?, ?, ?, ?, NOW())',
+      [admin.admin_id, ip, userAgent, 'success']
+    ).catch(() => {});
+
+    res.json({
+      success: true,
+      token,
+      admin: { adminId: admin.admin_id, name: admin.name || 'Admin' }
+    });
+  } catch (err) {
+    console.warn('Analytics login error:', err.message);
+    res.status(500).json({ error: 'Login failed due to a server error' });
+  }
+});
+
+// Admin Login Logs (Last 30 days: date, time, admin, IP)
+app.get('/api/analytics/logs', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const logs = await query(
+      'SELECT admin_id AS adminId, ip_address AS ip, country, city, status, logged_in_at AS loggedInAt FROM analytics_admin_logs WHERE logged_in_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY logged_in_at DESC LIMIT 200'
+    );
+    res.json({ success: true, logs: logs || [] });
+  } catch (err) {
+    console.warn('Analytics logs error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch admin logs' });
+  }
+});
+
+// Track Visit (deduped: 1 unique visit per visitor per day; guests upgrade to registered on login)
+app.post('/api/analytics/track/visit', async (req, res) => {
+  const { visitorId, guestId, isRegistered, country, city } = req.body;
+  if (!visitorId || typeof visitorId !== 'string') {
+    return res.status(400).json({ error: 'visitorId is required' });
+  }
+
+  try {
+    const ip = getClientIp(req);
+    const userAgent = (req.headers['user-agent'] || '').slice(0, 500);
+
+    if (isRegistered && guestId) {
+      // Upgrade today's guest visit to a registered visit (avoids double counting)
+      const upgraded = await query(
+        'UPDATE analytics_visits SET visitor_id = ?, is_registered = 1 WHERE visitor_id = ? AND visited_at >= CURDATE()',
+        [sanitizeAnalyticsQuery(visitorId).slice(0, 128), guestId.slice(0, 128)]
+      );
+      if (upgraded.affectedRows > 0) {
+        return res.json({ success: true, upgraded: true });
+      }
+    }
+
+    const existing = await query(
+      'SELECT id FROM analytics_visits WHERE visitor_id = ? AND visited_at >= CURDATE() LIMIT 1',
+      [visitorId.slice(0, 128)]
+    );
+    if (existing.length > 0) {
+      return res.json({ success: true, counted: false });
+    }
+
+    await query(
+      'INSERT INTO analytics_visits (visitor_id, is_registered, ip_address, country, city, user_agent, visited_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [visitorId.slice(0, 128), isRegistered ? 1 : 0, ip, country || null, city || null, userAgent]
+    );
+
+    res.json({ success: true, counted: true });
+  } catch (err) {
+    console.warn('Analytics visit track error:', err.message);
+    res.json({ success: false });
+  }
+});
+
+// Track Search (fire and forget from frontend)
+app.post('/api/analytics/track/search', async (req, res) => {
+  const { query, visitorId, isRegistered, resultCount } = req.body;
+  const cleanQuery = sanitizeAnalyticsQuery(query);
+  if (!cleanQuery) return res.status(400).json({ error: 'query is required' });
+
+  try {
+    await query(
+      'INSERT INTO analytics_searches (query, visitor_id, is_registered, result_count, searched_at) VALUES (?, ?, ?, ?, NOW())',
+      [cleanQuery, visitorId ? String(visitorId).slice(0, 128) : null, isRegistered ? 1 : 0, Number(resultCount) || 0]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('Analytics search track error:', err.message);
+    res.json({ success: false });
+  }
+});
+
+// Track Play (fire and forget from frontend)
+app.post('/api/analytics/track/play', async (req, res) => {
+  const { videoId, title, artist, thumbnail, visitorId, isRegistered } = req.body;
+  if (!videoId || typeof videoId !== 'string') {
+    return res.status(400).json({ error: 'videoId is required' });
+  }
+
+  try {
+    await query(
+      'INSERT INTO analytics_plays (video_id, title, artist, thumbnail, visitor_id, is_registered, played_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [
+        videoId.slice(0, 64),
+        (title || 'Unknown Title').slice(0, 255),
+        (artist || 'Unknown Artist').slice(0, 255),
+        (thumbnail || '').slice(0, 500),
+        visitorId ? String(visitorId).slice(0, 128) : null,
+        isRegistered ? 1 : 0
+      ]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('Analytics play track error:', err.message);
+    res.json({ success: false });
+  }
+});
+
+// Analytics Overview (token protected): today stats, last 7 days trends, top searches, top 30 songs
+app.get('/api/analytics/overview', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const weekStart = 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)';
+
+    // ── Today Stats ──
+    const [todayVisitors, todayGuests, todayRegistered, totalRegisteredUsers, todayPlays, todaySearches] = await Promise.all([
+      query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE()'),
+      query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE() AND is_registered = 0'),
+      query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE() AND is_registered = 1'),
+      query('SELECT COUNT(*) AS c FROM users'),
+      query('SELECT COUNT(*) AS c FROM analytics_plays WHERE played_at >= CURDATE()'),
+      query('SELECT COUNT(*) AS c FROM analytics_searches WHERE searched_at >= CURDATE()')
+    ]);
+
+    // ── Last 7 Days Daily Trends ──
+    const [visitTrend, playTrend, searchTrend] = await Promise.all([
+      query(`SELECT DATE(visited_at) AS day, COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= ${weekStart} GROUP BY DATE(visited_at) ORDER BY day ASC`),
+      query(`SELECT DATE(played_at) AS day, COUNT(*) AS c FROM analytics_plays WHERE played_at >= ${weekStart} GROUP BY DATE(played_at) ORDER BY day ASC`),
+      query(`SELECT DATE(searched_at) AS day, COUNT(*) AS c FROM analytics_searches WHERE searched_at >= ${weekStart} GROUP BY DATE(searched_at) ORDER BY day ASC`)
+    ]);
+
+    const weekTotals = {
+      visitors: (visitTrend || []).reduce((sum, r) => sum + Number(r.c), 0),
+      plays: (playTrend || []).reduce((sum, r) => sum + Number(r.c), 0),
+      searches: (searchTrend || []).reduce((sum, r) => sum + Number(r.c), 0)
+    };
+
+    // ── Top Searches (Last 7 Days) ──
+    const topSearches = await query(
+      `SELECT LOWER(query) AS query, COUNT(*) AS search_count FROM analytics_searches WHERE searched_at >= ${weekStart} GROUP BY LOWER(query) ORDER BY search_count DESC LIMIT 10`
+    );
+
+    // ── Top 30 Songs (Last 7 Days) ──
+    const topSongs = await query(
+      `SELECT video_id AS videoId, MAX(title) AS title, MAX(artist) AS artist, MAX(thumbnail) AS thumbnail, COUNT(*) AS play_count FROM analytics_plays WHERE played_at >= ${weekStart} GROUP BY video_id ORDER BY play_count DESC LIMIT 30`
+    );
+
+    // Build complete 7-day series (fill missing days with 0)
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({
+        day: key,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        visitors: 0,
+        plays: 0,
+        searches: 0
+      });
+    }
+    const findDay = (arr, key) => (arr || []).find(r => {
+      const d = new Date(r.day);
+      return d.toISOString().slice(0, 10) === key;
+    });
+    for (const d of days) {
+      const v = findDay(visitTrend, d.day);
+      const p = findDay(playTrend, d.day);
+      const s = findDay(searchTrend, d.day);
+      if (v) d.visitors = Number(v.c);
+      if (p) d.plays = Number(p.c);
+      if (s) d.searches = Number(s.c);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        today: {
+          visitors: Number(todayVisitors[0]?.c) || 0,
+          guests: Number(todayGuests[0]?.c) || 0,
+          registered: Number(todayRegistered[0]?.c) || 0,
+          totalRegisteredUsers: Number(totalRegisteredUsers[0]?.c) || 0,
+          plays: Number(todayPlays[0]?.c) || 0,
+          searches: Number(todaySearches[0]?.c) || 0
+        },
+        last7Days: {
+          totals: weekTotals,
+          days,
+          topSearches: (topSearches || []).map(r => ({ query: r.query, count: Number(r.search_count) })),
+          topSongs: (topSongs || []).map(r => ({
+            videoId: r.videoId,
+            title: r.title || 'Unknown Title',
+            artist: r.artist || 'Unknown Artist',
+            thumbnail: r.thumbnail || (r.videoId ? `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg` : ''),
+            playCount: Number(r.play_count)
+          }))
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Analytics overview error:', err);
+    res.status(500).json({ error: 'Failed to fetch analytics overview' });
   }
 });
 

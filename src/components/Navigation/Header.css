@@ -384,7 +384,8 @@
     height: 16px;
   }
 
-  .fs-brand-title {
+  /* Hide entire brand (logo + text) on mobile: hamburger sidebar already shows the logo */
+  .fs-brand {
     display: none;
   }
 

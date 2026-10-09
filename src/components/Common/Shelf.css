@@ -1,0 +1,125 @@
+.fs-shelf-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
+.fs-shelf-block-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.fs-shelf-block-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fs-shelf-block-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+}
+
+.fs-shelf-block-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-white);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.fs-shelf-block-subtitle {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.fs-shelf-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.fs-shelf-block-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-shelf-block-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background-color: var(--color-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.fs-shelf-block-btn:hover {
+  background-color: var(--color-card-hover);
+  color: var(--color-white);
+  border-color: var(--color-text-muted);
+}
+
+/* Horizontal carousel row */
+.fs-shelf-block-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 4px 12px;
+}
+
+.fs-shelf-block-row::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-shelf-block-row > * {
+  flex: 0 0 auto;
+}
+
+/* Grid body */
+.fs-shelf-block-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+/* Prevent long nowrap titles from blowing out grid tracks */
+.fs-shelf-block-body > * {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .fs-shelf-block-header {
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .fs-shelf-block-title {
+    font-size: 1.2rem;
+  }
+
+  .fs-shelf-block-subtitle {
+    font-size: 0.78rem;
+  }
+
+  .fs-shelf-block-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

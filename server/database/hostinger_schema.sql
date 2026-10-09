@@ -24,6 +24,7 @@ CREATE TABLE `users` (
   `avatar_url` VARCHAR(500) NULL,
   `auth_provider` ENUM('google', 'email', 'guest') NOT NULL DEFAULT 'google',
   `firebase_uid` VARCHAR(128) NULL,
+  `total_plays` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Lifetime total songs streamed',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'User join date & time',
   `registered_ip` VARCHAR(45) NOT NULL DEFAULT '127.0.0.1' COMMENT 'IPv4 / IPv6 at registration',
   `registered_country` VARCHAR(100) NULL DEFAULT 'India',

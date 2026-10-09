@@ -12,11 +12,14 @@ import { InactivityModal } from '../components/Common/InactivityModal';
 import { Toast } from '../components/Common/Toast';
 import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
+import { useAuth } from '../context/AuthContext';
+import { trackVisit } from '../services/analyticsService';
 import './MainLayout.css';
 
 export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 901 : true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
@@ -41,6 +44,11 @@ export function MainLayout() {
     window.scrollTo({ top: 0, behavior: 'instant' });
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // Daily visit tracking (guest vs registered, re-fires on login)
+  useEffect(() => {
+    trackVisit(isAuthenticated ? user : null);
+  }, [isAuthenticated]);
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 
