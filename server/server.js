@@ -815,6 +815,13 @@ app.get('/api/artist/:id', async (req, res) => {
     let topSongs = [];
     let albums = [];
 
+    // Reject algorithmic junk releases YT Music puts on artist pages
+    // ("Artist Spotlight", mixes, radios, mood compilations)
+    const isJunkAlbum = (title) => {
+      if (!title) return true;
+      return /artist\s*spotlight|featuring|mix|radio|monthly|top\s*tracks|top\s*hits|song\s*list|essentials|playlist/i.test(title);
+    };
+
     if (fullArtist) {
       artistName = fullArtist.name || artistName;
       subscribers = fullArtist.subscribers || subscribers;
@@ -826,7 +833,10 @@ app.get('/api/artist/:id', async (req, res) => {
         }
       }
       topSongs = (fullArtist.topSongs || []).map(formatSong).filter(Boolean);
-      albums = (fullArtist.topAlbums || []).map(formatAlbum).filter(Boolean);
+      albums = (fullArtist.topAlbums || [])
+        .filter(a => a && !isJunkAlbum(a.name || a.title))
+        .map(formatAlbum)
+        .filter(Boolean);
     }
 
     // 5. Enrich top songs: ensure at least 15 popular songs
@@ -847,11 +857,19 @@ app.get('/api/artist/:id', async (req, res) => {
       }
     }
 
-    // 6. Enrich albums if empty
-    if (albums.length === 0) {
+    // 6. Enrich albums: top up with real releases via search (deduped, junk-free)
+    if (albums.length < 8) {
       try {
-        const extraAlbums = await yt.searchAlbums(`${artistName} albums`).catch(() => []);
-        albums = (extraAlbums || []).slice(0, 8).map(formatAlbum).filter(Boolean);
+        const extraAlbums = await yt.searchAlbums(`${artistName} official album`).catch(() => []);
+        const seenAlbumIds = new Set(albums.map(a => a.id));
+        for (const a of (extraAlbums || [])) {
+          const formatted = formatAlbum(a);
+          if (formatted && formatted.id && !seenAlbumIds.has(formatted.id) && !isJunkAlbum(formatted.title)) {
+            seenAlbumIds.add(formatted.id);
+            albums.push(formatted);
+            if (albums.length >= 10) break;
+          }
+        }
       } catch (albErr) {}
     }
 

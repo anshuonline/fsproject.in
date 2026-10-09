@@ -12,7 +12,7 @@ import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './Followed.css';
 
 const MAX_FEED_ARTISTS = 12;
-const MAX_PLAYLIST_ARTISTS = 4;
+const MAX_PLAYLIST_ARTISTS = 6;
 
 export function Followed() {
   const [followedNames, setFollowedNames] = useState(() => storage.getFollowedArtists());
@@ -50,21 +50,15 @@ export function Followed() {
 
       const plResults = await Promise.all(
         targets.slice(0, MAX_PLAYLIST_ARTISTS).map(name =>
-          api.search(`${name}`, 'playlists', 3)
+          api.search(`${name} songs`, 'playlist', 3)
         )
       );
       if (cancelled) return;
-      const seen = new Set();
-      const merged = [];
-      plResults.filter(Boolean).forEach(res => {
-        (res.playlists || []).forEach(p => {
-          if (p && p.id && !seen.has(p.id)) {
-            seen.add(p.id);
-            merged.push(p);
-          }
-        });
-      });
-      setPlaylists(merged.slice(0, 12));
+      const seenPl = new Set();
+      const plLists = plResults.filter(Boolean).map(res =>
+        (res.playlists || []).filter(p => p && p.id && !seenPl.has(p.id) && seenPl.add(p.id))
+      );
+      setPlaylists(roundRobinMerge(plLists, 3, 12));
       setLoading(false);
     };
 
@@ -83,29 +77,34 @@ export function Followed() {
     };
   });
 
-  const seenVideos = new Set();
-  const feedSongs = [];
-  artistData.forEach(a => {
-    (a.topSongs || []).forEach(s => {
-      if (s && s.videoId && !seenVideos.has(s.videoId)) {
-        seenVideos.add(s.videoId);
-        feedSongs.push(s);
+  // ─── Equal round-robin merge: every artist is equally represented ────
+  // Interleave 1 item per artist per pass (Sidhu → Karan → Anuv → ...) so a
+  // prolific artist never dominates the shelf. Per-artist caps keep it fair.
+  function roundRobinMerge(lists, perArtistCap, totalCap) {
+    const capped = lists.map(list => list.slice(0, perArtistCap));
+    const merged = [];
+    for (let pass = 0; pass < perArtistCap; pass++) {
+      for (const list of capped) {
+        if (pass < list.length) {
+          merged.push(list[pass]);
+          if (merged.length >= totalCap) return merged;
+        }
       }
-    });
-  });
-  const displaySongs = feedSongs.slice(0, 36);
+    }
+    return merged;
+  }
+
+  const seenVideos = new Set();
+  const songLists = artistData.map(a =>
+    (a.topSongs || []).filter(s => s && s.videoId && !seenVideos.has(s.videoId) && seenVideos.add(s.videoId))
+  );
+  const displaySongs = roundRobinMerge(songLists, 8, 36);
 
   const seenAlbums = new Set();
-  const feedAlbums = [];
-  artistData.forEach(a => {
-    (a.albums || []).forEach(al => {
-      if (al && al.id && !seenAlbums.has(al.id)) {
-        seenAlbums.add(al.id);
-        feedAlbums.push(al);
-      }
-    });
-  });
-  const displayAlbums = feedAlbums.slice(0, 24);
+  const albumLists = artistData.map(a =>
+    (a.albums || []).filter(al => al && al.id && !seenAlbums.has(al.id) && seenAlbums.add(al.id))
+  );
+  const displayAlbums = roundRobinMerge(albumLists, 5, 24);
 
   if (followedNames.length === 0) {
     return (

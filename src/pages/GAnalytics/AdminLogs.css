@@ -1,0 +1,114 @@
+.fs-ga-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-ga-logs-header,
+.fs-ga-logs-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr 1.2fr 0.8fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.fs-ga-logs-header {
+  padding: 10px 20px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.fs-ga-logs-row {
+  padding: 10px 20px;
+  transition: background var(--transition-fast);
+}
+
+.fs-ga-logs-row:hover {
+  background: var(--color-card-hover);
+}
+
+.fs-ga-logs-row.failed {
+  background: rgba(255, 82, 82, 0.04);
+}
+
+.fs-ga-logs-row.failed:hover {
+  background: rgba(255, 82, 82, 0.08);
+}
+
+.fs-ga-logs-col-admin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fs-ga-logs-admin-id {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-ga-logs-col-date {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.fs-ga-logs-col-ip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fs-ga-logs-col-ip svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.fs-ga-logs-city {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-ga-logs-col-status {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .fs-ga-logs-header,
+  .fs-ga-logs-row {
+    grid-template-columns: 1fr 1.2fr;
+    row-gap: 6px;
+  }
+
+  .fs-ga-logs-header .fs-ga-logs-col-status,
+  .fs-ga-logs-row .fs-ga-logs-col-status {
+    display: none;
+  }
+
+  .fs-ga-logs-row {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 10px;
+  }
+
+  .fs-ga-logs-col-date {
+    font-size: 0.78rem;
+    white-space: normal;
+  }
+}

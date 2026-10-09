@@ -1,0 +1,151 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Radio, User, LoaderCircle, Music2, MapPin, RefreshCw
+} from 'lucide-react';
+import { getLiveUsers } from '../../services/analyticsService';
+import { useGAnalytics } from './GAnalyticsLayout';
+import './LiveNow.css';
+
+export function LiveNow() {
+  const { token, onSessionExpired, refreshTick } = useGAnalytics();
+  const [live, setLive] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const loadLive = useCallback(async (authToken) => {
+    if (!authToken) return;
+    setLoading(true);
+    try {
+      const data = await getLiveUsers(authToken);
+      setLive(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      if (err.status === 401) onSessionExpired();
+    } finally {
+      setLoading(false);
+    }
+  }, [onSessionExpired]);
+
+  // Initial load + auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!token) return;
+    loadLive(token);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      loadLive(token);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token, loadLive]);
+
+  // Manual refresh from header
+  useEffect(() => {
+    if (refreshTick > 0 && token) loadLive(token);
+  }, [refreshTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formatNumber = (n) => Number(n || 0).toLocaleString('en-IN');
+
+  const guestLabel = (visitorId) => {
+    const short = (visitorId || '').replace('guest_', '').split('_')[0];
+    return `Guest ${short ? `• ${short.slice(0, 6)}` : ''}`;
+  };
+
+  return (
+    <div className="fs-ga-live">
+      {/* Live Stat Cards */}
+      <div className="fs-ga-stats-grid cols-3">
+        <div className="fs-ga-stat-card">
+          <div className="fs-ga-stat-icon-wrap live-online">
+            <Radio size={20} />
+            <span className="fs-ga-live-pulse-dot" />
+          </div>
+          <p className="fs-ga-stat-label">Total Online</p>
+          <p className="fs-ga-stat-value">{formatNumber(live?.totalOnline)}</p>
+        </div>
+        <div className="fs-ga-stat-card">
+          <div className="fs-ga-stat-icon-wrap guests"><User size={20} /></div>
+          <p className="fs-ga-stat-label">Guests Online</p>
+          <p className="fs-ga-stat-value">{formatNumber(live?.guestsOnline)}</p>
+        </div>
+        <div className="fs-ga-stat-card">
+          <div className="fs-ga-stat-icon-wrap registered"><User size={20} /></div>
+          <p className="fs-ga-stat-label">Registered Online</p>
+          <p className="fs-ga-stat-value">{formatNumber(live?.registeredOnline)}</p>
+        </div>
+      </div>
+
+      {/* Live Listeners List */}
+      <div className="fs-ga-section">
+        <div className="fs-ga-section-header">
+          <Radio size={18} className="fs-ga-section-icon" />
+          <h2 className="fs-ga-section-title">Live Listeners</h2>
+          <span className="fs-ga-section-sub">
+            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Active in last 5 minutes'}
+          </span>
+          {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
+        </div>
+
+        <div className="fs-ga-list-container">
+          {(live?.users || []).length === 0 ? (
+            <p className="fs-ga-empty-text">No one is online right now — check back in a bit</p>
+          ) : (
+            <>
+              <div className="fs-ga-live-header">
+                <span className="fs-ga-live-col-user">User</span>
+                <span className="fs-ga-live-col-location">Location</span>
+                <span className="fs-ga-live-col-song">Now Playing</span>
+              </div>
+              {live.users.map((u, i) => (
+                <div key={`${u.visitorId}-${i}`} className="fs-ga-live-row">
+                  {/* User */}
+                  <div className="fs-ga-live-col-user">
+                    <div className={`fs-ga-avatar ${u.type === 'registered' ? 'letter' : 'icon'}`}>
+                      {u.type === 'registered' ? (u.name || 'U').charAt(0).toUpperCase() : <User size={16} />}
+                    </div>
+                    <div className="fs-ga-live-user-info">
+                      <span className="fs-ga-live-user-name truncate">
+                        {u.type === 'registered' ? u.name : guestLabel(u.visitorId)}
+                      </span>
+                      <span className={`fs-ga-badge ${u.type}`}>
+                        {u.type === 'registered' ? 'Registered' : 'Guest'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="fs-ga-live-col-location">
+                    {u.city || u.country ? (
+                      <>
+                        <MapPin size={13} />
+                        <span className="truncate">
+                          {[u.city, u.country].filter(Boolean).join(', ')}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="fs-ga-live-unknown">Unknown</span>
+                    )}
+                  </div>
+
+                  {/* Now Playing */}
+                  <div className="fs-ga-live-col-song">
+                    {u.currentSong ? (
+                      <>
+                        <img src={u.currentSong.thumbnail} alt="" className="fs-ga-live-song-thumb" loading="lazy" />
+                        <div className="fs-ga-live-song-info">
+                          <span className="fs-ga-live-song-title truncate">{u.currentSong.title}</span>
+                          <span className="fs-ga-live-song-artist truncate">{u.currentSong.artist}</span>
+                        </div>
+                        <Music2 size={14} className="fs-ga-live-playing-icon" />
+                      </>
+                    ) : (
+                      <span className="fs-ga-live-idle">Idle</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

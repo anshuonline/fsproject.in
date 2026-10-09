@@ -1,0 +1,120 @@
+.fs-ga-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-ga-songs-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 20px;
+  transition: background var(--transition-fast);
+}
+
+.fs-ga-songs-row:hover {
+  background: var(--color-card-hover);
+}
+
+.fs-ga-songs-rank {
+  font-size: 1rem;
+}
+
+.fs-ga-songs-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.fs-ga-songs-play {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #000000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.fs-ga-songs-play:hover {
+  transform: scale(1.06);
+  background: var(--color-primary-hover);
+}
+
+.fs-ga-songs-row:hover .fs-ga-songs-play {
+  display: flex;
+}
+
+.fs-ga-songs-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fs-ga-songs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fs-ga-songs-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fs-ga-songs-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.fs-ga-songs-artist {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.fs-ga-songs-count {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .fs-ga-songs-row {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 10px;
+  }
+
+  .fs-ga-songs-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fs-ga-songs-play {
+    display: none !important;
+  }
+
+  .fs-ga-songs-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .fs-ga-songs-count {
+    font-size: 0.78rem;
+  }
+}

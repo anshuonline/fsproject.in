@@ -21,7 +21,7 @@ import { Followed } from './pages/Followed/Followed';
 import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
-import { GAnalytics } from './pages/GAnalytics/GAnalytics';
+import { GAnalyticsLayout, Dashboard, LiveNow, RegisteredUsers, TopSearches, TopSongs, AdminLogs } from './pages/GAnalytics';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
@@ -72,7 +72,15 @@ export default function App() {
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="/ganalytics" element={<GAnalytics />} />
+                    {/* GAnalytics (Admin only, hidden from navigation) */}
+                    <Route path="/ganalytics" element={<GAnalyticsLayout />}>
+                      <Route index element={<Dashboard />} />
+                      <Route path="live" element={<LiveNow />} />
+                      <Route path="users" element={<RegisteredUsers />} />
+                      <Route path="searches" element={<TopSearches />} />
+                      <Route path="songs" element={<TopSongs />} />
+                      <Route path="logs" element={<AdminLogs />} />
+                    </Route>
                     <Route path="/confirm-delete" element={<ConfirmDelete />} />
 
                     {/* Legal, AdSense & Policy Routes */}

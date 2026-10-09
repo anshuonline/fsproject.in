@@ -69,7 +69,9 @@
   letter-spacing: 0.1em;
 }
 
-.fs-artist-name {
+/* Unique class so it never collides with ArtistCard's .fs-artist-name
+   (global CSS bundle: last rule would otherwise override card names with 3rem) */
+.fs-artist-hero-name {
   font-size: 3rem;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -150,7 +152,7 @@
     height: 100px;
   }
 
-  .fs-artist-name {
+  .fs-artist-hero-name {
     font-size: 2rem;
   }
 
