@@ -50,10 +50,10 @@ export function MainLayout() {
     trackVisit(isAuthenticated ? user : null);
   }, [isAuthenticated]);
 
-  // Live presence heartbeat (online status + now playing, every 60s, skipped when tab hidden)
+  // Live presence heartbeat (online status + now playing, every 60s — also when tab is hidden,
+  // so background listeners stay visible in Live Now)
   useEffect(() => {
     const sendPresence = () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
       trackPresence(isAuthenticated ? user : null, currentSong);
     };
     sendPresence();
