@@ -337,40 +337,44 @@ export async function sendWelcomeEmail({ email, name, userId, force = false }) {
 
   // Deduplication guard: check if user already received welcome email
   if (!force) {
-    // 1. In-memory lock: reject if dispatch already in progress for this email
+    // 1. In-memory lock: reject immediately if dispatch already in progress for this email
     if (activeDispatches.has(normalizedEmail)) {
       console.log(`[Welcome Email] Dispatch already in flight for ${email}, ignoring duplicate trigger.`);
       return { success: true, message: 'Welcome email already in progress', alreadySent: true };
     }
 
-    // 2. Atomic Database Claim:
-    // Update welcome_email_sent to 1 ONLY IF it is currently 0.
-    // In MySQL, this row-level update is atomic across all concurrent requests/threads.
-    try {
-      let updateRes;
-      if (userId) {
-        updateRes = await query(
-          'UPDATE users SET welcome_email_sent = 1 WHERE id = ? AND welcome_email_sent = 0',
-          [userId]
-        );
-      } else {
-        updateRes = await query(
-          'UPDATE users SET welcome_email_sent = 1 WHERE email = ? AND welcome_email_sent = 0',
-          [email]
-        );
-      }
+    // Acquire lock immediately (synchronous in JS event loop to block concurrent ticks)
+    activeDispatches.add(normalizedEmail);
 
-      // If 0 rows were updated, it means another concurrent request already claimed the email or it was already sent!
-      if (updateRes && updateRes.affectedRows === 0) {
-        console.log(`[Welcome Email] Already claimed/sent in database for ${email}, ignoring duplicate.`);
-        return { success: true, message: 'Welcome email already sent previously', alreadySent: true };
+    // 2. Atomic Database Claim:
+    // Check if user exists and claim row atomically
+    try {
+      const existing = userId 
+        ? await query('SELECT id, welcome_email_sent FROM users WHERE id = ?', [userId])
+        : await query('SELECT id, welcome_email_sent FROM users WHERE email = ?', [normalizedEmail]);
+
+      if (existing && existing.length > 0) {
+        if (existing[0].welcome_email_sent === 1) {
+          activeDispatches.delete(normalizedEmail);
+          console.log(`[Welcome Email] User ${email} already received welcome email previously, skipping.`);
+          return { success: true, message: 'Welcome email already sent previously', alreadySent: true };
+        }
+
+        // Atomic DB claim: set welcome_email_sent = 1 ONLY IF currently 0
+        const updateRes = await query(
+          'UPDATE users SET welcome_email_sent = 1 WHERE id = ? AND welcome_email_sent = 0',
+          [existing[0].id]
+        );
+
+        if (updateRes && updateRes.affectedRows === 0) {
+          activeDispatches.delete(normalizedEmail);
+          console.log(`[Welcome Email] Already claimed by concurrent worker for ${email}, ignoring duplicate.`);
+          return { success: true, message: 'Welcome email already claimed by concurrent request', alreadySent: true };
+        }
       }
     } catch (dbErr) {
-      console.warn('[Welcome Email] DB atomic claim warning:', dbErr.message);
+      console.warn('[Welcome Email] DB atomic claim check warning:', dbErr.message);
     }
-
-    // Set in-memory lock
-    activeDispatches.add(normalizedEmail);
   }
 
   const transporter = getTransporter();
