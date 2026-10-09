@@ -87,22 +87,7 @@ export function Search() {
       {/* Results */}
       {!loading && query && (
         <div className="fs-search-results">
-          {/* Artists section (Rendered prominently for artist queries) */}
-          {results.artists && results.artists.length > 0 && (
-            <section className="fs-search-section">
-              <h3 className="fs-section-title">Artists</h3>
-              <div className="fs-artists-grid">
-                {results.artists.map(artist => (
-                  <ArtistCard
-                    key={artist.id || artist.name}
-                    artist={artist}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Songs section */}
+          {/* Songs section (Primary search result - user wants to play music immediately) */}
           {results.songs && results.songs.length > 0 && (
             <section className="fs-search-section">
               <h3 className="fs-section-title">Songs</h3>
@@ -112,6 +97,21 @@ export function Search() {
                     key={song.videoId}
                     song={song}
                     queueContext={results.songs}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Artists section */}
+          {results.artists && results.artists.length > 0 && (
+            <section className="fs-search-section">
+              <h3 className="fs-section-title">Artists</h3>
+              <div className="fs-artists-grid">
+                {results.artists.map(artist => (
+                  <ArtistCard
+                    key={artist.id || artist.name}
+                    artist={artist}
                   />
                 ))}
               </div>

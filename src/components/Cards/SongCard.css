@@ -132,23 +132,34 @@
   width: 100%;
 }
 
+.fs-song-artist-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .fs-song-artist {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  flex-shrink: 1;
 }
 
 .fs-song-artist-link {
   transition: color var(--transition-fast);
+  cursor: pointer;
+  display: inline-block;
 }
 
 .fs-song-artist-link:hover {
   color: var(--color-text-primary);
   text-decoration: underline;
-  cursor: pointer;
 }
 
 /* Right Section: Duration + Actions */
@@ -261,6 +272,12 @@
 
   .fs-song-artist {
     font-size: 0.75rem;
+  }
+
+  .fs-song-artist-link {
+    pointer-events: none;
+    cursor: default;
+    text-decoration: none !important;
   }
 
   .fs-song-right {

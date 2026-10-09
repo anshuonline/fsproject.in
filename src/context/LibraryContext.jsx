@@ -64,6 +64,24 @@ export function LibraryProvider({ children }) {
         });
       }
     }).catch(console.warn);
+
+    // 3. Play History sync (Batch upload local history first, then pull full cloud history)
+    const localHistory = storage.getHistory();
+    if (Array.isArray(localHistory) && localHistory.length > 0) {
+      api.syncUserHistory(identifier, localHistory, currentUser.email).then((cloudHistory) => {
+        if (Array.isArray(cloudHistory) && cloudHistory.length > 0) {
+          setHistory(cloudHistory);
+          storage.saveHistory(cloudHistory);
+        }
+      }).catch(console.warn);
+    } else {
+      api.getUserHistory(identifier, currentUser.email).then((cloudHistory) => {
+        if (Array.isArray(cloudHistory) && cloudHistory.length > 0) {
+          setHistory(cloudHistory);
+          storage.saveHistory(cloudHistory);
+        }
+      }).catch(console.warn);
+    }
   }, [user?.email, user?.dbId]);
 
   const toggleLike = (song) => {
@@ -204,6 +222,42 @@ export function LibraryProvider({ children }) {
     return pl ? (pl.songs || []).some(s => s.videoId === videoId) : false;
   };
 
+  const addToHistory = (song) => {
+    if (!song || !song.videoId) return;
+
+    const playedSong = {
+      ...song,
+      playedAt: new Date().toISOString()
+    };
+
+    // 1. Update React state immediately (deduplicated, newest at top)
+    setHistory(prev => {
+      const filtered = (prev || []).filter(s => s.videoId !== song.videoId);
+      const updated = [playedSong, ...filtered].slice(0, 100);
+      storage.saveHistory(updated);
+      return updated;
+    });
+
+    // 2. Persist to DB if user is logged in
+    const currentUser = user || storage.getUser();
+    if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+      const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+      api.recordHistory(identifier, playedSong, currentUser.email).catch(console.warn);
+    }
+  };
+
+  const removeFromHistory = (videoId) => {
+    if (!videoId) return;
+    storage.removeFromHistory(videoId);
+    setHistory(prev => (prev || []).filter(s => s.videoId !== videoId));
+
+    const currentUser = user || storage.getUser();
+    if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+      const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+      api.removeHistoryItem(identifier, videoId, currentUser.email).catch(console.warn);
+    }
+  };
+
   const refreshHistory = () => {
     setHistory(storage.getHistory());
   };
@@ -211,6 +265,12 @@ export function LibraryProvider({ children }) {
   const clearHistory = () => {
     storage.clearHistory();
     setHistory([]);
+
+    const currentUser = user || storage.getUser();
+    if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+      const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+      api.clearUserHistory(identifier, currentUser.email).catch(console.warn);
+    }
   };
 
   return (
@@ -231,6 +291,8 @@ export function LibraryProvider({ children }) {
         addSongToPlaylist,
         removeSongFromPlaylist,
         isSongInPlaylist,
+        addToHistory,
+        removeFromHistory,
         refreshHistory,
         clearHistory
       }}

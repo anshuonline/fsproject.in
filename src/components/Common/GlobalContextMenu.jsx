@@ -59,6 +59,7 @@ export function GlobalContextMenu() {
     saveExternalPlaylist,
     addSongToPlaylist,
     removeSongFromPlaylist,
+    removeFromHistory,
     isSongInPlaylist
   } = useLibrary();
 
@@ -212,6 +213,14 @@ export function GlobalContextMenu() {
     if (song && song._playlistId) {
       removeSongFromPlaylist(song._playlistId, song.videoId);
       showToast(`Removed "${song.title}" from playlist`, 'info');
+      closeMenu();
+    }
+  };
+
+  const handleRemoveFromHistory = () => {
+    if (song && song.videoId && typeof removeFromHistory === 'function') {
+      removeFromHistory(song.videoId);
+      showToast(`Removed "${song.title}" from history`, 'info');
       closeMenu();
     }
   };
@@ -561,6 +570,18 @@ export function GlobalContextMenu() {
                       <Trash2 size={18} />
                     </span>
                     <span className="fs-context-item-label text-danger">Remove from this playlist</span>
+                  </button>
+                </>
+              )}
+
+              {(song._isHistory || (typeof window !== 'undefined' && window.location.pathname === '/history')) && (
+                <>
+                  <div className="fs-context-divider" />
+                  <button className="fs-context-item fs-context-item-danger" onClick={handleRemoveFromHistory}>
+                    <span className="fs-context-item-icon text-danger">
+                      <Trash2 size={18} />
+                    </span>
+                    <span className="fs-context-item-label text-danger">Remove from history</span>
                   </button>
                 </>
               )}

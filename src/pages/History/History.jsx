@@ -45,8 +45,14 @@ export function History() {
             <p>Songs you stream will appear here so you can easily replay them.</p>
           </div>
         ) : (
-          history.map(song => (
-            <SongCard key={song.videoId} song={song} queueContext={history} />
+          history.map((song, idx) => (
+            <SongCard
+              key={`${song.videoId}-${song.playedAt || idx}`}
+              song={song}
+              index={idx}
+              queueContext={history}
+              isHistory={true}
+            />
           ))
         )}
       </div>

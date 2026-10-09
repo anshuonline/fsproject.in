@@ -991,48 +991,7 @@ async function resolveUserId(userIdentifier, email = null) {
   return null;
 }
 
-// Database Status & Diagnostics endpoint
-app.get('/api/db/status', async (req, res) => {
-  const start = Date.now();
-  try {
-    await query('SELECT 1 as ping');
-    const latencyMs = Date.now() - start;
 
-    const [usersRes] = await query('SELECT COUNT(*) as count FROM users');
-    const [likesRes] = await query('SELECT COUNT(*) as count FROM user_likes');
-    const [historyRes] = await query('SELECT COUNT(*) as count FROM user_play_history');
-    const [prefsRes] = await query('SELECT COUNT(*) as count FROM user_preferences');
-    const [playlistsRes] = await query('SELECT COUNT(*) as count FROM user_playlists');
-    const [logsRes] = await query('SELECT COUNT(*) as count FROM user_login_logs');
-
-    res.json({
-      connected: true,
-      provider: 'Hostinger Cloud MySQL',
-      host: process.env.DB_HOST || 'srv2109.hstgr.io',
-      database: process.env.DB_NAME || 'u388169091_freesong',
-      port: process.env.DB_PORT || 3306,
-      latencyMs,
-      stats: {
-        users: Number(usersRes?.count || 0),
-        likes: Number(likesRes?.count || 0),
-        history: Number(historyRes?.count || 0),
-        preferences: Number(prefsRes?.count || 0),
-        playlists: Number(playlistsRes?.count || 0),
-        logins: Number(logsRes?.count || 0)
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    res.status(503).json({
-      connected: false,
-      error: err.message,
-      provider: 'Hostinger Cloud MySQL',
-      host: process.env.DB_HOST || 'srv2109.hstgr.io',
-      database: process.env.DB_NAME || 'u388169091_freesong',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 // User Sync (Saves registration info, IP, Geolocation, and Login logs)
 app.post('/api/user/sync', async (req, res) => {
@@ -1118,6 +1077,9 @@ app.post('/api/user/history', async (req, res) => {
     const geo = await getIpGeo(rawIp);
     const resolvedIp = geo.ip || rawIp;
 
+    // Delete older duplicate entry for this song so it moves to top and prevents duplicates
+    await query('DELETE FROM user_play_history WHERE user_id = ? AND video_id = ?', [resolvedUserId, videoId]).catch(() => {});
+
     await query(`
       INSERT INTO user_play_history (
         user_id, video_id, title, artist, album, thumbnail,
@@ -1157,11 +1119,80 @@ app.post('/api/user/history', async (req, res) => {
   }
 });
 
+// Play History: Batch sync local history to cloud MySQL
+app.post('/api/user/history/batch', async (req, res) => {
+  const { userId, email, songs } = req.body;
+  if (!Array.isArray(songs) || songs.length === 0) {
+    return res.json({ history: [] });
+  }
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    const rawIp = getClientIp(req);
+    const geo = await getIpGeo(rawIp);
+    const resolvedIp = geo.ip || rawIp;
+
+    // Process in reverse (oldest first) so that newest song finishes with latest played_at
+    const reversed = [...songs].reverse();
+    for (const song of reversed) {
+      if (!song?.videoId) continue;
+      await query('DELETE FROM user_play_history WHERE user_id = ? AND video_id = ?', [resolvedUserId, song.videoId]).catch(() => {});
+      const playedAt = song.playedAt ? new Date(song.playedAt) : new Date();
+      await query(`
+        INSERT INTO user_play_history (
+          user_id, video_id, title, artist, album, thumbnail,
+          duration, duration_text, played_duration, ip_address, played_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        resolvedUserId,
+        song.videoId,
+        song.title || 'Unknown Title',
+        song.artist || 'Unknown Artist',
+        song.album || '',
+        song.thumbnail || '',
+        song.duration || 0,
+        song.durationText || '',
+        song.playedDuration || 0,
+        resolvedIp,
+        playedAt
+      ]).catch(() => {});
+    }
+
+    // Keep only the most recent 100 songs for this user
+    await query(`
+      DELETE FROM user_play_history
+      WHERE user_id = ?
+        AND id NOT IN (
+          SELECT id FROM (
+            SELECT id FROM user_play_history
+            WHERE user_id = ?
+            ORDER BY played_at DESC, id DESC
+            LIMIT 100
+          ) AS recent_tracks
+        )
+    `, [resolvedUserId, resolvedUserId]).catch(() => {});
+
+    const history = await query(
+      'SELECT video_id as videoId, title, artist, album, thumbnail, duration, duration_text as durationText, played_at as playedAt FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',
+      [resolvedUserId]
+    );
+
+    res.json({ success: true, history });
+  } catch (err) {
+    console.warn('Batch history sync error:', err.message);
+    res.status(500).json({ error: 'Failed to batch sync history' });
+  }
+});
+
 // Play History: Get last 100 played songs
 app.get('/api/user/:userId/history', async (req, res) => {
   const { userId } = req.params;
   try {
-    const resolvedUserId = await resolveUserId(userId);
+    const resolvedUserId = await resolveUserId(userId, req.query.email);
     if (!resolvedUserId) return res.json({ history: [] });
 
     const history = await query(
@@ -1171,6 +1202,39 @@ app.get('/api/user/:userId/history', async (req, res) => {
     res.json({ history });
   } catch (err) {
     res.status(500).json({ history: [] });
+  }
+});
+
+// Play History: Clear all history
+app.delete('/api/user/history', async (req, res) => {
+  const { userId, email } = req.body;
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+    await query('DELETE FROM user_play_history WHERE user_id = ?', [resolvedUserId]);
+    res.json({ success: true, userId: resolvedUserId });
+  } catch (err) {
+    console.warn('Clear history error:', err.message);
+    res.status(500).json({ error: 'Failed to clear history' });
+  }
+});
+
+// Play History: Remove single track
+app.delete('/api/user/history/item', async (req, res) => {
+  const { userId, email, videoId } = req.body;
+  if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+    await query('DELETE FROM user_play_history WHERE user_id = ? AND video_id = ?', [resolvedUserId, videoId]);
+    res.json({ success: true, userId: resolvedUserId });
+  } catch (err) {
+    console.warn('Remove history item error:', err.message);
+    res.status(500).json({ error: 'Failed to remove history item' });
   }
 });
 

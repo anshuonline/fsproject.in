@@ -73,13 +73,32 @@ export const storage = {
     }
   },
 
+  saveHistory(history) {
+    try {
+      localStorage.setItem(KEYS.HISTORY, JSON.stringify((history || []).slice(0, 100)));
+    } catch (e) {
+      console.warn('History storage error:', e);
+    }
+  },
+
   addToHistory(song) {
     try {
       const history = this.getHistory().filter(s => s.videoId !== song.videoId);
       history.unshift({ ...song, playedAt: new Date().toISOString() });
-      localStorage.setItem(KEYS.HISTORY, JSON.stringify(history.slice(0, 50)));
+      localStorage.setItem(KEYS.HISTORY, JSON.stringify(history.slice(0, 100)));
     } catch (e) {
       console.warn('History storage error:', e);
+    }
+  },
+
+  removeFromHistory(videoId) {
+    try {
+      const history = this.getHistory().filter(s => s.videoId !== videoId);
+      localStorage.setItem(KEYS.HISTORY, JSON.stringify(history));
+      return history;
+    } catch (e) {
+      console.warn('History storage error:', e);
+      return [];
     }
   },
 

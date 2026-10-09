@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, User, X, History, TrendingUp, ArrowUpLeft, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { DbStatusIndicator } from '../Common/DbStatusIndicator';
 import './Header.css';
 
 const RECENT_SEARCHES_KEY = 'freesong_recent_searches';
@@ -172,22 +171,22 @@ export function Header({ onToggleSidebar }) {
 
   // Helper to render suggestion text with YouTube-style bolding
   const renderHighlightedText = (text, query) => {
-    if (!query) return <span>{text}</span>;
+    if (!query) return text;
     const lowerText = text.toLowerCase();
     const lowerQuery = query.toLowerCase();
     const idx = lowerText.indexOf(lowerQuery);
-    if (idx === -1) return <span>{text}</span>;
+    if (idx === -1) return text;
 
     const before = text.slice(0, idx);
     const match = text.slice(idx, idx + query.length);
     const after = text.slice(idx + query.length);
 
     return (
-      <span>
+      <>
         {before}
         <span className="fs-suggest-match">{match}</span>
         <strong className="fs-suggest-completion">{after}</strong>
-      </span>
+      </>
     );
   };
 
@@ -252,7 +251,16 @@ export function Header({ onToggleSidebar }) {
 
         {/* Smart Recommendations Dropdown */}
         {showSuggestions && (
-          <div className="fs-search-dropdown" role="listbox">
+          <div
+            className="fs-search-dropdown"
+            role="listbox"
+            onMouseDown={(e) => {
+              // Prevent losing input focus / premature blur on tap/click
+              if (e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+              }
+            }}
+          >
             {searchQuery.trim() ? (
               // Case 1: Suggestions while typing
               suggestions.length > 0 ? (
@@ -265,6 +273,7 @@ export function Header({ onToggleSidebar }) {
                       onMouseEnter={() => setSelectedIndex(idx)}
                       role="option"
                       aria-selected={selectedIndex === idx}
+                      title={item}
                     >
                       <Search size={16} className="fs-item-icon" />
                       <div className="fs-item-text truncate">
@@ -315,6 +324,7 @@ export function Header({ onToggleSidebar }) {
                         onMouseEnter={() => setSelectedIndex(idx)}
                         role="option"
                         aria-selected={selectedIndex === idx}
+                        title={item}
                       >
                         <History size={16} className="fs-item-icon fs-history-icon" />
                         <div className="fs-item-text truncate">
@@ -347,6 +357,7 @@ export function Header({ onToggleSidebar }) {
                         onMouseEnter={() => setSelectedIndex(idx)}
                         role="option"
                         aria-selected={selectedIndex === idx}
+                        title={item}
                       >
                         <TrendingUp size={16} className="fs-item-icon text-brand" />
                         <div className="fs-item-text truncate">
@@ -372,7 +383,6 @@ export function Header({ onToggleSidebar }) {
 
       {/* Right: Actions */}
       <div className="fs-header-right">
-        <DbStatusIndicator />
         <Link
           to="/profile"
           className="fs-user-avatar"

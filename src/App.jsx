@@ -32,9 +32,9 @@ export default function App() {
       <ScrollToTop />
       <ContextMenuProvider>
         <AuthProvider>
-          <PlayerProvider>
-            <SharedSongHandler />
-            <LibraryProvider>
+          <LibraryProvider>
+            <PlayerProvider>
+              <SharedSongHandler />
               <PWAProvider>
                 <Routes>
                   {/* Main Application with Sidebar, Header, and Player */}
@@ -73,8 +73,8 @@ export default function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </PWAProvider>
-            </LibraryProvider>
-          </PlayerProvider>
+            </PlayerProvider>
+          </LibraryProvider>
         </AuthProvider>
       </ContextMenuProvider>
     </BrowserRouter>

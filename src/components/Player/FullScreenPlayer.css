@@ -123,29 +123,30 @@
   position: relative;
   z-index: 5;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  gap: 48px;
-  max-width: 1680px;
+  gap: 0;
   width: 100%;
-  margin: 0 auto;
-  padding: 8px 48px 84px; /* bottom padding clears the 72px bottom bar */
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 72px 0; /* exactly 72px clears and connects to .fs-fs-bottom-player */
   overflow: hidden;
 }
 
 /* Left Column: Big Album Artwork */
 .fs-fs-art-column {
-  flex: 0 0 auto;
-  width: min(500px, 40vw);
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 24px 48px;
 }
 
 .fs-fs-art-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: min(480px, calc(100vh - 220px));
   aspect-ratio: 1 / 1;
   border-radius: 12px;
   overflow: hidden;
@@ -163,18 +164,20 @@
 
 /* Right Column: YouTube Music Tabs Panel (Wide & Flush) */
 .fs-fs-panel-column {
-  flex: 1;
-  max-width: 860px;
-  min-width: 440px;
-  width: 100%;
+  flex: 0 0 clamp(440px, 44vw, 760px);
+  width: clamp(440px, 44vw, 760px);
   height: 100%;
-  max-height: calc(100vh - 160px);
+  max-height: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(14, 14, 14, 0.88);
+  background: rgba(14, 14, 14, 0.94);
   backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: none;
+  border-bottom: none;
+  border-radius: 14px 0 0 0;
   overflow: hidden;
 }
 
@@ -442,6 +445,8 @@
 .fs-fs-queue-artist {
   font-size: 0.75rem;
   color: var(--color-text-secondary, #afafaf);
+  width: fit-content;
+  max-width: 100%;
 }
 
 .fs-fs-queue-duration {
@@ -872,10 +877,12 @@
   }
 
   .fs-fs-panel-column.mobile-panel-full {
+    flex: 1;
     max-height: 100%;
     height: 100%;
     width: 100%;
     border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   /* Bottom Player Mobile Adjustments */

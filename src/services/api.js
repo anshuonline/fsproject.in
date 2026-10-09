@@ -126,16 +126,6 @@ export const api = {
     }
   },
 
-  async getDbStatus() {
-    try {
-      const res = await fetch(`${API_BASE}/db/status`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      return { connected: false, error: err.message };
-    }
-  },
-
   async syncUser(userData) {
     if (!userData || !userData.email) return null;
     try {
@@ -237,16 +227,64 @@ export const api = {
     }
   },
 
-  async getUserHistory(userId) {
-    if (!userId) return [];
+  async getUserHistory(userId, email = null) {
+    if (!userId && !email) return [];
     try {
-      const res = await fetch(`${API_BASE}/user/${encodeURIComponent(userId)}/history`);
+      let url = `${API_BASE}/user/${encodeURIComponent(userId || email)}/history`;
+      if (email) url += `?email=${encodeURIComponent(email)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       return data.history || [];
     } catch (err) {
       console.warn('getUserHistory API error:', err);
       return [];
+    }
+  },
+
+  async syncUserHistory(userId, songs, email = null) {
+    if (!Array.isArray(songs) || songs.length === 0) return [];
+    try {
+      const res = await fetch(`${API_BASE}/user/history/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, songs })
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.history || [];
+    } catch (err) {
+      console.warn('syncUserHistory API error:', err);
+      return [];
+    }
+  },
+
+  async clearUserHistory(userId, email = null) {
+    try {
+      const res = await fetch(`${API_BASE}/user/history`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('clearUserHistory API error:', err);
+      return false;
+    }
+  },
+
+  async removeHistoryItem(userId, videoId, email = null) {
+    if (!videoId) return false;
+    try {
+      const res = await fetch(`${API_BASE}/user/history/item`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, videoId })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('removeHistoryItem API error:', err);
+      return false;
     }
   },
 

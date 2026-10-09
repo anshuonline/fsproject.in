@@ -12,10 +12,11 @@ export function SongCard({
   queueContext = [],
   index = null,
   playlistId = null,
-  isUserPlaylist = false
+  isUserPlaylist = false,
+  isHistory = false
 }) {
   const { currentSong, isPlaying, playSong, togglePlay, setIsFullScreen } = usePlayer();
-  const { isLiked, toggleLike, removeSongFromPlaylist } = useLibrary();
+  const { isLiked, toggleLike, removeSongFromPlaylist, removeFromHistory } = useLibrary();
   const { openMenu, showToast } = useContextMenu();
   const navigate = useNavigate();
 
@@ -25,6 +26,17 @@ export function SongCard({
   const liked = isLiked(song.videoId);
 
   const handleArtistClick = (e) => {
+    // On touch devices or mobile viewports, tapping the song row plays the song.
+    // Prevent accidental artist navigation when tapping with fingers/thumbs.
+    const isTouchOrMobile =
+      (typeof window !== 'undefined' && window.innerWidth <= 768) ||
+      e.nativeEvent?.pointerType === 'touch';
+
+    if (isTouchOrMobile) {
+      // Do not stop propagation; allow parent row handlePlay to fire cleanly!
+      return;
+    }
+
     e.stopPropagation();
     if (typeof setIsFullScreen === 'function') {
       setIsFullScreen(false);
@@ -45,13 +57,25 @@ export function SongCard({
     }
   };
 
-  const songWithContext = playlistId && isUserPlaylist ? { ...song, _playlistId: playlistId } : song;
+  const songWithContext = {
+    ...song,
+    ...(playlistId && isUserPlaylist ? { _playlistId: playlistId } : {}),
+    ...(isHistory ? { _isHistory: true } : {})
+  };
 
   const handleRemoveFromPlaylist = (e) => {
     e.stopPropagation();
     if (playlistId && song.videoId) {
       removeSongFromPlaylist(playlistId, song.videoId);
       showToast(`Removed "${song.title}" from playlist`, 'info');
+    }
+  };
+
+  const handleRemoveFromHistory = (e) => {
+    e.stopPropagation();
+    if (song.videoId && typeof removeFromHistory === 'function') {
+      removeFromHistory(song.videoId);
+      showToast(`Removed "${song.title}" from history`, 'info');
     }
   };
 
@@ -121,13 +145,15 @@ export function SongCard({
         <span className={`fs-song-title truncate ${isCurrent ? 'text-brand' : ''}`} title={song.title}>
           {song.title}
         </span>
-        <span
-          className="fs-song-artist truncate fs-song-artist-link"
-          title={song.artist}
-          onClick={handleArtistClick}
-        >
-          {song.artist}
-        </span>
+        <div className="fs-song-artist-wrap">
+          <span
+            className="fs-song-artist truncate fs-song-artist-link"
+            title={song.artist}
+            onClick={handleArtistClick}
+          >
+            {song.artist}
+          </span>
+        </div>
       </div>
 
       {/* Right Area: Duration first, then Actions (Heart & Three Dots) */}
@@ -152,6 +178,17 @@ export function SongCard({
               onClick={handleRemoveFromPlaylist}
               title="Remove from this playlist"
               aria-label="Remove from this playlist"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+
+          {isHistory && (
+            <button
+              className="btn-icon fs-song-btn fs-song-remove-btn"
+              onClick={handleRemoveFromHistory}
+              title="Remove from history"
+              aria-label="Remove from history"
             >
               <Trash2 size={15} />
             </button>

@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { storage } from '../services/storage';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
+import { useLibrary } from './LibraryContext';
 
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
   const { user } = useAuth();
+  const { addToHistory } = useLibrary();
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -34,6 +36,8 @@ export function PlayerProvider({ children }) {
   const isAutoplayRef = useRef(true);
 
   // Synchronized refs to prevent stale closures in YouTube Player callbacks
+  const userRef = useRef(user);
+  const addToHistoryRef = useRef(addToHistory);
   const queueRef = useRef(queue);
   const queueIndexRef = useRef(queueIndex);
   const isShuffleRef = useRef(isShuffle);
@@ -42,6 +46,14 @@ export function PlayerProvider({ children }) {
   const sleepTimerRef = useRef(sleepTimer);
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    addToHistoryRef.current = addToHistory;
+  }, [addToHistory]);
 
   useEffect(() => {
     isAutoplayRef.current = isAutoplay;
@@ -272,10 +284,16 @@ export function PlayerProvider({ children }) {
     setIsLoading(true);
     setCurrentTime(0);
 
-    // Save to history
-    storage.addToHistory(song);
-    if (user?.email || user?.dbId) {
-      api.recordHistory(user.dbId || user.email || user.id, song, user.email).catch(console.warn);
+    // Save to history (real-time UI, local storage & Hostinger MySQL database sync)
+    if (addToHistoryRef.current) {
+      addToHistoryRef.current(song);
+    } else {
+      storage.addToHistory(song);
+      const currentUser = userRef.current || user || storage.getUser();
+      if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+        const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+        api.recordHistory(identifier, song, currentUser.email).catch(console.warn);
+      }
     }
 
     let initialQueue = [song];
