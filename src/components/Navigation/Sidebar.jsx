@@ -131,7 +131,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose, isCollapse
             title="Artists you follow"
           >
             <Users size={22} className="fs-nav-icon" />
-            <span>Followed artists</span>
+            <span>{isCollapsed ? 'Followed' : 'Followed artists'}</span>
           </NavLink>
 
           {!isInstalled && (
