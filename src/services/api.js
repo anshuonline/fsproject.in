@@ -1,4 +1,5 @@
 const API_BASE = '/api';
+const activeSyncUserPromises = new Map();
 
 export const api = {
   async getHomeFeed(prefs = null, history = null) {
@@ -128,24 +129,39 @@ export const api = {
 
   async syncUser(userData) {
     if (!userData || !userData.email) return null;
-    try {
-      const res = await fetch(`${API_BASE}/user/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userData.email,
-          name: userData.name || 'FreeSong Listener',
-          avatarUrl: userData.picture || userData.avatarUrl || null,
-          authProvider: userData.provider || userData.authProvider || 'google',
-          firebaseUid: userData.id || userData.firebaseUid || null
-        })
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      console.warn('User sync API error:', err);
-      return null;
+    const emailKey = userData.email.toLowerCase().trim();
+
+    if (activeSyncUserPromises.has(emailKey)) {
+      return activeSyncUserPromises.get(emailKey);
     }
+
+    const syncPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/user/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userData.email,
+            name: userData.name || 'FreeSong Listener',
+            avatarUrl: userData.picture || userData.avatarUrl || null,
+            authProvider: userData.provider || userData.authProvider || 'google',
+            firebaseUid: userData.id || userData.firebaseUid || null
+          })
+        });
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.warn('User sync API error:', err);
+        return null;
+      } finally {
+        setTimeout(() => {
+          activeSyncUserPromises.delete(emailKey);
+        }, 5000);
+      }
+    })();
+
+    activeSyncUserPromises.set(emailKey, syncPromise);
+    return syncPromise;
   },
 
   async addLike(userId, song, email = null) {

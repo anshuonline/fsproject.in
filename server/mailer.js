@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { query } from './database/db.js';
 
 let transporterInstance = null;
+const activeDispatches = new Set();
 
 export function getTransporter() {
   const user = process.env.SMTP_USER || 'support@ganatube.in';
@@ -332,22 +333,57 @@ export async function sendWelcomeEmail({ email, name, userId, force = false }) {
     return { success: false, error: 'Invalid recipient email' };
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
+
   // Deduplication guard: check if user already received welcome email
   if (!force) {
+    // 1. In-memory lock: reject if dispatch already in progress for this email
+    if (activeDispatches.has(normalizedEmail)) {
+      console.log(`[Welcome Email] Dispatch already in flight for ${email}, ignoring duplicate trigger.`);
+      return { success: true, message: 'Welcome email already in progress', alreadySent: true };
+    }
+
+    // 2. Atomic Database Claim:
+    // Update welcome_email_sent to 1 ONLY IF it is currently 0.
+    // In MySQL, this row-level update is atomic across all concurrent requests/threads.
     try {
-      const existing = userId 
-        ? await query('SELECT welcome_email_sent FROM users WHERE id = ?', [userId])
-        : await query('SELECT welcome_email_sent FROM users WHERE email = ?', [email]);
-      if (existing && existing.length > 0 && existing[0].welcome_email_sent === 1) {
+      let updateRes;
+      if (userId) {
+        updateRes = await query(
+          'UPDATE users SET welcome_email_sent = 1 WHERE id = ? AND welcome_email_sent = 0',
+          [userId]
+        );
+      } else {
+        updateRes = await query(
+          'UPDATE users SET welcome_email_sent = 1 WHERE email = ? AND welcome_email_sent = 0',
+          [email]
+        );
+      }
+
+      // If 0 rows were updated, it means another concurrent request already claimed the email or it was already sent!
+      if (updateRes && updateRes.affectedRows === 0) {
+        console.log(`[Welcome Email] Already claimed/sent in database for ${email}, ignoring duplicate.`);
         return { success: true, message: 'Welcome email already sent previously', alreadySent: true };
       }
-    } catch (e) {
-      // Continue if DB check fails
+    } catch (dbErr) {
+      console.warn('[Welcome Email] DB atomic claim warning:', dbErr.message);
     }
+
+    // Set in-memory lock
+    activeDispatches.add(normalizedEmail);
   }
 
   const transporter = getTransporter();
   if (!transporter) {
+    if (!force) {
+      activeDispatches.delete(normalizedEmail);
+      // Revert DB flag if credentials missing so future attempt can succeed
+      if (userId) {
+        await query('UPDATE users SET welcome_email_sent = 0 WHERE id = ?', [userId]).catch(() => {});
+      } else {
+        await query('UPDATE users SET welcome_email_sent = 0 WHERE email = ?', [email]).catch(() => {});
+      }
+    }
     console.warn('[Welcome Email] Hostinger SMTP password not set in .env. Email skipped for:', email);
     return { success: false, error: 'SMTP credentials not configured in environment' };
   }
@@ -368,15 +404,29 @@ export async function sendWelcomeEmail({ email, name, userId, force = false }) {
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Welcome Email] Successfully sent to ${email} (Message ID: ${info.messageId})`);
 
-    // Mark as sent in MySQL database so it's never duplicated
+    // Ensure DB flag stays 1
     if (userId) {
       await query('UPDATE users SET welcome_email_sent = 1 WHERE id = ?', [userId]).catch(() => {});
     } else {
       await query('UPDATE users SET welcome_email_sent = 1 WHERE email = ?', [email]).catch(() => {});
     }
 
+    // Keep lock in memory for 60 seconds to suppress any delayed retries
+    setTimeout(() => {
+      activeDispatches.delete(normalizedEmail);
+    }, 60000);
+
     return { success: true, messageId: info.messageId };
   } catch (err) {
+    activeDispatches.delete(normalizedEmail);
+    // Revert atomic claim if sending threw an error so user isn't permanently locked out
+    if (!force) {
+      if (userId) {
+        await query('UPDATE users SET welcome_email_sent = 0 WHERE id = ?', [userId]).catch(() => {});
+      } else {
+        await query('UPDATE users SET welcome_email_sent = 0 WHERE email = ?', [email]).catch(() => {});
+      }
+    }
     console.warn(`[Welcome Email] Failed sending to ${email}:`, err.message);
     return { success: false, error: err.message };
   }

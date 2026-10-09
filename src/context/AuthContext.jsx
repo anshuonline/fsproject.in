@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
 
   // Background sync with Hostinger DB whenever user is logged in
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email && !user.dbId) {
       api.syncUser(user).then((res) => {
         if (res?.user?.id && (!user.dbId || user.dbId !== res.user.id)) {
           setUser((prev) => {
