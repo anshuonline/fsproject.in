@@ -147,6 +147,28 @@ export async function testDbConnection() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
     } catch {}
+    try {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS analytics_presence (
+          visitor_id VARCHAR(128) NOT NULL,
+          is_registered TINYINT(1) NOT NULL DEFAULT 0,
+          display_name VARCHAR(100) NULL,
+          current_video_id VARCHAR(64) NULL,
+          current_title VARCHAR(255) NULL,
+          current_artist VARCHAR(255) NULL,
+          current_thumbnail VARCHAR(500) NULL,
+          ip_address VARCHAR(45) NULL,
+          country VARCHAR(100) NULL,
+          city VARCHAR(100) NULL,
+          user_agent VARCHAR(500) NULL,
+          first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (visitor_id),
+          KEY idx_presence_last_seen (last_seen_at),
+          KEY idx_presence_registered (is_registered, last_seen_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
     connection.release();
     return true;
   } catch (err) {

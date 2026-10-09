@@ -1757,6 +1757,21 @@ app.post('/api/user/history/batch', async (req, res) => {
 
     // Process in reverse (oldest first) so that newest song finishes with latest played_at
     const reversed = [...songs].reverse();
+
+    // Identify songs NOT already recorded — the lifetime counter must never
+    // double-count re-syncs of the same local history (sync runs on every login/refresh)
+    const validVideos = reversed.filter(s => s?.videoId).map(s => s.videoId);
+    let newPlays = 0;
+    if (validVideos.length > 0) {
+      const placeholders = validVideos.map(() => '?').join(',');
+      const existingRows = await query(
+        `SELECT video_id FROM user_play_history WHERE user_id = ? AND video_id IN (${placeholders})`,
+        [resolvedUserId, ...validVideos]
+      ).catch(() => []);
+      const existingSet = new Set((existingRows || []).map(r => r.video_id));
+      newPlays = validVideos.filter(v => !existingSet.has(v)).length;
+    }
+
     for (const song of reversed) {
       if (!song?.videoId) continue;
       await query('DELETE FROM user_play_history WHERE user_id = ? AND video_id = ?', [resolvedUserId, song.videoId]).catch(() => {});
@@ -1795,10 +1810,9 @@ app.post('/api/user/history/batch', async (req, res) => {
         )
     `, [resolvedUserId, resolvedUserId]).catch(() => {});
 
-    // Lifetime play counter: batch adds every valid song (never trimmed)
-    const insertedCount = reversed.filter(s => s?.videoId).length;
-    if (insertedCount > 0) {
-      await query('UPDATE users SET total_plays = total_plays + ? WHERE id = ?', [insertedCount, resolvedUserId]).catch(() => {});
+    // Lifetime play counter: only genuinely NEW songs increment (re-syncs ignored)
+    if (newPlays > 0) {
+      await query('UPDATE users SET total_plays = total_plays + ? WHERE id = ?', [newPlays, resolvedUserId]).catch(() => {});
     }
 
     const history = await query(
@@ -2379,9 +2393,9 @@ app.get('/api/analytics/logs', async (req, res) => {
   }
 });
 
-// Track Visit (deduped: 1 unique visit per visitor per day; guests upgrade to registered on login)
-app.post('/api/analytics/track/visit', async (req, res) => {
-  const { visitorId, guestId, isRegistered, country, city } = req.body;
+// Presence Heartbeat (Live Now: who is online, from where, playing what — upsert every 60s)
+app.post('/api/analytics/track/presence', async (req, res) => {
+  const { visitorId, isRegistered, displayName, song } = req.body;
   if (!visitorId || typeof visitorId !== 'string') {
     return res.status(400).json({ error: 'visitorId is required' });
   }
@@ -2389,6 +2403,126 @@ app.post('/api/analytics/track/visit', async (req, res) => {
   try {
     const ip = getClientIp(req);
     const userAgent = (req.headers['user-agent'] || '').slice(0, 500);
+
+    // Geo: reuse today's visit geo when available, otherwise resolve once
+    let country = null;
+    let city = null;
+    let resolvedIp = ip;
+    const visitRows = await query(
+      'SELECT country, city FROM analytics_visits WHERE visitor_id = ? AND visited_at >= CURDATE() LIMIT 1',
+      [visitorId.slice(0, 128)]
+    ).catch(() => []);
+    if (visitRows && visitRows.length > 0) {
+      country = visitRows[0].country || null;
+      city = visitRows[0].city || null;
+    } else {
+      const geo = await getIpGeo(ip).catch(() => null);
+      if (geo) {
+        country = geo.country || null;
+        city = geo.city || null;
+        resolvedIp = geo.ip || ip;
+      }
+    }
+
+    const cleanVideoId = song?.videoId ? String(song.videoId).slice(0, 64) : null;
+    const cleanTitle = song?.title ? String(song.title).slice(0, 255) : null;
+    const cleanArtist = song?.artist ? String(song.artist).slice(0, 255) : null;
+    const cleanThumb = song?.thumbnail ? String(song.thumbnail).slice(0, 500) : null;
+
+    await query(`
+      INSERT INTO analytics_presence (
+        visitor_id, is_registered, display_name, current_video_id, current_title, current_artist, current_thumbnail,
+        ip_address, country, city, user_agent, first_seen_at, last_seen_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      ON DUPLICATE KEY UPDATE
+        is_registered = VALUES(is_registered),
+        display_name = COALESCE(VALUES(display_name), display_name),
+        current_video_id = VALUES(current_video_id),
+        current_title = VALUES(current_title),
+        current_artist = VALUES(current_artist),
+        current_thumbnail = VALUES(current_thumbnail),
+        ip_address = VALUES(ip_address),
+        country = COALESCE(VALUES(country), country),
+        city = COALESCE(VALUES(city), city),
+        last_seen_at = NOW()
+    `, [
+      visitorId.slice(0, 128),
+      isRegistered ? 1 : 0,
+      displayName ? String(displayName).slice(0, 100) : null,
+      cleanVideoId,
+      cleanTitle,
+      cleanArtist,
+      cleanThumb,
+      resolvedIp,
+      country,
+      city,
+      userAgent
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('Analytics presence track error:', err.message);
+    res.json({ success: false });
+  }
+});
+
+// Live Now (token protected): online users in last 5 minutes with location & now playing
+app.get('/api/analytics/live', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const rows = await query(`
+      SELECT visitor_id AS visitorId, is_registered AS isRegistered, display_name AS displayName,
+             current_video_id AS videoId, current_title AS title, current_artist AS artist, current_thumbnail AS thumbnail,
+             country, city, last_seen_at AS lastSeenAt
+      FROM analytics_presence
+      WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+      ORDER BY is_registered DESC, last_seen_at DESC
+    `);
+
+    const users = (rows || []).map(r => ({
+      visitorId: r.visitorId,
+      type: r.isRegistered ? 'registered' : 'guest',
+      name: r.displayName || (r.isRegistered ? 'Registered User' : 'Guest'),
+      country: r.country || null,
+      city: r.city || null,
+      currentSong: r.videoId ? {
+        videoId: r.videoId,
+        title: r.title || 'Unknown Title',
+        artist: r.artist || 'Unknown Artist',
+        thumbnail: r.thumbnail || (r.videoId ? `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg` : '')
+      } : null,
+      lastSeenAt: r.lastSeenAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        totalOnline: users.length,
+        guestsOnline: users.filter(u => u.type === 'guest').length,
+        registeredOnline: users.filter(u => u.type === 'registered').length,
+        users
+      }
+    });
+  } catch (err) {
+    console.error('Analytics live error:', err);
+    res.status(500).json({ error: 'Failed to fetch live users' });
+  }
+});
+
+// Track Visit (deduped: 1 unique visit per visitor per day; guests upgrade to registered on login)
+app.post('/api/analytics/track/visit', async (req, res) => {
+  const { visitorId, guestId, isRegistered } = req.body;
+  if (!visitorId || typeof visitorId !== 'string') {
+    return res.status(400).json({ error: 'visitorId is required' });
+  }
+
+  try {
+    const ip = getClientIp(req);
+    const userAgent = (req.headers['user-agent'] || '').slice(0, 500);
+    const geo = await getIpGeo(ip);
+    const resolvedIp = geo.ip || ip;
 
     if (isRegistered && guestId) {
       // Upgrade today's guest visit to a registered visit (avoids double counting)
@@ -2411,7 +2545,7 @@ app.post('/api/analytics/track/visit', async (req, res) => {
 
     await query(
       'INSERT INTO analytics_visits (visitor_id, is_registered, ip_address, country, city, user_agent, visited_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-      [visitorId.slice(0, 128), isRegistered ? 1 : 0, ip, country || null, city || null, userAgent]
+      [visitorId.slice(0, 128), isRegistered ? 1 : 0, resolvedIp, geo.country || null, geo.city || null, userAgent]
     );
 
     res.json({ success: true, counted: true });
@@ -2474,13 +2608,14 @@ app.get('/api/analytics/overview', async (req, res) => {
     const weekStart = 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)';
 
     // ── Today Stats ──
-    const [todayVisitors, todayGuests, todayRegistered, totalRegisteredUsers, todayPlays, todaySearches] = await Promise.all([
+    const [todayVisitors, todayGuests, todayRegistered, totalRegisteredUsers, todayPlays, todaySearches, registeredUsers] = await Promise.all([
       query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE()'),
       query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE() AND is_registered = 0'),
       query('SELECT COUNT(DISTINCT visitor_id) AS c FROM analytics_visits WHERE visited_at >= CURDATE() AND is_registered = 1'),
       query('SELECT COUNT(*) AS c FROM users'),
       query('SELECT COUNT(*) AS c FROM analytics_plays WHERE played_at >= CURDATE()'),
-      query('SELECT COUNT(*) AS c FROM analytics_searches WHERE searched_at >= CURDATE()')
+      query('SELECT COUNT(*) AS c FROM analytics_searches WHERE searched_at >= CURDATE()'),
+      query('SELECT name, email, registered_city AS city, registered_country AS country, created_at AS joinedAt, last_login_at AS lastLoginAt FROM users ORDER BY created_at DESC LIMIT 50')
     ]);
 
     // ── Last 7 Days Daily Trends ──
@@ -2555,7 +2690,15 @@ app.get('/api/analytics/overview', async (req, res) => {
             thumbnail: r.thumbnail || (r.videoId ? `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg` : ''),
             playCount: Number(r.play_count)
           }))
-        }
+        },
+        registeredUsers: (registeredUsers || []).map(r => ({
+          name: r.name || 'FreeSong Listener',
+          email: r.email,
+          city: r.city || null,
+          country: r.country || null,
+          joinedAt: r.joinedAt,
+          lastLoginAt: r.lastLoginAt
+        }))
       }
     });
   } catch (err) {

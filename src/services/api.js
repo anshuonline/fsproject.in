@@ -400,6 +400,18 @@ export const api = {
     }
   },
 
+  // Sync local preferences (followed artists, genres) to cloud DB for logged-in users
+  async syncUserPreferences(prefs) {
+    if (!prefs) return false;
+    try {
+      const user = JSON.parse(localStorage.getItem('fs_auth_user') || 'null');
+      if (!user || (!user.email && !user.dbId)) return false;
+      return await this.saveUserPreferences(user.dbId || user.email || user.id, prefs, user.email);
+    } catch {
+      return false;
+    }
+  },
+
   async getUserPlaylists(userId, email = null) {
     if (!userId && !email) return [];
     try {
