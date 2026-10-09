@@ -16,7 +16,7 @@ const dbConfig = {
   database: process.env.DB_NAME || 'freesong_db',
   port: parseInt(process.env.DB_PORT, 10) || 3306,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: parseInt(process.env.DB_POOL_LIMIT, 10) || 25,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
@@ -64,7 +64,11 @@ export async function testDbConnection() {
       await connection.query('ALTER TABLE users ADD COLUMN last_reset_request_at DATETIME NULL');
     } catch {}
     try {
-      await connection.query('ALTER TABLE users ADD COLUMN total_plays INT UNSIGNED NOT NULL DEFAULT 0');
+      await connection.query('ALTER TABLE analytics_plays ADD COLUMN duration INT UNSIGNED NOT NULL DEFAULT 0');
+    } catch {}
+    try {
+      // Lightweight cleanup: purge stale presence rows (>7 days not seen) so table stays tiny
+      await connection.query('DELETE FROM analytics_presence WHERE last_seen_at < DATE_SUB(NOW(), INTERVAL 7 DAY)');
     } catch {}
     // Safe auto-migration: ensure GAnalytics tables exist
     try {
