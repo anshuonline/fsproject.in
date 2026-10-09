@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
@@ -10,7 +10,9 @@ export function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { isAuthenticated, loginWithGoogle, isGoogleLoading, loginWithEmail } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const { isAuthenticated, loginWithGoogle, isGoogleLoading, registerWithPassword } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -35,12 +37,28 @@ export function Register() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !email || !password) return;
-    loginWithEmail(name.trim(), email.trim());
-    showToast(`Account created! Welcome, ${name.trim()}!`, 'success');
-    navigate('/profile');
+    if (!name.trim() || !email.trim() || !password) {
+      showToast('Please fill in all fields', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      showToast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const user = await registerWithPassword(name.trim(), email.trim(), password);
+      showToast(`Account created! Welcome, ${user.name}!`, 'success');
+      navigate('/profile');
+    } catch (err) {
+      showToast(err.message || 'Registration failed', 'error');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   return (
@@ -53,14 +71,14 @@ export function Register() {
         type="button"
         className="fs-auth-google-btn"
         onClick={handleGoogleLogin}
-        disabled={isGoogleLoading}
+        disabled={isGoogleLoading || isRegistering}
       >
         <GoogleIcon size={18} />
         <span>{isGoogleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
       </button>
 
       <div className="fs-auth-divider">
-        <span>or with email</span>
+        <span>or with email & password</span>
       </div>
 
       <form onSubmit={handleSubmit} className="fs-auth-form">
@@ -74,6 +92,7 @@ export function Register() {
               placeholder="Your Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={isRegistering}
               required
             />
           </div>
@@ -89,6 +108,7 @@ export function Register() {
               placeholder="you@domain.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isRegistering}
               required
             />
           </div>
@@ -99,19 +119,41 @@ export function Register() {
           <div className="fs-input-wrap">
             <Lock size={18} className="fs-input-icon" />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               className="fs-input-field"
-              placeholder="At least 8 characters"
+              placeholder="At least 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isRegistering}
               required
             />
+            <button
+              type="button"
+              className="fs-password-toggle-btn"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary fs-auth-submit">
-          <span>Create Account</span>
-          <ArrowRight size={16} />
+        <button
+          type="submit"
+          className="btn btn-primary fs-auth-submit"
+          disabled={isRegistering || isGoogleLoading}
+        >
+          {isRegistering ? (
+            <>
+              <Loader2 size={16} className="spin" />
+              <span>Creating Account...</span>
+            </>
+          ) : (
+            <>
+              <span>Create Account</span>
+              <ArrowRight size={16} />
+            </>
+          )}
         </button>
       </form>
 

@@ -49,6 +49,10 @@ export async function testDbConnection() {
   try {
     const connection = await pool.getConnection();
     console.log(` MySQL Database Connected: ${dbConfig.database} on ${dbConfig.host}:${dbConfig.port}`);
+    // Safe auto-migration: ensure password_hash column exists
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL');
+    } catch {}
     connection.release();
     return true;
   } catch (err) {

@@ -1066,10 +1066,236 @@ app.post('/api/user/sync', async (req, res) => {
       }
     }
 
+    if (user) {
+      user.hasPassword = Boolean(user.password_hash);
+      delete user.password_hash;
+    }
+
     res.json({ success: true, user });
   } catch (err) {
     console.warn('User sync error:', err.message);
     res.status(500).json({ error: 'Database sync error' });
+  }
+});
+
+// Password Hashing and Verification Utilities (Salted SHA-512 with PBKDF2)
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || typeof storedHash !== 'string' || !storedHash.includes(':')) return false;
+  try {
+    const [salt, originalHash] = storedHash.split(':');
+    if (!salt || !originalHash) return false;
+    const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    const hashBuf = Buffer.from(hash, 'hex');
+    const origBuf = Buffer.from(originalHash, 'hex');
+    if (hashBuf.length !== origBuf.length) return false;
+    return crypto.timingSafeEqual(hashBuf, origBuf);
+  } catch (err) {
+    console.warn('Password verification error:', err.message);
+    return false;
+  }
+}
+
+// Check if user has set a password
+app.get('/api/user/has-password', async (req, res) => {
+  const { userId, email } = req.query;
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) return res.json({ hasPassword: false });
+    const users = await query('SELECT password_hash FROM users WHERE id = ?', [resolvedUserId]);
+    const hasPassword = Boolean(users && users[0] && users[0].password_hash);
+    res.json({ hasPassword });
+  } catch {
+    res.json({ hasPassword: false });
+  }
+});
+
+// Set or Update Password for Logged-In User
+app.post('/api/user/set-password', async (req, res) => {
+  const { userId, email, newPassword } = req.body;
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    const hashedPassword = hashPassword(newPassword);
+    await query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, resolvedUserId]);
+
+    res.json({
+      success: true,
+      message: 'Password saved successfully! You can now log into FreeSong using your email and password on any device.'
+    });
+  } catch (err) {
+    console.warn('Set password error:', err.message);
+    res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
+// Direct Email & Password Login (No OTP required!)
+app.post('/api/user/login-password', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const rawIp = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+
+  try {
+    const users = await query('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+    if (!users || users.length === 0) {
+      return res.status(401).json({ error: 'No account found with this email. Please check your email or register.' });
+    }
+
+    const user = users[0];
+    if (!user.password_hash) {
+      return res.status(401).json({
+        error: 'No password has been set for this account yet. Please sign in with Google once and set your password in Settings.'
+      });
+    }
+
+    const isMatch = verifyPassword(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+    }
+
+    const geo = await getIpGeo(rawIp);
+    const resolvedIp = geo.ip || rawIp;
+
+    await query(
+      'UPDATE users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?',
+      [resolvedIp, user.id]
+    ).catch(() => {});
+
+    await query(
+      'INSERT INTO user_login_logs (user_id, ip_address, country, city, region, user_agent, logged_in_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [user.id, resolvedIp, geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
+    ).catch(() => {});
+
+    const sanitizedUser = {
+      id: user.firebase_uid || `usr_${user.id}`,
+      dbId: user.id,
+      name: user.name || cleanEmail.split('@')[0],
+      email: user.email,
+      picture: user.avatar_url || '',
+      provider: user.auth_provider || 'email',
+      hasPassword: true,
+      dob: user.dob,
+      city: user.city,
+      location_tracking_enabled: user.location_tracking_enabled,
+      joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''
+    };
+
+    res.json({ success: true, user: sanitizedUser });
+  } catch (err) {
+    console.warn('Login password error:', err.message);
+    res.status(500).json({ error: 'Login failed due to a server error' });
+  }
+});
+
+// Direct Email & Password Registration (No OTP required!)
+app.post('/api/user/register-password', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = (name || '').trim() || cleanEmail.split('@')[0] || 'FreeSong Listener';
+  const rawIp = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+
+  try {
+    const existing = await query('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+    const geo = await getIpGeo(rawIp);
+    const resolvedIp = geo.ip || rawIp;
+    const hashedPassword = hashPassword(password);
+
+    let userId = null;
+    if (existing && existing.length > 0) {
+      const user = existing[0];
+      if (user.password_hash) {
+        return res.status(409).json({ error: 'An account with this email already exists. Please log in instead.' });
+      }
+      // User signed in previously via Google without a password — link the password!
+      await query(
+        'UPDATE users SET password_hash = ?, name = COALESCE(name, ?), last_login_at = NOW(), last_login_ip = ? WHERE id = ?',
+        [hashedPassword, cleanName, resolvedIp, user.id]
+      );
+      userId = user.id;
+    } else {
+      const insertResult = await query(`
+        INSERT INTO users (
+          email, name, password_hash, auth_provider,
+          registered_ip, registered_country, registered_country_code,
+          registered_region, registered_city, registered_latitude, registered_longitude,
+          registered_user_agent, last_login_at, last_login_ip
+        ) VALUES (?, ?, ?, 'email', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+      `, [
+        cleanEmail,
+        cleanName,
+        hashedPassword,
+        resolvedIp,
+        geo.country || 'India',
+        geo.countryCode || 'IN',
+        geo.region || null,
+        geo.city || null,
+        geo.lat || null,
+        geo.lon || null,
+        userAgent || null,
+        resolvedIp
+      ]);
+      userId = insertResult.insertId;
+    }
+
+    const users = await query('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = users[0];
+
+    await query(
+      'INSERT INTO user_login_logs (user_id, ip_address, country, city, region, user_agent, logged_in_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [userId, resolvedIp, geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
+    ).catch(() => {});
+
+    if (!user.welcome_email_sent) {
+      sendWelcomeEmail({
+        email: user.email,
+        name: user.name,
+        userId: user.id
+      }).catch(err => console.warn('[Welcome Email] Dispatch error:', err.message));
+    }
+
+    const sanitizedUser = {
+      id: user.firebase_uid || `usr_${user.id}`,
+      dbId: user.id,
+      name: user.name,
+      email: user.email,
+      picture: user.avatar_url || '',
+      provider: user.auth_provider || 'email',
+      hasPassword: true,
+      dob: user.dob,
+      city: user.city,
+      location_tracking_enabled: user.location_tracking_enabled,
+      joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''
+    };
+
+    res.json({ success: true, user: sanitizedUser });
+  } catch (err) {
+    console.warn('Register password error:', err.message);
+    res.status(500).json({ error: 'Failed to create account' });
   }
 });
 

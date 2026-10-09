@@ -172,6 +172,47 @@ export function AuthProvider({ children }) {
     return profileData;
   }, []);
 
+  // Direct backend email & password login (No OTP)
+  const loginWithPassword = useCallback(async (email, password) => {
+    const res = await api.loginWithPassword(email, password);
+    if (res?.user) {
+      setUser(res.user);
+      storage.saveUser(res.user);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: res.user }));
+      }
+      return res.user;
+    }
+    throw new Error('Failed to sign in');
+  }, []);
+
+  // Direct backend email & password registration (No OTP)
+  const registerWithPassword = useCallback(async (name, email, password) => {
+    const res = await api.registerWithPassword(name, email, password);
+    if (res?.user) {
+      setUser(res.user);
+      storage.saveUser(res.user);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fs_user_logged_in', { detail: res.user }));
+      }
+      return res.user;
+    }
+    throw new Error('Failed to create account');
+  }, []);
+
+  // Set or update password for logged-in account
+  const setPassword = useCallback(async (newPassword) => {
+    if (!user) throw new Error('You must be signed in to set a password');
+    const res = await api.setPassword(user.dbId || user.id, user.email, newPassword);
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, hasPassword: true };
+      storage.saveUser(updated);
+      return updated;
+    });
+    return res;
+  }, [user]);
+
   // Logout (signs out of Firebase and clears local storage)
   const logout = useCallback(async () => {
     try {
@@ -205,6 +246,9 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user),
     loginWithGoogle,
     loginWithEmail,
+    loginWithPassword,
+    registerWithPassword,
+    setPassword,
     logout,
     updateUser,
     isGoogleModalOpen,

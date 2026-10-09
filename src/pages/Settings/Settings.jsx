@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Volume2, Zap, Trash2, CheckCircle2, User, Shield, 
   MapPin, Calendar, Clock, AlertTriangle, Mail, Loader2, 
-  Search, LogIn, ExternalLink, RefreshCw 
+  Search, LogIn, ExternalLink, RefreshCw, Lock, KeyRound, Eye, EyeOff 
 } from 'lucide-react';
 import { storage } from '../../services/storage';
 import { api } from '../../services/api';
@@ -13,7 +13,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import './Settings.css';
 
 export function Settings() {
-  const { user, setUser, updateUser, loginWithGoogle } = useAuth();
+  const { user, setUser, updateUser, loginWithGoogle, setPassword } = useAuth();
   const { showToast } = useContextMenu();
   const { clearHistory: clearLibraryHistory } = useLibrary();
   const { 
@@ -37,6 +37,13 @@ export function Settings() {
   );
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Password Setup State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [hasPasswordState, setHasPasswordState] = useState(Boolean(user?.hasPassword));
+
   // Delete Account Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingLoading, setDeletingLoading] = useState(false);
@@ -54,9 +61,53 @@ export function Settings() {
     }
   }, [user]);
 
+  // Check if password exists in cloud for current user
+  useEffect(() => {
+    if (user?.email || user?.dbId) {
+      if (user.hasPassword !== undefined) {
+        setHasPasswordState(Boolean(user.hasPassword));
+      } else {
+        api.checkHasPassword(user.dbId || user.id, user.email).then(has => {
+          setHasPasswordState(has);
+        });
+      }
+    }
+  }, [user?.email, user?.dbId, user?.hasPassword]);
+
   const notifySaved = () => {
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 2200);
+  };
+
+  // Save / Update User Password
+  const handleSavePassword = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      showToast('Please sign in to set a password', 'error');
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      showToast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('Passwords do not match', 'error');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await setPassword(newPassword);
+      setHasPasswordState(true);
+      setNewPassword('');
+      setConfirmPassword('');
+      showToast('Password saved successfully! You can now log into FreeSong using email and password on any device.', 'success');
+      notifySaved();
+    } catch (err) {
+      showToast(err.message || 'Failed to save password', 'error');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   // Update Generic Local Setting
@@ -315,7 +366,109 @@ export function Settings() {
           )}
         </div>
 
-        {/* ================= SECTION 2: AUDIO & STREAMING ================= */}
+        {/* ================= SECTION 2: SECURITY & PASSWORD ================= */}
+        {user && (
+          <div className="fs-settings-section-card">
+            <div className="fs-settings-section-header">
+              <div className="fs-settings-section-icon-wrap">
+                <Lock size={20} className="text-brand" />
+              </div>
+              <div>
+                <h2 className="fs-settings-section-heading">Security & Password</h2>
+                <p className="fs-settings-section-sub">
+                  Set or change your password to log in directly with your email without Google OAuth
+                </p>
+              </div>
+            </div>
+
+            <div className="fs-settings-password-content">
+              <div className="fs-password-status-banner">
+                <div className="fs-password-status-icon">
+                  <KeyRound size={18} className="text-brand" />
+                </div>
+                <div className="fs-password-status-info">
+                  <strong>
+                    {hasPasswordState ? 'Password Authentication Active' : 'No Password Configured Yet'}
+                  </strong>
+                  <span>
+                    {hasPasswordState
+                      ? `Your account (${user.email}) is protected with a password. You can update it below or log into any device via Email & Password.`
+                      : `Set a password below so you can sign into FreeSong with your email (${user.email}) on any laptop or PC without needing Google sign-in.`}
+                  </span>
+                </div>
+                <span className={`fs-status-pill ${hasPasswordState ? 'fs-status-active' : 'fs-status-pending'}`}>
+                  {hasPasswordState ? 'Protected' : 'Optional'}
+                </span>
+              </div>
+
+              <form onSubmit={handleSavePassword} className="fs-password-edit-form">
+                <div className="fs-password-inputs-row">
+                  <div className="fs-form-field">
+                    <label className="fs-field-label">
+                      {hasPasswordState ? 'New Password' : 'Set Account Password'}
+                    </label>
+                    <div className="fs-password-input-wrapper">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        className="fs-field-input"
+                        placeholder="At least 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        minLength={6}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="fs-pw-toggle-inline"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="fs-form-field">
+                    <label className="fs-field-label">Confirm Password</label>
+                    <div className="fs-password-input-wrapper">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        className="fs-field-input"
+                        placeholder="Confirm password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="fs-form-submit-row">
+                  <button
+                    type="submit"
+                    className="btn btn-primary fs-btn-save-profile"
+                    disabled={savingPassword || !newPassword || !confirmPassword}
+                  >
+                    {savingPassword ? (
+                      <>
+                        <Loader2 size={16} className="spin" />
+                        <span>Saving Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={16} />
+                        <span>{hasPasswordState ? 'Update Password' : 'Save Password'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= SECTION 3: AUDIO & STREAMING ================= */}
         <div className="fs-settings-section-card">
           <div className="fs-settings-section-header">
             <div className="fs-settings-section-icon-wrap">

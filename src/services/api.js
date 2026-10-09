@@ -450,6 +450,50 @@ export const api = {
       console.warn('clearUserHistory API error:', err);
       return false;
     }
+  },
+
+  async setPassword(userId, email, newPassword) {
+    const res = await fetch(`${API_BASE}/user/set-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update password');
+    return data;
+  },
+
+  async loginWithPassword(email, password) {
+    const res = await fetch(`${API_BASE}/user/login-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed. Please check your credentials.');
+    return data;
+  },
+
+  async registerWithPassword(name, email, password) {
+    const res = await fetch(`${API_BASE}/user/register-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    return data;
+  },
+
+  async checkHasPassword(userId, email) {
+    try {
+      const res = await fetch(`${API_BASE}/user/has-password?userId=${encodeURIComponent(userId || '')}&email=${encodeURIComponent(email || '')}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data.hasPassword);
+    } catch {
+      return false;
+    }
   }
 };
 

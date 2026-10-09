@@ -59,7 +59,7 @@
   background-color: #161616;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 0 16px 0 44px;
+  padding: 0 42px 0 44px;
   color: var(--color-text-primary);
   font-size: 0.9375rem;
   transition: border-color var(--transition-fast);
@@ -67,6 +67,24 @@
 
 .fs-input-field:focus {
   border-color: var(--color-primary);
+}
+
+.fs-password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+
+.fs-password-toggle-btn:hover {
+  color: var(--color-text-primary);
 }
 
 .fs-auth-submit {

@@ -660,3 +660,123 @@ input:checked + .fs-slider:before {
     justify-content: center;
   }
 }
+
+/* Password Section in Settings */
+.fs-settings-password-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-password-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: #161616;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.fs-password-status-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(0, 200, 83, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fs-password-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.fs-password-status-info strong {
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.fs-password-status-info span {
+  font-size: 0.8125rem;
+  color: #999999;
+  line-height: 1.4;
+}
+
+.fs-status-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.fs-status-active {
+  background-color: rgba(0, 200, 83, 0.15);
+  color: var(--color-primary, #00C853);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+}
+
+.fs-status-pending {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #afafaf;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.fs-password-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fs-password-inputs-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.fs-password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fs-password-input-wrapper .fs-field-input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.fs-pw-toggle-inline {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #787878;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.fs-pw-toggle-inline:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .fs-password-inputs-row {
+    grid-template-columns: 1fr;
+  }
+  .fs-password-status-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

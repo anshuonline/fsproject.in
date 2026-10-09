@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
@@ -9,7 +9,9 @@ import './Login.css';
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { isAuthenticated, loginWithGoogle, isGoogleLoading, loginWithEmail } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { isAuthenticated, loginWithGoogle, isGoogleLoading, loginWithPassword } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -34,13 +36,23 @@ export function Login() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) return;
-    const namePart = email.split('@')[0] || 'FreeSong Listener';
-    loginWithEmail(namePart, email);
-    showToast(`Welcome back, ${namePart}!`, 'success');
-    navigate('/profile');
+    if (!email || !password) {
+      showToast('Please enter both email and password', 'error');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const user = await loginWithPassword(email.trim(), password);
+      showToast(`Welcome back, ${user.name}!`, 'success');
+      navigate('/profile');
+    } catch (err) {
+      showToast(err.message || 'Login failed. Please check your credentials.', 'error');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   return (
@@ -53,14 +65,14 @@ export function Login() {
         type="button"
         className="fs-auth-google-btn"
         onClick={handleGoogleLogin}
-        disabled={isGoogleLoading}
+        disabled={isGoogleLoading || isLoggingIn}
       >
         <GoogleIcon size={18} />
         <span>{isGoogleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
       </button>
 
       <div className="fs-auth-divider">
-        <span>or with email</span>
+        <span>or with email & password</span>
       </div>
 
       <form onSubmit={handleSubmit} className="fs-auth-form">
@@ -74,6 +86,7 @@ export function Login() {
               placeholder="you@domain.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoggingIn}
               required
             />
           </div>
@@ -84,19 +97,41 @@ export function Login() {
           <div className="fs-input-wrap">
             <Lock size={18} className="fs-input-icon" />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               className="fs-input-field"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoggingIn}
               required
             />
+            <button
+              type="button"
+              className="fs-password-toggle-btn"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary fs-auth-submit">
-          <span>Sign In</span>
-          <ArrowRight size={16} />
+        <button
+          type="submit"
+          className="btn btn-primary fs-auth-submit"
+          disabled={isLoggingIn || isGoogleLoading}
+        >
+          {isLoggingIn ? (
+            <>
+              <Loader2 size={16} className="spin" />
+              <span>Signing In...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign In</span>
+              <ArrowRight size={16} />
+            </>
+          )}
         </button>
       </form>
 
