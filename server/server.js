@@ -2621,7 +2621,7 @@ app.get('/api/analytics/daily', async (req, res) => {
     for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       daysMap.set(key, {
         day: key,
         label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
@@ -2632,7 +2632,7 @@ app.get('/api/analytics/daily', async (req, res) => {
       });
     }
 
-    const isoDay = (val) => new Date(val).toISOString().slice(0, 10);
+    const isoDay = (val) => new Date(val).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     for (const r of visitRows || []) {
       const row = daysMap.get(isoDay(r.day));
@@ -2695,8 +2695,8 @@ app.get('/api/analytics/hours', async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const match = (weekTrend || []).find(r => new Date(r.day).toISOString().slice(0, 10) === key);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const match = (weekTrend || []).find(r => new Date(r.day).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === key);
       days.push({
         day: key,
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -2777,7 +2777,7 @@ app.get('/api/analytics/overview', async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       days.push({
         day: key,
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -2788,7 +2788,7 @@ app.get('/api/analytics/overview', async (req, res) => {
     }
     const findDay = (arr, key) => (arr || []).find(r => {
       const d = new Date(r.day);
-      return d.toISOString().slice(0, 10) === key;
+      return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === key;
     });
     for (const d of days) {
       const v = findDay(visitTrend, d.day);

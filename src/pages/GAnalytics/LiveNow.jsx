@@ -44,6 +44,18 @@ export function LiveNow() {
 
   const formatNumber = (n) => Number(n || 0).toLocaleString('en-IN');
 
+  // Always display Indian Standard Time regardless of device/server timezone
+  const formatTimeIST = (dateStr) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    });
+  };
+  const formatDateIST = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+  };
+
   const playingUsers = (live?.users || []).filter(u => u.currentSong);
 
   const guestLabel = (visitorId) => {
@@ -118,7 +130,7 @@ export function LiveNow() {
           <Radio size={18} className="fs-ga-section-icon" />
           <h2 className="fs-ga-section-title">Live Listeners</h2>
           <span className="fs-ga-section-sub">
-            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Active in last 5 minutes'}
+            {lastUpdated ? `Updated ${formatTimeIST(lastUpdated)} IST` : 'Active in last 5 minutes'}
           </span>
           {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
         </div>
@@ -132,6 +144,7 @@ export function LiveNow() {
                 <span className="fs-ga-live-col-user">User</span>
                 <span className="fs-ga-live-col-location">Location</span>
                 <span className="fs-ga-live-col-song">Now Playing</span>
+                <span className="fs-ga-live-col-seen">Last Seen</span>
               </div>
               {live.users.map((u, i) => (
                 <div key={`${u.visitorId}-${i}`} className="fs-ga-live-row">
@@ -178,6 +191,12 @@ export function LiveNow() {
                     ) : (
                       <span className="fs-ga-live-idle">Idle</span>
                     )}
+                  </div>
+
+                  {/* Last Seen */}
+                  <div className="fs-ga-live-col-seen">
+                    <span className="fs-ga-live-seen-time">{formatTimeIST(u.lastSeenAt)} IST</span>
+                    <span className="fs-ga-live-seen-date">{formatDateIST(u.lastSeenAt)}</span>
                   </div>
                 </div>
               ))}

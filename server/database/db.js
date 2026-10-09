@@ -20,13 +20,18 @@ const dbConfig = {
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
-  dateStrings: true
+  // Interpret DATETIME values as Indian Standard Time regardless of process timezone
+  timezone: '+05:30'
 };
 
 let pool = null;
 
 try {
   pool = mysql.createPool(dbConfig);
+  // Force IST session timezone so NOW() / CURDATE() always use Indian time
+  pool.on('connection', (conn) => {
+    conn.query("SET time_zone = '+05:30'", () => {});
+  });
 } catch (err) {
   console.warn('MySQL pool initialization error:', err.message);
 }
