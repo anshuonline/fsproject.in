@@ -7,13 +7,51 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../Common/PlaylistCover';
 import './Sidebar.css';
 
-export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
+const PlaylistItem = React.memo(function PlaylistItem({ pl, onClose, onOpenMenu }) {
+  const handleMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenMenu(pl, e);
+  };
+
+  return (
+    <NavLink
+      to={`/playlist/${pl.id}`}
+      className={({ isActive }) => `fs-playlist-item ${isActive ? 'active' : ''}`}
+      onClick={onClose}
+      onContextMenu={handleMenu}
+    >
+      <PlaylistCover playlist={pl} size="sidebar" className="fs-sidebar-pl-cover" />
+      <div className="fs-playlist-info">
+        <span className="fs-playlist-title truncate">{pl.name}</span>
+        <span className="fs-playlist-sub">
+          {pl.tracksCount ? `${pl.tracksCount} tracks` : 'FreeSong'}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="fs-pl-item-more-btn"
+        onClick={handleMenu}
+        title="Playlist options"
+        aria-label="Playlist options"
+      >
+        <MoreVertical size={14} />
+      </button>
+    </NavLink>
+  );
+});
+
+export const Sidebar = React.memo(function Sidebar({ isOpen, onClose, isCollapsed = false }) {
   const { playlists, createPlaylist } = useLibrary();
   const { isInstalled, installApp } = usePWA();
   const { openPlaylistMenu } = useContextMenu();
   const [showModal, setShowModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const navigate = useNavigate();
+
+  const handleOpenMenu = React.useCallback((pl, e) => {
+    openPlaylistMenu(pl, e);
+  }, [openPlaylistMenu]);
 
   const handleCreate = (e) => {
     e.preventDefault();
@@ -29,13 +67,11 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
 
   return (
     <>
-      {isOpen && (
-        <div
-          className="fs-sidebar-backdrop"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
+      <div
+        className={`fs-sidebar-backdrop ${isOpen ? 'active' : ''}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <aside className={`fs-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Mobile close button */}
         <div className="fs-sidebar-mobile-header">
@@ -133,45 +169,16 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
           {/* User Playlists */}
           <div className="fs-custom-playlists-list">
             {playlists.map(pl => (
-              <NavLink
+              <PlaylistItem
                 key={pl.id}
-                to={`/playlist/${pl.id}`}
-                className={({ isActive }) => `fs-playlist-item ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openPlaylistMenu(pl, e);
-                }}
-              >
-                <PlaylistCover playlist={pl} size="sidebar" className="fs-sidebar-pl-cover" />
-                <div className="fs-playlist-info">
-                  <span className="fs-playlist-title truncate">{pl.name}</span>
-                  <span className="fs-playlist-sub">
-                    {pl.tracksCount ? `${pl.tracksCount} tracks` : 'FreeSong'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="fs-pl-item-more-btn"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openPlaylistMenu(pl, e);
-                  }}
-                  title="Playlist options"
-                  aria-label="Playlist options"
-                >
-                  <MoreVertical size={14} />
-                </button>
-              </NavLink>
+                pl={pl}
+                onClose={onClose}
+                onOpenMenu={handleOpenMenu}
+              />
             ))}
           </div>
         </div>
       </aside>
-
-      {/* Sidebar backdrop for mobile */}
-      {isOpen && <div className="fs-sidebar-backdrop" onClick={onClose} />}
 
       {/* Create Playlist Modal */}
       {showModal && (
@@ -206,4 +213,4 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false }) {
       )}
     </>
   );
-}
+});

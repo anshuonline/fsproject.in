@@ -27,7 +27,7 @@ export function getPlaylistCoverUrl(playlist) {
   return null;
 }
 
-export function PlaylistCover({
+export const PlaylistCover = React.memo(function PlaylistCover({
   playlist,
   size = 'hero', // 'hero' | 'card' | 'sidebar' | 'modal' | 'thumb'
   className = '',
@@ -42,6 +42,7 @@ export function PlaylistCover({
 
   // Fallback icon size based on container size
   const iconSize = size === 'hero' ? 64 : size === 'card' ? 32 : size === 'sidebar' ? 16 : 24;
+  const isSidebar = size === 'sidebar';
 
   // Case 1: Custom explicit cover image
   if (customCover) {
@@ -51,7 +52,8 @@ export function PlaylistCover({
           src={customCover}
           alt={altText}
           className="fs-playlist-cover-img"
-          loading="lazy"
+          loading={isSidebar ? 'eager' : 'lazy'}
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={(e) => {
             const fallback = songs[0] ? getSongThumbnail(songs[0]) : null;
@@ -68,7 +70,7 @@ export function PlaylistCover({
   }
 
   // Case 2: 4 or more songs & not small sidebar -> Spotify-Style 2x2 Collage
-  if (songs.length >= 4 && size !== 'sidebar' && size !== 'thumb') {
+  if (songs.length >= 4 && !isSidebar && size !== 'thumb') {
     const firstFour = songs.slice(0, 4);
     return (
       <div className={`fs-playlist-cover-box fs-cover-${size} fs-cover-grid ${className}`}>
@@ -81,6 +83,7 @@ export function PlaylistCover({
                 alt=""
                 className="fs-playlist-cover-img"
                 loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
@@ -103,7 +106,8 @@ export function PlaylistCover({
           src={firstThumb}
           alt={altText}
           className="fs-playlist-cover-img"
-          loading="lazy"
+          loading={isSidebar ? 'eager' : 'lazy'}
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={(e) => {
             e.currentTarget.onerror = null;
@@ -120,4 +124,4 @@ export function PlaylistCover({
       <ListMusic size={iconSize} className="text-brand fs-cover-empty-icon" />
     </div>
   );
-}
+});

@@ -175,12 +175,22 @@ export function Settings() {
       return;
     }
 
+    const trimmedName = profileName.trim();
+    if (!trimmedName) {
+      showToast('Display name cannot be empty', 'error');
+      return;
+    }
+    if (trimmedName.length > 25) {
+      showToast('Display name cannot exceed 25 characters', 'error');
+      return;
+    }
+
     setSavingProfile(true);
     try {
       const res = await api.updateUserProfile({
         userId: user.dbId || user.id,
         email: user.email,
-        name: profileName.trim(),
+        name: trimmedName.slice(0, 25),
         dob: profileDob || null,
         city: profileCity.trim() || null,
         locationTracking
@@ -311,17 +321,21 @@ export function Settings() {
               <form onSubmit={handleSaveProfile} className="fs-profile-edit-grid">
                 {/* Full Name */}
                 <div className="fs-form-field">
-                  <label htmlFor="fs-profile-name" className="fs-field-label">
-                    Display Name
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label htmlFor="fs-profile-name" className="fs-field-label">
+                      Display Name
+                    </label>
+                    <span className="fs-field-helper">{profileName.length}/25 characters</span>
+                  </div>
                   <input
                     id="fs-profile-name"
                     type="text"
                     className="fs-field-input"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    placeholder="Your name"
-                    maxLength={100}
+                    placeholder="Your name (max 25 characters)"
+                    maxLength={25}
+                    required
                   />
                 </div>
 
@@ -514,7 +528,7 @@ export function Settings() {
 
                   <div className="fs-form-field">
                     <label className="fs-field-label">Confirm Password</label>
-                    <div className="fs-password-input-wrapper">
+                    <div className={`fs-password-input-wrapper ${passwordError?.code === 'PASSWORD_MISMATCH' ? 'fs-input-error' : ''}`}>
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         className="fs-field-input"
@@ -537,6 +551,9 @@ export function Settings() {
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
+                    {passwordError?.code === 'PASSWORD_MISMATCH' && (
+                      <span className="fs-field-error-text">Password wrong: Passwords do not match</span>
+                    )}
                   </div>
                 </div>
 

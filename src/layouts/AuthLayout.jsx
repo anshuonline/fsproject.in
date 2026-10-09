@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
+import { Toast } from '../components/Common/Toast';
 import './AuthLayout.css';
 
 export function AuthLayout() {
@@ -19,6 +20,9 @@ export function AuthLayout() {
       <div className="fs-auth-footer">
         <p>© {new Date().getFullYear()} FreeSong.in • Modern AMOLED Music Streaming</p>
       </div>
+
+      <Toast />
     </div>
   );
 }
+

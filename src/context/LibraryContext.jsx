@@ -313,31 +313,52 @@ export function LibraryProvider({ children }) {
     }
   };
 
+  const contextValue = React.useMemo(() => ({
+    likedSongs,
+    playlists,
+    history,
+    toggleLike,
+    isLiked,
+    createPlaylist,
+    deletePlaylist,
+    updatePlaylist,
+    saveExternalPlaylist,
+    clonePlaylist,
+    isPlaylistSaved,
+    getSavedClone,
+    addSongToPlaylist,
+    removeSongFromPlaylist,
+    isSongInPlaylist,
+    addToHistory,
+    removeFromHistory,
+    refreshHistory,
+    clearHistory,
+    syncWithCloud
+  }), [
+    likedSongs,
+    playlists,
+    history,
+    toggleLike,
+    isLiked,
+    createPlaylist,
+    deletePlaylist,
+    updatePlaylist,
+    saveExternalPlaylist,
+    clonePlaylist,
+    isPlaylistSaved,
+    getSavedClone,
+    addSongToPlaylist,
+    removeSongFromPlaylist,
+    isSongInPlaylist,
+    addToHistory,
+    removeFromHistory,
+    refreshHistory,
+    clearHistory,
+    syncWithCloud
+  ]);
+
   return (
-    <LibraryContext.Provider
-      value={{
-        likedSongs,
-        playlists,
-        history,
-        toggleLike,
-        isLiked,
-        createPlaylist,
-        deletePlaylist,
-        updatePlaylist,
-        saveExternalPlaylist,
-        clonePlaylist,
-        isPlaylistSaved,
-        getSavedClone,
-        addSongToPlaylist,
-        removeSongFromPlaylist,
-        isSongInPlaylist,
-        addToHistory,
-        removeFromHistory,
-        refreshHistory,
-        clearHistory,
-        syncWithCloud
-      }}
-    >
+    <LibraryContext.Provider value={contextValue}>
       {children}
     </LibraryContext.Provider>
   );

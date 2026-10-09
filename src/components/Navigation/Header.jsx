@@ -15,7 +15,7 @@ const POPULAR_SEARCHES = [
   'Coke Studio'
 ];
 
-export function Header({ onToggleSidebar }) {
+export const Header = React.memo(function Header({ onToggleSidebar }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -423,4 +423,4 @@ export function Header({ onToggleSidebar }) {
       </div>
     </header>
   );
-}
+});

@@ -274,17 +274,27 @@ input:checked + .fs-slider:before {
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .fs-profile-name-text {
   font-size: 1.05rem;
   font-weight: 700;
   color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .fs-profile-email-text {
   font-size: 0.85rem;
   color: var(--color-text-secondary, #afafaf);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .fs-auth-pill {
@@ -297,6 +307,7 @@ input:checked + .fs-slider:before {
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 /* Profile Edit Form */

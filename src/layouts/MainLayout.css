@@ -24,7 +24,7 @@
   width: 100%;
   padding: 12px 10px 120px 10px;
   background-color: var(--color-bg-main);
-  transition: margin-left var(--transition-smooth);
+  transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-anchor: none;

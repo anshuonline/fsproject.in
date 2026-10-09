@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { api } from '../../services/api';
+import { Lock, ArrowRight, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { api, isEasyPassword } from '../../services/api';
 import { useToast } from '../../context/ContextMenuContext';
 import './ResetPassword.css';
 
@@ -20,6 +20,8 @@ export function ResetPassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -53,11 +55,31 @@ export function ResetPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setPasswordError(null);
+
     if (!newPassword || newPassword.length < 6) {
+      setPasswordError({
+        code: 'PASSWORD_TOO_SHORT',
+        message: 'Password must be at least 6 characters long.'
+      });
       showToast('Password must be at least 6 characters long', 'error');
       return;
     }
+
+    if (isEasyPassword(newPassword)) {
+      setPasswordError({
+        code: 'EASY_PASSWORD',
+        message: 'This password is too easy or common. Please choose a stronger password with letters and numbers.'
+      });
+      showToast('Password is too easy or common. Please choose a stronger password.', 'error');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
+      setPasswordError({
+        code: 'PASSWORD_MISMATCH',
+        message: 'Passwords do not match. Please ensure both passwords match.'
+      });
       showToast('Passwords do not match', 'error');
       return;
     }
@@ -68,6 +90,10 @@ export function ResetPassword() {
       setIsSuccess(true);
       showToast('Password reset successfully! You can now sign in.', 'success');
     } catch (err) {
+      setPasswordError({
+        code: err.code || 'RESET_FAILED',
+        message: err.message || 'Failed to reset password'
+      });
       showToast(err.message || 'Failed to reset password', 'error');
     } finally {
       setSubmitting(false);
@@ -117,17 +143,40 @@ export function ResetPassword() {
             {userEmail ? `Setting password for ${userEmail}` : 'Enter your new account password'}
           </p>
 
+          {passwordError && (
+            <div className={`fs-auth-smart-alert ${passwordError.code === 'PASSWORD_MISMATCH' || passwordError.code === 'PASSWORD_TOO_SHORT' ? 'fs-auth-alert-danger' : 'fs-auth-alert-warning'}`}>
+              <div className="fs-auth-alert-icon-col">
+                <AlertCircle size={20} />
+              </div>
+              <div className="fs-auth-alert-body">
+                <h4 className="fs-auth-alert-title">
+                  {passwordError.code === 'PASSWORD_MISMATCH'
+                    ? 'Passwords Do Not Match'
+                    : passwordError.code === 'EASY_PASSWORD'
+                    ? 'Password Too Easy'
+                    : passwordError.code === 'PASSWORD_TOO_SHORT'
+                    ? 'Password Too Short'
+                    : 'Password Error'}
+                </h4>
+                <p className="fs-auth-alert-text">{passwordError.message}</p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="fs-auth-form">
             <div className="fs-form-group">
               <label className="fs-form-label">New Password</label>
-              <div className="fs-input-wrap">
+              <div className={`fs-input-wrap ${passwordError?.code === 'EASY_PASSWORD' || passwordError?.code === 'PASSWORD_TOO_SHORT' ? 'fs-input-error' : ''}`}>
                 <Lock size={18} className="fs-input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="fs-input-field"
-                  placeholder="At least 6 characters"
+                  placeholder="At least 6 characters (not easy)"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
                   disabled={submitting}
                   minLength={6}
                   autoFocus
@@ -138,27 +187,46 @@ export function ResetPassword() {
                   className="fs-password-toggle-btn"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {(passwordError?.code === 'EASY_PASSWORD' || passwordError?.code === 'PASSWORD_TOO_SHORT') && (
+                <span className="fs-field-error-text">{passwordError.message}</span>
+              )}
             </div>
 
             <div className="fs-form-group">
               <label className="fs-form-label">Confirm Password</label>
-              <div className="fs-input-wrap">
+              <div className={`fs-input-wrap ${passwordError?.code === 'PASSWORD_MISMATCH' ? 'fs-input-error' : ''}`}>
                 <Lock size={18} className="fs-input-icon" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   className="fs-input-field"
                   placeholder="Confirm new password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
                   disabled={submitting}
                   minLength={6}
                   required
                 />
+                <button
+                  type="button"
+                  className="fs-password-toggle-btn"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  tabIndex={-1}
+                  title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+              {passwordError?.code === 'PASSWORD_MISMATCH' && (
+                <span className="fs-field-error-text">Password wrong: Passwords do not match</span>
+              )}
             </div>
 
             <button

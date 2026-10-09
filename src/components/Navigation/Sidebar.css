@@ -11,7 +11,10 @@
   z-index: var(--z-sidebar);
   padding: 8px 12px calc(var(--player-height) + 12px) 12px;
   overflow-y: auto;
-  transition: width var(--transition-smooth), transform var(--transition-smooth);
+  contain: layout style;
+  transform: translate3d(0, 0, 0);
+  will-change: width, transform;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Collapsed Mode (YouTube Music style) */
@@ -186,6 +189,10 @@
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
+  overflow-x: hidden;
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }
 
 .fs-playlist-item {
@@ -193,9 +200,12 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
+  height: 48px;
+  box-sizing: border-box;
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   transition: background-color var(--transition-fast);
+  contain: layout style;
 }
 
 .fs-playlist-item:hover {
@@ -276,15 +286,27 @@
   flex-direction: column;
   gap: 2px;
   margin-top: 6px;
+  contain: content;
 }
 
 /* Mobile Sidebar Backdrop */
 .fs-sidebar-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.72);
   z-index: calc(var(--z-sidebar) - 1);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+  touch-action: manipulation;
+}
+
+.fs-sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 
 /* Modal */
@@ -353,17 +375,20 @@
     width: min(84vw, 300px) !important;
     height: 100vh !important;
     z-index: 1000 !important;
-    transform: translateX(-100%) !important;
+    transform: translate3d(-100%, 0, 0) !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.85) !important;
     padding: 16px 16px calc(var(--player-height) + 30px) 16px !important;
     border-right: 1px solid var(--color-border);
     background-color: var(--color-bg-secondary) !important;
-    transition: transform var(--transition-smooth) !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    will-change: transform !important;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   .fs-sidebar.open,
   .fs-sidebar.collapsed.open {
-    transform: translateX(0) !important;
+    transform: translate3d(0, 0, 0) !important;
   }
 
   /* Ensure nav items are full width horizontal rows on mobile even if collapsed class was toggled */
@@ -399,12 +424,16 @@
   }
 
   .fs-sidebar-backdrop {
-    display: block !important;
     position: fixed !important;
     inset: 0 !important;
-    background-color: rgba(0, 0, 0, 0.75) !important;
-    backdrop-filter: blur(4px) !important;
+    background-color: rgba(0, 0, 0, 0.72) !important;
     z-index: 999 !important;
+  }
+
+  .fs-sidebar-backdrop.active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
   }
 
   .fs-sidebar-nav {

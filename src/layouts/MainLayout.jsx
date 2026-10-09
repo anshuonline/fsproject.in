@@ -44,7 +44,11 @@ export function MainLayout() {
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 
-  const handleToggleSidebar = () => {
+  const handleCloseSidebar = React.useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  const handleToggleSidebar = React.useCallback(() => {
     if (window.innerWidth >= 901) {
       setIsSidebarCollapsed(prev => {
         const next = !prev;
@@ -56,7 +60,7 @@ export function MainLayout() {
     } else {
       setSidebarOpen(prev => !prev);
     }
-  };
+  }, []);
 
   return (
     <div
@@ -72,7 +76,7 @@ export function MainLayout() {
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={handleCloseSidebar}
           isCollapsed={effectiveCollapsed}
         />
 

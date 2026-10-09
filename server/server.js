@@ -1032,7 +1032,7 @@ app.post('/api/user/sync', async (req, res) => {
 
     await query(sql, [
       email,
-      name || 'FreeSong Listener',
+      name ? name.trim().slice(0, 25) : 'FreeSong Listener',
       avatarUrl || null,
       authProvider || 'google',
       firebaseUid || null,
@@ -1285,7 +1285,7 @@ app.post('/api/user/register-password', async (req, res) => {
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const cleanName = (name || '').trim() || cleanEmail.split('@')[0] || 'FreeSong Listener';
+  const cleanName = ((name || '').trim().slice(0, 25)) || cleanEmail.split('@')[0].slice(0, 25) || 'FreeSong Listener';
   const rawIp = getClientIp(req);
   const userAgent = req.headers['user-agent'] || '';
 
@@ -1512,7 +1512,7 @@ app.put('/api/user/profile', async (req, res) => {
 
     if (name !== undefined) {
       updates.push('name = ?');
-      params.push(name.trim() || 'FreeSong Listener');
+      params.push((name || '').trim().slice(0, 25) || 'FreeSong Listener');
     }
     if (dob !== undefined) {
       updates.push('dob = ?');

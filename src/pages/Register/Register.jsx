@@ -50,6 +50,12 @@ export function Register() {
       return;
     }
 
+    if (name.trim().length > 25) {
+      setErrorInfo({ code: 'NAME_TOO_LONG', message: 'Name cannot exceed 25 characters' });
+      showToast('Name cannot exceed 25 characters', 'error');
+      return;
+    }
+
     if (password.length < 6) {
       setErrorInfo({ code: 'PASSWORD_TOO_SHORT', message: 'Password must be at least 6 characters long', email: email.trim() });
       showToast('Password must be at least 6 characters long', 'error');
@@ -139,13 +145,14 @@ export function Register() {
             <input
               type="text"
               className="fs-input-field"
-              placeholder="Your Name"
+              placeholder="Your Name (max 25 characters)"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (errorInfo) setErrorInfo(null);
               }}
               disabled={isRegistering}
+              maxLength={25}
               required
             />
           </div>
