@@ -880,24 +880,53 @@ function formatArtist(ar) {
 // ─── User, Likes, and History Database Endpoints ───────────────────────────────
 
 function getClientIp(req) {
+  // 1. Cloudflare real client IP
+  if (req.headers['cf-connecting-ip']) {
+    return req.headers['cf-connecting-ip'].trim();
+  }
+  // 2. Nginx / reverse proxy real IP
+  if (req.headers['x-real-ip']) {
+    return req.headers['x-real-ip'].trim();
+  }
+  // 3. Standard forwarded for
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) {
     const list = forwarded.split(',');
     return list[0].trim();
   }
-  return req.socket.remoteAddress || '127.0.0.1';
+  // 4. Socket remote address
+  const socketIp = req.socket?.remoteAddress;
+  if (socketIp) {
+    if (socketIp.startsWith('::ffff:')) {
+      return socketIp.replace('::ffff:', '');
+    }
+    return socketIp;
+  }
+  return '127.0.0.1';
+}
+
+function isLocalOrPrivateIp(ip) {
+  if (!ip) return true;
+  const clean = ip.replace(/^::ffff:/, '');
+  if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') return true;
+  if (clean.startsWith('192.168.') || clean.startsWith('10.') || clean.startsWith('172.16.')) return true;
+  return false;
 }
 
 async function getIpGeo(ip) {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
-    return { country: 'Localhost', countryCode: 'LOCAL', city: 'Local Area', region: null, lat: null, lon: null };
-  }
+  const isLocal = isLocalOrPrivateIp(ip);
+  // When local or private IP, query ip-api without an IP address to resolve the machine's external public IP & geo
+  const url = isLocal
+    ? 'http://ip-api.com/json/?fields=status,country,countryCode,regionName,city,lat,lon,query'
+    : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName,city,lat,lon,query`;
+
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon`);
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'success') {
         return {
+          ip: data.query || (isLocal ? '127.0.0.1' : ip),
           country: data.country || 'India',
           countryCode: data.countryCode || 'IN',
           region: data.regionName || null,
@@ -907,8 +936,19 @@ async function getIpGeo(ip) {
         };
       }
     }
-  } catch {}
-  return { country: 'India', countryCode: 'IN', region: null, city: null, lat: null, lon: null };
+  } catch (err) {
+    console.warn('Geolocation lookup notice:', err.message);
+  }
+
+  return {
+    ip: isLocal ? '127.0.0.1' : ip,
+    country: 'India',
+    countryCode: 'IN',
+    region: 'India',
+    city: 'India',
+    lat: null,
+    lon: null
+  };
 }
 
 // Helper to resolve user identifier (DB ID, Firebase UID, or email) to MySQL users.id
@@ -995,11 +1035,12 @@ app.post('/api/user/sync', async (req, res) => {
   const { email, name, avatarUrl, authProvider, firebaseUid } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
-  const ip = getClientIp(req);
+  const rawIp = getClientIp(req);
   const userAgent = req.headers['user-agent'] || '';
 
   try {
-    const geo = await getIpGeo(ip);
+    const geo = await getIpGeo(rawIp);
+    const resolvedIp = geo.ip || rawIp;
 
     const sql = `
       INSERT INTO users (
@@ -1012,6 +1053,14 @@ app.post('/api/user/sync', async (req, res) => {
         name = COALESCE(VALUES(name), name),
         avatar_url = COALESCE(VALUES(avatar_url), avatar_url),
         firebase_uid = COALESCE(VALUES(firebase_uid), firebase_uid),
+        registered_ip = CASE WHEN registered_ip IN ('::1', '127.0.0.1', 'localhost') OR registered_ip IS NULL THEN VALUES(registered_ip) ELSE registered_ip END,
+        registered_country = CASE WHEN registered_country IN ('Localhost', 'LOCAL') OR registered_country IS NULL THEN VALUES(registered_country) ELSE registered_country END,
+        registered_country_code = CASE WHEN registered_country_code IN ('LOCAL') OR registered_country_code IS NULL THEN VALUES(registered_country_code) ELSE registered_country_code END,
+        registered_region = COALESCE(registered_region, VALUES(registered_region)),
+        registered_city = CASE WHEN registered_city IN ('Local Area') OR registered_city IS NULL THEN VALUES(registered_city) ELSE registered_city END,
+        registered_latitude = COALESCE(registered_latitude, VALUES(registered_latitude)),
+        registered_longitude = COALESCE(registered_longitude, VALUES(registered_longitude)),
+        registered_user_agent = COALESCE(registered_user_agent, VALUES(registered_user_agent)),
         last_login_at = NOW(),
         last_login_ip = VALUES(last_login_ip)
     `;
@@ -1022,7 +1071,7 @@ app.post('/api/user/sync', async (req, res) => {
       avatarUrl || null,
       authProvider || 'google',
       firebaseUid || null,
-      ip || '127.0.0.1',
+      resolvedIp,
       geo.country || 'India',
       geo.countryCode || 'IN',
       geo.region || null,
@@ -1030,7 +1079,7 @@ app.post('/api/user/sync', async (req, res) => {
       geo.lat || null,
       geo.lon || null,
       userAgent || null,
-      ip || '127.0.0.1'
+      resolvedIp
     ]);
 
     const users = await query('SELECT * FROM users WHERE email = ?', [email]);
@@ -1039,7 +1088,7 @@ app.post('/api/user/sync', async (req, res) => {
     if (user?.id) {
       await query(
         'INSERT INTO user_login_logs (user_id, ip_address, country, city, region, user_agent, logged_in_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-        [user.id, ip || '127.0.0.1', geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
+        [user.id, resolvedIp, geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
       ).catch(() => {});
     }
 
@@ -1061,7 +1110,9 @@ app.post('/api/user/history', async (req, res) => {
       return res.status(404).json({ error: 'User not found in database' });
     }
 
-    const ip = getClientIp(req);
+    const rawIp = getClientIp(req);
+    const geo = await getIpGeo(rawIp);
+    const resolvedIp = geo.ip || rawIp;
 
     await query(`
       INSERT INTO user_play_history (
@@ -1078,7 +1129,7 @@ app.post('/api/user/history', async (req, res) => {
       duration || 0,
       durationText || '',
       playedDuration || 0,
-      ip
+      resolvedIp
     ]);
 
     // Keep only the most recent 100 songs for this user
