@@ -22,6 +22,7 @@ export function PlayerProvider({ children }) {
   const [isAutoplay, setIsAutoplay] = useState(true);
 
   const playerRef = useRef(null);
+  const playerInitPromiseRef = useRef(null);
   const progressTimerRef = useRef(null);
   const sleepTimerTimeoutRef = useRef(null);
   const ytApiReadyRef = useRef(false);
@@ -88,10 +89,34 @@ export function PlayerProvider({ children }) {
 
   // Initialize YT Player on container
   const ensurePlayer = useCallback((videoId) => {
-    return new Promise((resolve) => {
+    // If player is already initialized and functional
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById(videoId);
+        playerRef.current.playVideo();
+      } catch (err) {
+        console.warn('Error loading video by ID:', err);
+      }
+      return Promise.resolve(playerRef.current);
+    }
+
+    // If initialization is already in flight, wait for it then load video
+    if (playerInitPromiseRef.current) {
+      return playerInitPromiseRef.current.then(player => {
+        if (player && typeof player.loadVideoById === 'function') {
+          try {
+            player.loadVideoById(videoId);
+            player.playVideo();
+          } catch (e) {}
+        }
+        return player;
+      });
+    }
+
+    playerInitPromiseRef.current = new Promise((resolve) => {
       const checkAndInit = () => {
         if (!window.YT || !window.YT.Player) {
-          setTimeout(checkAndInit, 100);
+          setTimeout(checkAndInit, 80);
           return;
         }
 
@@ -101,76 +126,81 @@ export function PlayerProvider({ children }) {
           container = document.createElement('div');
           container.id = containerId;
           container.style.position = 'fixed';
-          container.style.top = '-9999px';
-          container.style.left = '-9999px';
-          container.style.width = '1px';
-          container.style.height = '1px';
-          container.style.opacity = '0.01';
+          container.style.bottom = '0';
+          container.style.right = '0';
+          container.style.width = '200px';
+          container.style.height = '200px';
+          container.style.opacity = '0.001';
           container.style.pointerEvents = 'none';
+          container.style.zIndex = '-9999';
           document.body.appendChild(container);
         }
 
-        if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
-          playerRef.current.loadVideoById(videoId);
-          resolve(playerRef.current);
-          return;
-        }
-
-        playerRef.current = new window.YT.Player(containerId, {
-          height: '1',
-          width: '1',
-          videoId: videoId,
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1,
-            playsinline: 1,
-            origin: window.location.origin
-          },
-          events: {
-            onReady: (event) => {
-              event.target.setVolume(volume * 100);
-              event.target.playVideo();
-              resolve(event.target);
+        try {
+          new window.YT.Player(containerId, {
+            height: '1',
+            width: '1',
+            videoId: videoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 0,
+              disablekb: 1,
+              fs: 0,
+              modestbranding: 1,
+              playsinline: 1,
+              enablejsapi: 1,
+              origin: window.location.origin
             },
-            onStateChange: (event) => {
-              // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
-              if (event.data === 1) {
-                setIsPlaying(true);
-                setIsLoading(false);
-                isTransitioningRef.current = false;
-                if (event.target.getDuration) {
-                  setDuration(event.target.getDuration());
+            events: {
+              onReady: (event) => {
+                playerRef.current = event.target;
+                playerInitPromiseRef.current = null;
+                event.target.setVolume(volume * 100);
+                event.target.playVideo();
+                resolve(event.target);
+              },
+              onStateChange: (event) => {
+                // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
+                if (event.data === 1) {
+                  setIsPlaying(true);
+                  setIsLoading(false);
+                  isTransitioningRef.current = false;
+                  if (event.target.getDuration) {
+                    setDuration(event.target.getDuration());
+                  }
+                } else if (event.data === 2) {
+                  setIsPlaying(false);
+                  setIsLoading(false);
+                } else if (event.data === 3) {
+                  setIsLoading(true);
+                } else if (event.data === 0) {
+                  if (handleSongEndedRef.current) {
+                    handleSongEndedRef.current();
+                  }
                 }
-              } else if (event.data === 2) {
-                setIsPlaying(false);
+              },
+              onError: (e) => {
+                console.warn('YT Player error:', e.data);
                 setIsLoading(false);
-              } else if (event.data === 3) {
-                setIsLoading(true);
-              } else if (event.data === 0) {
-                if (handleSongEndedRef.current) {
-                  handleSongEndedRef.current();
-                }
+                playerInitPromiseRef.current = null;
+                setTimeout(() => {
+                  if (nextSongRef.current) {
+                    nextSongRef.current();
+                  }
+                }, 1000);
               }
-            },
-            onError: (e) => {
-              console.warn('YT Player error:', e.data);
-              setIsLoading(false);
-              // Auto-skip unplayable/restricted track
-              setTimeout(() => {
-                if (nextSongRef.current) {
-                  nextSongRef.current();
-                }
-              }, 1000);
             }
-          }
-        });
+          });
+        } catch (initErr) {
+          console.warn('Failed to construct YT.Player:', initErr);
+          playerInitPromiseRef.current = null;
+        }
       };
 
       checkAndInit();
     });
+
+    return playerInitPromiseRef.current;
   }, [volume]);
 
   // Track progress ticker + fallback threshold detector
@@ -272,6 +302,62 @@ export function PlayerProvider({ children }) {
       fetchAndAppendRelated(song);
     }
   }, [ensurePlayer, fetchAndAppendRelated]);
+
+  // Play song directly by YouTube videoId (used for shared URLs & deep links)
+  const playByVideoId = useCallback(async (videoId) => {
+    if (!videoId) return;
+
+    if (currentSongRef.current?.videoId === videoId) {
+      if (!isPlaying) {
+        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+        }
+      }
+      return;
+    }
+
+    setIsLoading(true);
+
+    let songData = null;
+    try {
+      songData = await Promise.race([
+        api.getSong(videoId),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 800))
+      ]);
+    } catch {}
+
+    const songToPlay = (songData && songData.title) ? songData : {
+      videoId,
+      title: 'Playing Track',
+      artist: 'FreeSong.in',
+      thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnailLow: `https://i.ytimg.com/vi/${videoId}/default.jpg`,
+      duration: 0,
+      durationText: '',
+      type: 'song'
+    };
+
+    playSong(songToPlay);
+
+    // If placeholder was initially loaded, enrich with full metadata in background
+    if (!songData || !songData.title) {
+      api.getSong(videoId).then(fullData => {
+        if (fullData && fullData.title) {
+          setCurrentSong(prev => (prev && prev.videoId === videoId ? { ...prev, ...fullData } : prev));
+          setQueue(prevQ => prevQ.map(s => (s.videoId === videoId ? { ...s, ...fullData } : s)));
+        }
+      }).catch(() => {});
+    }
+
+    // Attach one-time interaction unblocker for browser autoplay restrictions
+    const unblockPlayback = () => {
+      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        playerRef.current.playVideo();
+      }
+    };
+    window.addEventListener('click', unblockPlayback, { once: true, capture: true });
+    window.addEventListener('touchend', unblockPlayback, { once: true, capture: true });
+  }, [playSong, isPlaying]);
 
   // Auto-fetch next batch of songs when approaching the end of queue
   useEffect(() => {
@@ -566,6 +652,7 @@ export function PlayerProvider({ children }) {
         isQueueOpen,
         isLoading,
         playSong,
+        playByVideoId,
         togglePlay,
         nextSong,
         prevSong,

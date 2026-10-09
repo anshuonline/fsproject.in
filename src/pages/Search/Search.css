@@ -4,12 +4,17 @@
   gap: 28px;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .fs-search-header {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fs-search-heading {
@@ -53,12 +58,17 @@
   display: flex;
   flex-direction: column;
   gap: 36px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .fs-search-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fs-section-title {
@@ -80,23 +90,54 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .fs-artists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-@media (max-width: 650px) {
+@media (max-width: 768px) {
+  .fs-search-page {
+    gap: 20px;
+  }
+
+  .fs-search-heading {
+    font-size: 1.35rem;
+    word-break: break-word;
+  }
+
+  .fs-section-title {
+    font-size: 1.15rem;
+  }
+
   .fs-cards-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    width: 100%;
   }
 
   .fs-artists-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fs-artists-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 }
 

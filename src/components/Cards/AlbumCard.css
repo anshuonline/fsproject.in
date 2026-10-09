@@ -1,5 +1,8 @@
 .fs-album-card {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   cursor: pointer;
@@ -94,18 +97,63 @@
 }
 
 .fs-album-card-meta {
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  overflow: hidden;
 }
 
 .fs-album-card-title {
   font-size: 0.9375rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fs-album-card-subtitle {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .fs-album-card {
+    padding: 6px;
+  }
+  .fs-album-card-art-wrap {
+    margin-bottom: 6px;
+  }
+  .fs-album-card-play-btn {
+    width: 36px;
+    height: 36px;
+    bottom: 6px;
+    right: 6px;
+  }
+  .fs-album-card-title {
+    font-size: 0.85rem;
+    line-height: 1.25;
+  }
+  .fs-album-card-subtitle {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-album-card {
+    padding: 4px;
+  }
+  .fs-album-card-title {
+    font-size: 0.8125rem;
+  }
+  .fs-album-card-subtitle {
+    font-size: 0.6875rem;
+  }
 }

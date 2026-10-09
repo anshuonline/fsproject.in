@@ -3,9 +3,13 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import YTMusic from 'ytmusic-api';
 import { buildAlgorithmicFeed } from './recommendationEngine.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
+import db, { query, testDbConnection } from './database/db.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -288,6 +292,119 @@ app.get('/api/lyrics', async (req, res) => {
   } catch (err) {
     console.warn(`Lyrics fetch error for "${title}":`, err.message);
     res.json({ syncedLyrics: null, plainLyrics: null });
+  }
+});
+
+// Single Song / Track Details by Video ID
+app.get('/api/song/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'Song ID is required' });
+
+  const cacheKey = `song_meta_${id}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const yt = await getYTMusic();
+    let songData = null;
+
+    // 1. Try yt.getSong(id)
+    try {
+      const fullSong = await yt.getSong(id);
+      if (fullSong && (fullSong.name || fullSong.videoId)) {
+        const thumbs = fullSong.thumbnails || [];
+        const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        const lowThumb = thumbs[0]?.url || `https://i.ytimg.com/vi/${id}/default.jpg`;
+        const dur = fullSong.duration || 0;
+        songData = {
+          videoId: id,
+          title: fullSong.name || 'Unknown Title',
+          artist: fullSong.artist?.name || (typeof fullSong.artist === 'string' ? fullSong.artist : 'Unknown Artist'),
+          artistId: fullSong.artist?.artistId || null,
+          album: fullSong.album?.name || (typeof fullSong.album === 'string' ? fullSong.album : ''),
+          duration: dur,
+          durationText: dur ? `${Math.floor(dur / 60)}:${(dur % 60).toString().padStart(2, '0')}` : '',
+          thumbnail: toHDUrl(bestThumb, id),
+          thumbnailLow: toHDUrl(lowThumb, id),
+          type: 'song'
+        };
+      }
+    } catch (err) {
+      console.warn(`yt.getSong failed for ${id}:`, err.message);
+    }
+
+    // 2. Try yt.getVideo(id) if getSong failed
+    if (!songData) {
+      try {
+        const fullVideo = await yt.getVideo(id);
+        if (fullVideo && (fullVideo.name || fullVideo.videoId)) {
+          const thumbs = fullVideo.thumbnails || [];
+          const bestThumb = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          const lowThumb = thumbs[0]?.url || `https://i.ytimg.com/vi/${id}/default.jpg`;
+          const dur = fullVideo.duration || 0;
+          songData = {
+            videoId: id,
+            title: fullVideo.name || 'Unknown Title',
+            artist: fullVideo.artist?.name || (typeof fullVideo.artist === 'string' ? fullVideo.artist : 'Unknown Artist'),
+            artistId: fullVideo.artist?.artistId || null,
+            album: '',
+            duration: dur,
+            durationText: dur ? `${Math.floor(dur / 60)}:${(dur % 60).toString().padStart(2, '0')}` : '',
+            thumbnail: toHDUrl(bestThumb, id),
+            thumbnailLow: toHDUrl(lowThumb, id),
+            type: 'song'
+          };
+        }
+      } catch (err) {
+        console.warn(`yt.getVideo failed for ${id}:`, err.message);
+      }
+    }
+
+    // 3. Fallback to YouTube oEmbed
+    if (!songData) {
+      try {
+        const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
+        if (oembedRes.ok) {
+          const oembed = await oembedRes.json();
+          songData = {
+            videoId: id,
+            title: oembed.title || 'Unknown Title',
+            artist: oembed.author_name || 'FreeSong.in',
+            artistId: null,
+            album: '',
+            duration: 0,
+            durationText: '',
+            thumbnail: toHDUrl(oembed.thumbnail_url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, id),
+            thumbnailLow: `https://i.ytimg.com/vi/${id}/default.jpg`,
+            type: 'song'
+          };
+        }
+      } catch (err) {
+        console.warn(`oEmbed failed for ${id}:`, err.message);
+      }
+    }
+
+    // 4. Default fallback
+    if (!songData) {
+      songData = {
+        videoId: id,
+        title: 'Playing Music',
+        artist: 'FreeSong.in',
+        artistId: null,
+        album: '',
+        duration: 0,
+        durationText: '',
+        thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+        thumbnailLow: `https://i.ytimg.com/vi/${id}/default.jpg`,
+        type: 'song'
+      };
+    }
+
+    setCache(cacheKey, songData, 60 * 60 * 1000); // 1 hour cache
+    res.json(songData);
+  } catch (err) {
+    console.error(`Error in /api/song/${id}:`, err);
+    res.status(500).json({ error: 'Failed to fetch song details' });
   }
 });
 
@@ -760,6 +877,189 @@ function formatArtist(ar) {
   };
 }
 
+// ─── User, Likes, and History Database Endpoints ───────────────────────────────
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const list = forwarded.split(',');
+    return list[0].trim();
+  }
+  return req.socket.remoteAddress || '127.0.0.1';
+}
+
+async function getIpGeo(ip) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return { country: 'Localhost', countryCode: 'LOCAL', city: 'Local Area', region: null, lat: null, lon: null };
+  }
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success') {
+        return {
+          country: data.country || 'India',
+          countryCode: data.countryCode || 'IN',
+          region: data.regionName || null,
+          city: data.city || null,
+          lat: data.lat || null,
+          lon: data.lon || null
+        };
+      }
+    }
+  } catch {}
+  return { country: 'India', countryCode: 'IN', region: null, city: null, lat: null, lon: null };
+}
+
+// User Sync (Saves registration info, IP, Geolocation, and Login logs)
+app.post('/api/user/sync', async (req, res) => {
+  const { email, name, avatarUrl, authProvider, firebaseUid } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const ip = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+
+  try {
+    const geo = await getIpGeo(ip);
+
+    const sql = `
+      INSERT INTO users (
+        email, name, avatar_url, auth_provider, firebase_uid,
+        registered_ip, registered_country, registered_country_code,
+        registered_region, registered_city, registered_latitude, registered_longitude,
+        registered_user_agent, last_login_at, last_login_ip
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+      ON DUPLICATE KEY UPDATE
+        name = COALESCE(VALUES(name), name),
+        avatar_url = COALESCE(VALUES(avatar_url), avatar_url),
+        firebase_uid = COALESCE(VALUES(firebase_uid), firebase_uid),
+        last_login_at = NOW(),
+        last_login_ip = VALUES(last_login_ip)
+    `;
+
+    await query(sql, [
+      email,
+      name || 'FreeSong Listener',
+      avatarUrl || null,
+      authProvider || 'google',
+      firebaseUid || null,
+      ip || '127.0.0.1',
+      geo.country || 'India',
+      geo.countryCode || 'IN',
+      geo.region || null,
+      geo.city || null,
+      geo.lat || null,
+      geo.lon || null,
+      userAgent || null,
+      ip || '127.0.0.1'
+    ]);
+
+    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const user = users[0];
+
+    if (user?.id) {
+      await query(
+        'INSERT INTO user_login_logs (user_id, ip_address, country, city, region, user_agent, logged_in_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+        [user.id, ip || '127.0.0.1', geo.country || 'India', geo.city || null, geo.region || null, userAgent || null]
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.warn('User sync error:', err.message);
+    res.status(500).json({ error: 'Database sync error' });
+  }
+});
+
+// Play History: Save played song and enforce max 100 history limit
+app.post('/api/user/history', async (req, res) => {
+  const { userId, videoId, title, artist, album, thumbnail, duration, durationText, playedDuration } = req.body;
+  if (!userId || !videoId) return res.status(400).json({ error: 'userId and videoId are required' });
+
+  const ip = getClientIp(req);
+
+  try {
+    await query(`
+      INSERT INTO user_play_history (
+        user_id, video_id, title, artist, album, thumbnail,
+        duration, duration_text, played_duration, ip_address, played_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `, [userId, videoId, title, artist, album || '', thumbnail || '', duration || 0, durationText || '', playedDuration || 0, ip]);
+
+    // Keep only the most recent 100 songs for this user
+    await query(`
+      DELETE FROM user_play_history
+      WHERE user_id = ?
+        AND id NOT IN (
+          SELECT id FROM (
+            SELECT id FROM user_play_history
+            WHERE user_id = ?
+            ORDER BY played_at DESC, id DESC
+            LIMIT 100
+          ) AS recent_tracks
+        )
+    `, [userId, userId]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('History save error:', err.message);
+    res.status(500).json({ error: 'Failed to record play history' });
+  }
+});
+
+// Play History: Get last 100 played songs
+app.get('/api/user/:userId/history', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const history = await query(
+      'SELECT * FROM user_play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT 100',
+      [userId]
+    );
+    res.json({ history });
+  } catch (err) {
+    res.status(500).json({ history: [] });
+  }
+});
+
+// User Likes: Get, Add, Remove
+app.get('/api/user/:userId/likes', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const likes = await query(
+      'SELECT * FROM user_likes WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    );
+    res.json({ likes });
+  } catch (err) {
+    res.status(500).json({ likes: [] });
+  }
+});
+
+app.post('/api/user/likes', async (req, res) => {
+  const { userId, videoId, title, artist, album, thumbnail, duration, durationText } = req.body;
+  if (!userId || !videoId) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    await query(`
+      INSERT INTO user_likes (user_id, video_id, title, artist, album, thumbnail, duration, duration_text, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE created_at = NOW()
+    `, [userId, videoId, title, artist, album || '', thumbnail || '', duration || 0, durationText || '']);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/user/likes', async (req, res) => {
+  const { userId, videoId } = req.body;
+  try {
+    await query('DELETE FROM user_likes WHERE user_id = ? AND video_id = ?', [userId, videoId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve static frontend assets built by Vite in production
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
@@ -775,4 +1075,5 @@ if (fs.existsSync(distPath)) {
 
 app.listen(PORT, () => {
   console.log(`FreeSong.in API server running on port ${PORT}`);
+  testDbConnection();
 });

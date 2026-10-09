@@ -2,8 +2,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBJxvB_NMX-ZQ6aeCIPbYOHwns06j9SYjo",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "authentication-freesong.firebaseapp.com",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "auth.freesong.in",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "authentication-freesong",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "authentication-freesong.firebasestorage.app",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1036335369920",

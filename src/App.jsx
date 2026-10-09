@@ -24,12 +24,14 @@ import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
 import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
 import { ScrollToTop } from './components/Common/ScrollToTop';
+import { SharedSongHandler } from './components/Common/SharedSongHandler';
 
 export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
       <PlayerProvider>
+        <SharedSongHandler />
         <LibraryProvider>
           <ContextMenuProvider>
             <PWAProvider>
@@ -38,6 +40,9 @@ export default function App() {
                   {/* Main Application with Sidebar, Header, and Player */}
                   <Route element={<MainLayout />}>
                     <Route path="/" element={<Home />} />
+                    <Route path="/watch" element={<Home />} />
+                    <Route path="/song/:id" element={<Home />} />
+                    <Route path="/track/:id" element={<Home />} />
                     <Route path="/explore" element={<Explore />} />
                     <Route path="/library" element={<Library />} />
                     <Route path="/search" element={<Search />} />

@@ -11,6 +11,10 @@
   transition: all var(--transition-normal);
   position: relative;
   user-select: none;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .fs-artist-card:hover {
@@ -21,6 +25,7 @@
 
 .fs-artist-avatar-wrap {
   width: 100%;
+  max-width: 140px;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   overflow: hidden;
@@ -28,6 +33,8 @@
   background-color: var(--color-bg-secondary);
   box-shadow: var(--shadow-sm);
   margin-bottom: 12px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .fs-artist-avatar-img {
@@ -73,9 +80,12 @@
 
 .fs-artist-meta {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
+  overflow: hidden;
 }
 
 .fs-artist-name {
@@ -83,6 +93,11 @@
   font-weight: 700;
   color: var(--color-white);
   margin: 0;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fs-artist-card:hover .fs-artist-name {
@@ -93,11 +108,21 @@
   font-size: 0.78rem;
   color: var(--color-text-secondary);
   margin: 0;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
   .fs-artist-card {
-    padding: 8px;
+    padding: 10px 8px;
+    border-radius: var(--radius-md);
+  }
+  .fs-artist-avatar-wrap {
+    max-width: 104px;
+    margin-bottom: 8px;
   }
   .fs-artist-play-btn {
     width: 32px;
@@ -107,8 +132,25 @@
   }
   .fs-artist-name {
     font-size: 0.85rem;
+    line-height: 1.25;
   }
   .fs-artist-category {
     font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-artist-card {
+    padding: 8px 6px;
+  }
+  .fs-artist-avatar-wrap {
+    max-width: 88px;
+    margin-bottom: 6px;
+  }
+  .fs-artist-name {
+    font-size: 0.8125rem;
+  }
+  .fs-artist-category {
+    font-size: 0.6875rem;
   }
 }

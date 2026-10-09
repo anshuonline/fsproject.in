@@ -112,6 +112,18 @@ export const api = {
       console.warn('getRelatedSongs error:', err);
       return { songs: [] };
     }
+  },
+
+  async getSong(id) {
+    if (!id) return null;
+    try {
+      const res = await fetch(`${API_BASE}/song/${id}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn(`getSong error for ${id}:`, err);
+      return null;
+    }
   }
 };
 

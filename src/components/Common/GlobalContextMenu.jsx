@@ -175,19 +175,21 @@ export function GlobalContextMenu() {
       if (navigator.share) {
         await navigator.share({
           title,
-          text: `Check out "${title}" on FreeSong.in`,
+          text: `Check out "${title}"`,
           url: shareUrl
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
         showToast('Playlist link copied to clipboard!');
       }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Playlist link copied to clipboard!');
-      } catch {
-        showToast('Failed to copy link', 'error');
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast('Playlist link copied to clipboard!');
+        } catch {
+          showToast('Failed to copy link', 'error');
+        }
       }
     }
     closeMenu();
@@ -255,24 +257,31 @@ export function GlobalContextMenu() {
   };
 
   const handleShare = async () => {
+    if (!song || !song.videoId) return;
     const shareUrl = `${window.location.origin}/?v=${song.videoId}`;
+    const shareText = song.artist && song.artist !== 'Unknown Artist'
+      ? `Listen to "${song.title}" by ${song.artist}`
+      : `Listen to "${song.title}"`;
+
     try {
       if (navigator.share) {
         await navigator.share({
           title: song.title,
-          text: `Listen to "${song.title}" by ${song.artist} on FreeSong.in`,
+          text: shareText,
           url: shareUrl
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
         showToast('Song link copied to clipboard!');
       }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Song link copied to clipboard!');
-      } catch {
-        showToast('Failed to copy link', 'error');
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast('Song link copied to clipboard!');
+        } catch {
+          showToast('Failed to copy link', 'error');
+        }
       }
     }
     closeMenu();
