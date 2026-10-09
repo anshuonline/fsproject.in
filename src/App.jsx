@@ -20,6 +20,7 @@ import { ArtistDetail } from './pages/ArtistDetail/ArtistDetail';
 import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
+import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
 import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
@@ -53,6 +54,7 @@ export default function App() {
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/confirm-delete" element={<ConfirmDelete />} />
 
                     {/* Legal, AdSense & Policy Routes */}
                     <Route path="/privacy" element={<PrivacyPolicy />} />

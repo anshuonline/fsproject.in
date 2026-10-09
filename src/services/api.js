@@ -383,6 +383,69 @@ export const api = {
       console.warn('syncUserPlaylists API error:', err);
       return false;
     }
+  },
+
+  async updateUserProfile({ userId, email, name, dob, city, locationTracking }) {
+    try {
+      const res = await fetch(`${API_BASE}/user/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email, name, dob, city, locationTracking })
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('updateUserProfile API error:', err);
+      return null;
+    }
+  },
+
+  async requestAccountDeletion(userId, email) {
+    try {
+      const res = await fetch(`${API_BASE}/user/request-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('requestAccountDeletion API error:', err);
+      throw err;
+    }
+  },
+
+  async confirmAccountDeletion(token) {
+    try {
+      const res = await fetch(`${API_BASE}/user/confirm-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP error ${res.status}`);
+      return data;
+    } catch (err) {
+      console.warn('confirmAccountDeletion API error:', err);
+      throw err;
+    }
+  },
+
+  async clearUserHistory(userId, email) {
+    try {
+      const res = await fetch(`${API_BASE}/user/history`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email })
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('clearUserHistory API error:', err);
+      return false;
+    }
   }
 };
 

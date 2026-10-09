@@ -6,6 +6,12 @@ import { useLibrary } from './LibraryContext';
 
 const PlayerContext = createContext(null);
 
+const QUALITY_MAP = {
+  'high': 'hd1080',
+  'normal': 'medium',
+  'data-saver': 'small'
+};
+
 export function PlayerProvider({ children }) {
   const { user } = useAuth();
   const { addToHistory } = useLibrary();
@@ -24,6 +30,16 @@ export function PlayerProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [sleepTimer, setSleepTimerState] = useState(null); // null | { type: 'time'|'end_of_song', minutes, label, endTime }
   const [isAutoplay, setIsAutoplay] = useState(true);
+  const [audioQuality, setAudioQualityState] = useState(() => storage.getSettings().audioQuality || 'high');
+  const [inactivityTimeout, setInactivityTimeoutState] = useState(() => {
+    const val = storage.getSettings().inactivityTimeout;
+    return val !== undefined ? Number(val) : 60;
+  });
+  const [isInactiveModalOpen, setIsInactiveModalOpen] = useState(false);
+
+  const audioQualityRef = useRef(audioQuality);
+  const inactivityTimeoutRef = useRef(inactivityTimeout);
+  const lastInteractionTimeRef = useRef(Date.now());
 
   const playerRef = useRef(null);
   const playerInitPromiseRef = useRef(null);
@@ -103,10 +119,18 @@ export function PlayerProvider({ children }) {
 
   // Initialize YT Player on container
   const ensurePlayer = useCallback((videoId) => {
+    const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
+
     // If player is already initialized and functional
     if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
       try {
-        playerRef.current.loadVideoById(videoId);
+        playerRef.current.loadVideoById({
+          videoId,
+          suggestedQuality: quality
+        });
+        if (typeof playerRef.current.setPlaybackQuality === 'function') {
+          playerRef.current.setPlaybackQuality(quality);
+        }
         playerRef.current.playVideo();
       } catch (err) {
         console.warn('Error loading video by ID:', err);
@@ -119,7 +143,13 @@ export function PlayerProvider({ children }) {
       return playerInitPromiseRef.current.then(player => {
         if (player && typeof player.loadVideoById === 'function') {
           try {
-            player.loadVideoById(videoId);
+            player.loadVideoById({
+              videoId,
+              suggestedQuality: quality
+            });
+            if (typeof player.setPlaybackQuality === 'function') {
+              player.setPlaybackQuality(quality);
+            }
             player.playVideo();
           } catch (e) {}
         }
@@ -170,6 +200,9 @@ export function PlayerProvider({ children }) {
                 playerRef.current = event.target;
                 playerInitPromiseRef.current = null;
                 event.target.setVolume(volume * 100);
+                if (typeof event.target.setPlaybackQuality === 'function') {
+                  event.target.setPlaybackQuality(quality);
+                }
                 event.target.playVideo();
                 resolve(event.target);
               },
@@ -658,6 +691,82 @@ export function PlayerProvider({ children }) {
     setQueueIndex(-1);
   }, []);
 
+  // Update real audio streaming quality
+  const setAudioQuality = useCallback((quality) => {
+    setAudioQualityState(quality);
+    audioQualityRef.current = quality;
+    const currentSettings = storage.getSettings();
+    storage.saveSettings({ ...currentSettings, audioQuality: quality });
+    if (playerRef.current && typeof playerRef.current.setPlaybackQuality === 'function') {
+      try {
+        playerRef.current.setPlaybackQuality(QUALITY_MAP[quality] || 'hd1080');
+      } catch (err) {
+        console.warn('Set playback quality warning:', err);
+      }
+    }
+  }, []);
+
+  // Update inactivity timeout minutes
+  const setInactivityTimeout = useCallback((mins) => {
+    const num = Number(mins);
+    setInactivityTimeoutState(num);
+    inactivityTimeoutRef.current = num;
+    const currentSettings = storage.getSettings();
+    storage.saveSettings({ ...currentSettings, inactivityTimeout: num });
+  }, []);
+
+  // Track global user interactions across page
+  useEffect(() => {
+    const handleUserActivity = () => {
+      lastInteractionTimeRef.current = Date.now();
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'pointerdown'];
+    activityEvents.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+    return () => {
+      activityEvents.forEach(evt => window.removeEventListener(evt, handleUserActivity));
+    };
+  }, []);
+
+  // Monitor auto-inactivity timeout while audio is playing
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      const timeoutMins = inactivityTimeoutRef.current;
+      if (timeoutMins <= 0) return; // 0 = Never / Disabled
+
+      const elapsedMins = (Date.now() - lastInteractionTimeRef.current) / (60 * 1000);
+      if (elapsedMins >= timeoutMins) {
+        console.log(`[Player] Pausing playback: Inactive for ${Math.round(elapsedMins)}m (timeout: ${timeoutMins}m)`);
+        if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+          playerRef.current.pauseVideo();
+        }
+        setIsPlaying(false);
+        setIsInactiveModalOpen(true);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  // Resume playback from inactivity modal
+  const resumeFromInactivity = useCallback(() => {
+    lastInteractionTimeRef.current = Date.now();
+    setIsInactiveModalOpen(false);
+    if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+      playerRef.current.playVideo();
+      setIsPlaying(true);
+    }
+  }, []);
+
+  // Dismiss inactivity modal
+  const dismissInactiveModal = useCallback(() => {
+    lastInteractionTimeRef.current = Date.now();
+    setIsInactiveModalOpen(false);
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -697,7 +806,14 @@ export function PlayerProvider({ children }) {
         setIsQueueOpen,
         isAutoplay,
         toggleAutoplay,
-        setIsAutoplay
+        setIsAutoplay,
+        audioQuality,
+        setAudioQuality,
+        inactivityTimeout,
+        setInactivityTimeout,
+        isInactiveModalOpen,
+        resumeFromInactivity,
+        dismissInactiveModal
       }}
     >
       {children}

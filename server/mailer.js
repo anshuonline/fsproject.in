@@ -435,3 +435,208 @@ export async function sendWelcomeEmail({ email, name, userId, force = false }) {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Generate Spotify-style AMOLED Account Deletion Confirmation Email
+ */
+export function generateAccountDeletionEmailHtml(name, email, token) {
+  const appUrl = (process.env.APP_URL || 'https://freesong.in').replace(/\/$/, '');
+  const confirmUrl = `${appUrl}/confirm-delete?token=${encodeURIComponent(token)}`;
+  const logoUrl = `${appUrl}/images/freesonglogowebp.webp`;
+  const safeName = (name && name !== 'FreeSong Listener' && name !== 'Google User') ? name.trim() : email.split('@')[0];
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <title>Confirm Account Deletion - FreeSong</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      supported-color-schemes: dark;
+    }
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    a { color: #E53935; text-decoration: none; }
+    .btn-delete:hover { background-color: #D32F2F !important; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; color: #FFFFFF;">
+
+  <!-- Outer Canvas -->
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #000000; padding: 32px 12px;">
+    <tr>
+      <td align="center">
+
+        <!-- Main Card Container (Max 580px) -->
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #121212; border: 1px solid #242424; border-radius: 16px; overflow: hidden; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);">
+          
+          <!-- Top Danger Accent Bar -->
+          <tr>
+            <td height="3" style="background: #E53935; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Header / Brand Logo -->
+          <tr>
+            <td align="center" style="padding: 36px 24px 20px 24px;">
+              <a href="${appUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img 
+                  src="${logoUrl}" 
+                  alt="FreeSong.in" 
+                  width="160" 
+                  style="display: block; width: 160px; max-width: 100%; height: auto; border: 0; outline: none; margin: 0 auto;" 
+                />
+              </a>
+            </td>
+          </tr>
+
+          <!-- Security Notice Pill Badge -->
+          <tr>
+            <td align="center" style="padding: 0 24px;">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="background-color: rgba(229, 57, 53, 0.12); border: 1px solid rgba(229, 57, 53, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #FF5252;">
+                    SECURITY NOTICE • 24H VALIDITY
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Heading -->
+          <tr>
+            <td align="center" style="padding: 24px 28px 10px 28px;">
+              <h1 style="margin: 0; font-size: 26px; line-height: 1.25; font-weight: 800; color: #FFFFFF; letter-spacing: -0.5px;">
+                Confirm Account Deletion
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Description -->
+          <tr>
+            <td align="center" style="padding: 0 32px 28px 32px;">
+              <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #CCCCCC;">
+                Hello <strong style="color: #FFFFFF;">${safeName}</strong>,
+              </p>
+              <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.6; color: #AFAFAF;">
+                We received a request to permanently delete your FreeSong account (<span style="color: #FFFFFF;">${email}</span>).
+              </p>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #888888;">
+                If you confirm, all your saved playlists, liked tracks, and listening history will be permanently wiped. This action cannot be undone. This confirmation link will expire in <strong style="color: #FFFFFF;">24 hours</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA Button -->
+          <tr>
+            <td align="center" style="padding: 10px 28px 32px 28px;">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="border-radius: 500px; background-color: #E53935;">
+                    <a 
+                      href="${confirmUrl}" 
+                      target="_blank" 
+                      class="btn-delete"
+                      style="display: inline-block; background-color: #E53935; color: #FFFFFF; font-size: 13px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; text-decoration: none; padding: 15px 36px; border-radius: 500px; border: 0; transition: background-color 0.2s ease;"
+                    >
+                      CONFIRM ACCOUNT DELETION
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Security Warning Box -->
+          <tr>
+            <td style="padding: 0 28px 28px 28px;">
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #181818; border: 1px solid #282828; border-radius: 12px; padding: 16px 20px;">
+                <tr>
+                  <td style="font-size: 12px; line-height: 1.6; color: #888888;">
+                    <strong style="color: #FFFFFF;">Did not make this request?</strong><br/>
+                    If you did not ask to delete your FreeSong account, you can safely disregard this email. Your login credentials and account remain secure.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Direct URL Link fallback -->
+          <tr>
+            <td align="center" style="padding: 0 28px 28px 28px;">
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #666666; word-break: break-all;">
+                Or paste this link into your browser: <br/>
+                <a href="${confirmUrl}" style="color: #E53935; text-decoration: underline;">${confirmUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer Divider -->
+          <tr>
+            <td height="1" style="background-color: #242424; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Footer Information -->
+          <tr>
+            <td align="center" style="padding: 24px; font-size: 12px; line-height: 1.6; color: #707070;">
+              <p style="margin: 0 0 6px 0; color: #888888;">
+                FreeSong.in Media • Pure AMOLED Music Streaming
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #555555;">
+                This automated security alert was dispatched to ${email}. Replies are routed to support@ganatube.in.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+/**
+ * Send Account Deletion Confirmation Email with 24-Hour Token
+ */
+export async function sendAccountDeletionEmail({ email, name, token }) {
+  if (!email || !email.includes('@') || !token) {
+    return { success: false, error: 'Invalid email or deletion token' };
+  }
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.warn('[Account Deletion Email] SMTP transporter not configured');
+    return { success: false, error: 'SMTP transporter not configured' };
+  }
+
+  const appUrl = (process.env.APP_URL || 'https://freesong.in').replace(/\/$/, '');
+  const fromAddress = process.env.SMTP_FROM || '"FreeSong.in Security" <support@ganatube.in>';
+  const safeName = (name && name !== 'FreeSong Listener' && name !== 'Google User') ? name.trim() : email.split('@')[0];
+
+  const mailOptions = {
+    from: fromAddress,
+    to: email,
+    replyTo: 'support@ganatube.in',
+    subject: `Confirm Account Deletion Request - FreeSong`,
+    html: generateAccountDeletionEmailHtml(name, email, token),
+    text: `Confirm Account Deletion Request\n\nHello ${safeName},\n\nWe received a request to permanently delete your FreeSong.in account (${email}).\n\nTo confirm deletion, click the link below (valid for 24 hours):\n${appUrl}/confirm-delete?token=${encodeURIComponent(token)}\n\nIf you did not request this, you can safely ignore this email.\n\nFreeSong.in Media\nsupport@ganatube.in`
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Account Deletion Email] Successfully dispatched to ${email} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.warn(`[Account Deletion Email] Failed sending to ${email}:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+

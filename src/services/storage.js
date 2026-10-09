@@ -9,6 +9,8 @@ const KEYS = {
 
 const DEFAULT_SETTINGS = {
   audioQuality: 'high',
+  inactivityTimeout: 60,
+  locationTracking: true,
   autoplay: true,
   crossfade: 0,
   volume: 0.8
@@ -153,6 +155,17 @@ export const storage = {
       localStorage.removeItem(KEYS.DELETED_HISTORY);
     } catch (e) {
       console.warn('History storage error:', e);
+    }
+  },
+
+  clearSearchHistory() {
+    try {
+      localStorage.removeItem('freesong_recent_searches');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fs_search_history_cleared'));
+      }
+    } catch (e) {
+      console.warn('Clear search history error:', e);
     }
   },
 

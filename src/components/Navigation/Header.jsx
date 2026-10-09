@@ -29,14 +29,22 @@ export function Header({ onToggleSidebar }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load recent searches from localStorage
+  // Load recent searches from localStorage & listen for clear events
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
-      if (stored) {
-        setRecentSearches(JSON.parse(stored));
+    const loadSearches = () => {
+      try {
+        const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+        setRecentSearches(stored ? JSON.parse(stored) : []);
+      } catch {
+        setRecentSearches([]);
       }
-    } catch {}
+    };
+
+    loadSearches();
+
+    const handleClearEvent = () => setRecentSearches([]);
+    window.addEventListener('fs_search_history_cleared', handleClearEvent);
+    return () => window.removeEventListener('fs_search_history_cleared', handleClearEvent);
   }, []);
 
   // Sync searchQuery with URL query parameter on /search

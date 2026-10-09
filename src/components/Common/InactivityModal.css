@@ -1,0 +1,217 @@
+.fs-inactivity-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: fsInactivityFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fsInactivityFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fs-inactivity-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background-color: #121212;
+  border: 1px solid #262626;
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 1px 1px rgba(255, 255, 255, 0.08);
+  animation: fsInactivityScaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fsInactivityScaleUp {
+  from {
+    transform: scale(0.92) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.fs-inactivity-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #707070);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fs-inactivity-close:hover {
+  background-color: #1f1f1f;
+  color: #ffffff;
+}
+
+.fs-inactivity-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background-color: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  margin-bottom: 20px;
+}
+
+.fs-inactivity-icon {
+  color: var(--color-primary, #00C853);
+  position: relative;
+  z-index: 2;
+}
+
+.fs-inactivity-icon-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 200, 83, 0.3) 0%, transparent 70%);
+}
+
+.fs-inactivity-title {
+  margin: 0 0 10px 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.fs-inactivity-desc {
+  margin: 0 0 20px 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #afafaf);
+}
+
+.fs-inactivity-song-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #1a1a1a;
+  border: 1px solid #282828;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.fs-inactivity-song-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.fs-inactivity-song-placeholder {
+  background-color: #242424;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #707070;
+}
+
+.fs-inactivity-song-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.fs-inactivity-song-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-inactivity-song-artist {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary, #afafaf);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-inactivity-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fs-inactivity-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  background-color: var(--color-primary, #00C853);
+  color: #000000;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fs-inactivity-btn-primary:hover {
+  background-color: var(--color-primary-hover, #00E676);
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 200, 83, 0.35);
+}
+
+.fs-inactivity-btn-secondary {
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--color-text-secondary, #afafaf);
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fs-inactivity-btn-secondary:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 480px) {
+  .fs-inactivity-modal {
+    padding: 24px 20px 20px;
+  }
+  .fs-inactivity-title {
+    font-size: 1.2rem;
+  }
+}

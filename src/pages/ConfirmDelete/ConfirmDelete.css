@@ -1,0 +1,166 @@
+.fs-confirm-delete-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background-color: var(--color-bg-main, #000000);
+}
+
+.fs-confirm-delete-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: #121212;
+  border: 1px solid #242424;
+  border-radius: 20px;
+  padding: 36px 30px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+}
+
+.fs-confirm-delete-brand {
+  display: inline-block;
+  margin-bottom: 24px;
+}
+
+.fs-confirm-delete-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+.fs-delete-status-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-delete-icon-red {
+  background-color: rgba(229, 57, 53, 0.12);
+  border: 1px solid rgba(229, 57, 53, 0.35);
+  color: #ff5252;
+}
+
+.fs-delete-icon-green {
+  background-color: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  color: #00c853;
+}
+
+.fs-confirm-delete-card h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.fs-delete-warning-text {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary, #afafaf);
+  margin: 0 0 20px 0;
+}
+
+.fs-delete-callout {
+  background-color: #1a1a1a;
+  border: 1px solid #282828;
+  border-left: 3px solid #e53935;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.fs-delete-callout p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #a0a0a0;
+}
+
+.fs-delete-callout strong {
+  color: #ffffff;
+}
+
+.fs-delete-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(229, 57, 53, 0.15);
+  border: 1px solid rgba(229, 57, 53, 0.4);
+  color: #ff5252;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.fs-delete-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  background-color: #e53935;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-confirm:hover:not(:disabled) {
+  background-color: #d32f2f;
+  box-shadow: 0 4px 16px rgba(229, 57, 53, 0.35);
+  transform: scale(1.01);
+}
+
+.btn-delete-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-delete-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  background-color: transparent;
+  color: var(--color-text-secondary, #afafaf);
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid #2a2a2a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-cancel:hover:not(:disabled) {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-color: #383838;
+}
+
+.fs-delete-status-success p {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary, #afafaf);
+  margin: 0 0 24px 0;
+}

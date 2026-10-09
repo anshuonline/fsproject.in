@@ -8,7 +8,8 @@ import YTMusic from 'ytmusic-api';
 import { buildAlgorithmicFeed } from './recommendationEngine.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
-import { sendWelcomeEmail } from './mailer.js';
+import crypto from 'crypto';
+import { sendWelcomeEmail, sendAccountDeletionEmail } from './mailer.js';
 
 dotenv.config();
 
@@ -1069,6 +1070,122 @@ app.post('/api/user/sync', async (req, res) => {
   } catch (err) {
     console.warn('User sync error:', err.message);
     res.status(500).json({ error: 'Database sync error' });
+  }
+});
+
+// Update User Profile (Name, Date of Birth, City, Location Tracking)
+app.put('/api/user/profile', async (req, res) => {
+  const { userId, email, name, dob, city, locationTracking } = req.body;
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) return res.status(404).json({ error: 'User not found' });
+
+    const updates = [];
+    const params = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      params.push(name.trim() || 'FreeSong Listener');
+    }
+    if (dob !== undefined) {
+      updates.push('dob = ?');
+      params.push(dob || null);
+    }
+    if (city !== undefined) {
+      updates.push('city = ?');
+      params.push(city ? city.trim() : null);
+    }
+    if (locationTracking !== undefined) {
+      updates.push('location_tracking_enabled = ?');
+      params.push(locationTracking ? 1 : 0);
+    }
+
+    if (updates.length > 0) {
+      params.push(resolvedUserId);
+      await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+
+    const users = await query('SELECT * FROM users WHERE id = ?', [resolvedUserId]);
+    res.json({ success: true, user: users[0] });
+  } catch (err) {
+    console.warn('Update profile error:', err.message);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Request Account Deletion (Sends 24-Hour Confirmation Link via Hostinger SMTP)
+app.post('/api/user/request-delete', async (req, res) => {
+  const { userId, email } = req.body;
+  if (!email && !userId) return res.status(400).json({ error: 'Email or User ID is required' });
+
+  try {
+    const resolvedUserId = await resolveUserId(userId, email);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found in system' });
+    }
+
+    const users = await query('SELECT id, email, name FROM users WHERE id = ?', [resolvedUserId]);
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const user = users[0];
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Token expires in 24 hours
+    await query(
+      'UPDATE users SET deletion_token = ?, deletion_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?',
+      [token, user.id]
+    );
+
+    const mailResult = await sendAccountDeletionEmail({
+      email: user.email,
+      name: user.name,
+      token
+    });
+
+    res.json({
+      success: true,
+      message: 'Account deletion confirmation email sent. Please check your inbox within 24 hours.',
+      mailResult
+    });
+  } catch (err) {
+    console.warn('Request delete error:', err.message);
+    res.status(500).json({ error: 'Failed to initiate account deletion' });
+  }
+});
+
+// Confirm Account Deletion (Permanently Erases User Data)
+app.post('/api/user/confirm-delete', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Deletion token is required' });
+
+  try {
+    const users = await query(
+      'SELECT id, email, name FROM users WHERE deletion_token = ? AND deletion_token_expires_at > NOW()',
+      [token]
+    );
+
+    if (!users || users.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired deletion confirmation link (exceeded 24 hours)' });
+    }
+
+    const user = users[0];
+    const targetUserId = user.id;
+
+    // Permanently purge all associated records
+    await query('DELETE FROM user_likes WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM user_play_history WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM user_playlists WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM user_playlist_songs WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM user_preferences WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM user_login_logs WHERE user_id = ?', [targetUserId]).catch(() => {});
+    await query('DELETE FROM users WHERE id = ?', [targetUserId]);
+
+    console.log(`[Account Purge] Successfully deleted user ID ${targetUserId} (${user.email})`);
+    res.json({ success: true, message: 'Your FreeSong account and all associated data have been permanently deleted.' });
+  } catch (err) {
+    console.warn('Confirm delete error:', err.message);
+    res.status(500).json({ error: 'Failed to complete account deletion' });
   }
 });
 

@@ -8,6 +8,7 @@ import { FullScreenPlayer } from '../components/Player/FullScreenPlayer';
 import { QueueDrawer } from '../components/Player/QueueDrawer';
 import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
 import { EditPlaylistModal } from '../components/Common/EditPlaylistModal';
+import { InactivityModal } from '../components/Common/InactivityModal';
 import { Toast } from '../components/Common/Toast';
 import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
@@ -89,6 +90,7 @@ export function MainLayout() {
       <MobileNav />
       <GlobalContextMenu />
       <EditPlaylistModal />
+      <InactivityModal />
       <Toast />
     </div>
   );
