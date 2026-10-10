@@ -12,6 +12,7 @@ import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
 import { sendWelcomeEmail, sendAccountDeletionEmail, sendPasswordResetEmail } from './mailer.js';
+import { searchSaavnSongs, matchSaavnSong } from './saavnEngine.js';
 
 dotenv.config();
 
@@ -516,6 +517,61 @@ app.get('/api/related/:videoId', async (req, res) => {
   } catch (err) {
     console.error(`Error in /api/related/${videoId}:`, err);
     res.status(500).json({ error: 'Failed to fetch related songs', songs: [] });
+  }
+});
+
+// ─── JioSaavn Playback Streams (unofficial) ─────────────────────────────────
+// ytmusic-api handles ALL discovery (search/albums/artists/charts/radio).
+// These endpoints only resolve a direct stream URL for a chosen song so the
+// client can play via HTML5 <audio> (background playback + MediaSession).
+
+// Search JioSaavn directly (debug / manual fallback)
+app.get('/api/saavn/search', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 120);
+  if (!q) return res.status(400).json({ error: 'q is required', songs: [] });
+
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 30);
+  const bitrate = parseInt(req.query.bitrate, 10) || 320;
+
+  const cacheKey = `saavn_search_${q.toLowerCase()}_${limit}_${bitrate}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const songs = await searchSaavnSongs(q, limit);
+    const result = { songs, source: 'jiosaavn' };
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    console.warn('Saavn search error:', err.message);
+    res.status(500).json({ error: 'Saavn search failed', songs: [] });
+  }
+});
+
+// Resolve a playable stream for a YouTube Music song (title/artist/duration match)
+app.get('/api/saavn/match', async (req, res) => {
+  const title = String(req.query.title || '').trim().slice(0, 120);
+  const artist = String(req.query.artist || '').trim().slice(0, 120);
+  const album = String(req.query.album || '').trim().slice(0, 120);
+  const duration = parseInt(req.query.duration, 10) || 0;
+  const bitrateRaw = parseInt(req.query.bitrate, 10) || 320;
+  const bitrate = [320, 160, 96].includes(bitrateRaw) ? bitrateRaw : 320;
+
+  if (!title) return res.status(400).json({ error: 'title is required' });
+
+  const key = `${title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${artist.toLowerCase().replace(/[^a-z0-9]/g, '')}_${duration}_${bitrate}`;
+  const cacheKey = `saavn_match_${key}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const match = await matchSaavnSong({ title, artist, album, duration, bitrate });
+    const result = match ? { match } : { match: null, reason: 'no_confident_match' };
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    console.warn('Saavn match error:', err.message);
+    res.status(500).json({ error: 'Saavn match failed', match: null });
   }
 });
 

@@ -62,6 +62,15 @@ export function PlayerProvider({ children }) {
   const volumeRef = useRef(volume);
   const stableVolumeRef = useRef(stableVolume);
 
+  // ── Dual playback engine ─────────────────────────────────────────
+  // Primary: JioSaavn stream via HTML5 <audio> (true background playback,
+  // lock-screen MediaSession controls). Fallback: YouTube IFrame player.
+  const audioRef = useRef(null);              // hidden HTML5 audio singleton
+  const activeEngineRef = useRef('yt');       // 'saavn' | 'yt'
+  const playTokenRef = useRef(0);             // races: async stream fetch vs user skip
+  const saavnCacheRef = useRef(new Map());    // videoId -> { streamUrl, ... }
+  const startYtFallbackRef = useRef(null);    // late-bound YT fallback starter
+
   // Synchronized refs to prevent stale closures in YouTube Player callbacks
   const userRef = useRef(user);
   const addToHistoryRef = useRef(addToHistory);
@@ -73,6 +82,8 @@ export function PlayerProvider({ children }) {
   const sleepTimerRef = useRef(sleepTimer);
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
+  const prevSongRef = useRef(null);
+  const seekToRef = useRef(null);
   const historyRecordedVideoIdRef = useRef(null);
   const volumeSaveTimeoutRef = useRef(null);
   const autoplayUnblockRef = useRef(null);
@@ -115,11 +126,16 @@ export function PlayerProvider({ children }) {
     return effective;
   }, []);
 
-  // Apply volume to the YT player with optional stable-volume leveling
+  // Apply volume to the active engine (YT + HTML5 audio) with stable-volume leveling
   const applyPlayerVolume = useCallback((vol) => {
+    const effective = computeEffectiveVolume(vol);
     const target = playerRef.current;
-    if (!target || typeof target.setVolume !== 'function') return;
-    target.setVolume(Math.round(computeEffectiveVolume(vol) * 100));
+    if (target && typeof target.setVolume === 'function') {
+      target.setVolume(Math.round(effective * 100));
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = effective;
+    }
   }, [computeEffectiveVolume]);
 
   // Keep refs synchronized on every update
@@ -172,6 +188,9 @@ export function PlayerProvider({ children }) {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
       if (!isPlayingRef.current) return;
+      // HTML5 audio engine keeps playing in background natively — only the
+      // YouTube IFrame needs the visibility-change auto-resume workaround
+      if (activeEngineRef.current !== 'yt') return;
 
       const player = playerRef.current;
       if (!player) return;
@@ -192,6 +211,75 @@ export function PlayerProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // ── HTML5 Audio engine (JioSaavn streams) ────────────────────────
+  // A real <audio> element plays unthrottled in background tabs / locked
+  // screens — this is what enables true mobile background playback.
+  useEffect(() => {
+    const a = new Audio();
+    a.preload = 'auto';
+    audioRef.current = a;
+
+    const isActiveEngine = () => activeEngineRef.current === 'saavn';
+
+    const onPlaying = () => {
+      if (!isActiveEngine()) return;
+      setIsPlaying(true);
+      setIsLoading(false);
+      isTransitioningRef.current = false;
+      disarmAutoplayUnblock();
+    };
+    const onPause = () => {
+      if (!isActiveEngine()) return;
+      if (isTransitioningRef.current) return;
+      setIsPlaying(false);
+      setIsLoading(false);
+    };
+    const onWaiting = () => {
+      if (!isActiveEngine()) return;
+      setIsLoading(true);
+    };
+    const onTimeUpdate = () => {
+      if (!isActiveEngine()) return;
+      setCurrentTime(a.currentTime || 0);
+      if (a.duration && isFinite(a.duration)) setDuration(a.duration);
+    };
+    const onEnded = () => {
+      if (!isActiveEngine()) return;
+      isTransitioningRef.current = false;
+      if (handleSongEndedRef.current) handleSongEndedRef.current();
+    };
+    const onError = () => {
+      if (!isActiveEngine()) return;
+      console.warn('Saavn stream error — falling back to YouTube engine');
+      setIsLoading(false);
+      const song = currentSongRef.current;
+      activeEngineRef.current = 'yt';
+      if (song?.videoId && startYtFallbackRef.current) startYtFallbackRef.current(song);
+    };
+
+    a.addEventListener('playing', onPlaying);
+    a.addEventListener('pause', onPause);
+    a.addEventListener('waiting', onWaiting);
+    a.addEventListener('timeupdate', onTimeUpdate);
+    a.addEventListener('ended', onEnded);
+    a.addEventListener('error', onError);
+
+    return () => {
+      try {
+        a.pause();
+        a.removeAttribute('src');
+        a.load();
+      } catch {}
+      a.removeEventListener('playing', onPlaying);
+      a.removeEventListener('pause', onPause);
+      a.removeEventListener('waiting', onWaiting);
+      a.removeEventListener('timeupdate', onTimeUpdate);
+      a.removeEventListener('ended', onEnded);
+      a.removeEventListener('error', onError);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Autoplay unblock (reload restore path) ──────────────────────
   // Browsers block unmuted autoplay right after a page reload (?v= deep link).
   // These global listeners retry playVideo() on ANY user interaction (tap,
@@ -206,6 +294,16 @@ export function PlayerProvider({ children }) {
   const armAutoplayUnblock = useCallback(() => {
     if (autoplayUnblockRef.current) return;
     const attempt = () => {
+      if (activeEngineRef.current === 'saavn') {
+        const a = audioRef.current;
+        if (!a) return;
+        if (!a.paused) {
+          disarmAutoplayUnblock();
+          return;
+        }
+        try { a.play().catch(() => {}); } catch (e) {}
+        return;
+      }
       const player = playerRef.current;
       if (!player || typeof player.playVideo !== 'function') return;
       let state = -1;
@@ -225,6 +323,7 @@ export function PlayerProvider({ children }) {
 
   // Shared state handler: only the active player drives global playback state
   const handlePlayerStateChange = useCallback((event) => {
+    if (activeEngineRef.current !== 'yt') return;
     if (playerRef.current && event.target !== playerRef.current) return;
 
     // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED, 5 = CUED
@@ -263,6 +362,7 @@ export function PlayerProvider({ children }) {
 
   // Shared error handler: only the active player triggers skip-to-next
   const handlePlayerError = useCallback((event) => {
+    if (activeEngineRef.current !== 'yt') return;
     if (playerRef.current && event.target !== playerRef.current) return;
     console.warn('YT Player error:', event.data);
     setIsLoading(false);
@@ -379,47 +479,175 @@ export function PlayerProvider({ children }) {
     return playerInitPromiseRef.current;
   }, [volume, applyPlayerVolume, handlePlayerStateChange, handlePlayerError]);
 
+  // ── Dual-engine playback core ────────────────────────────────────
+
+  // Pause whichever engine is currently active
+  const pauseActiveEngine = useCallback(() => {
+    if (activeEngineRef.current === 'saavn') {
+      try { audioRef.current?.pause(); } catch (e) {}
+    } else if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+      try { playerRef.current.pauseVideo(); } catch (e) {}
+    }
+  }, []);
+
+  // Resume whichever engine is currently active
+  const resumeActiveEngine = useCallback(() => {
+    if (activeEngineRef.current === 'saavn') {
+      const a = audioRef.current;
+      if (a) {
+        try {
+          const p = a.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch (e) {}
+      }
+    } else if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+      try { playerRef.current.playVideo(); } catch (e) {}
+    }
+  }, []);
+
+  // Start playback through the YouTube IFrame engine
+  const startYtPlayback = useCallback((song) => {
+    if (!song?.videoId) return;
+    activeEngineRef.current = 'yt';
+    try { audioRef.current?.pause(); } catch (e) {}
+    ensurePlayer(song.videoId).then(player => {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+      }
+    });
+  }, [ensurePlayer]);
+  startYtFallbackRef.current = startYtPlayback;
+
+  // Try resolving a JioSaavn stream for the song (with session cache)
+  const resolveSaavnStream = useCallback(async (song) => {
+    if (!song?.videoId || !song?.title) return null;
+    const cached = saavnCacheRef.current.get(song.videoId);
+    if (cached) return cached;
+
+    const bitrateMap = { high: 320, normal: 160, 'data-saver': 96 };
+    const bitrate = bitrateMap[audioQualityRef.current] || 320;
+
+    try {
+      const match = await Promise.race([
+        api.getSaavnStream(song, bitrate),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 4000))
+      ]);
+      if (match?.streamUrl) {
+        saavnCacheRef.current.set(song.videoId, match);
+        // Keep the session cache bounded
+        if (saavnCacheRef.current.size > 120) {
+          const oldest = saavnCacheRef.current.keys().next().value;
+          saavnCacheRef.current.delete(oldest);
+        }
+        return match;
+      }
+    } catch {
+      // no match / timeout — caller falls back to YouTube
+    }
+    return null;
+  }, []);
+
+  // Start playback: JioSaavn HTML5 audio first, YouTube IFrame as fallback
+  const startPlayback = useCallback(async (song) => {
+    if (!song) return;
+    const token = ++playTokenRef.current;
+
+    const match = await resolveSaavnStream(song);
+
+    // A newer play request superseded this one while we were resolving
+    if (token !== playTokenRef.current) return;
+
+    if (match?.streamUrl) {
+      activeEngineRef.current = 'saavn';
+      // Silence the YouTube engine before switching
+      try {
+        if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+          playerRef.current.stopVideo();
+        }
+      } catch (e) {}
+
+      const a = audioRef.current || null;
+      if (!a) {
+        startYtPlayback(song);
+        return;
+      }
+      a.volume = computeEffectiveVolume(volumeRef.current);
+      a.src = match.streamUrl;
+      try {
+        const p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (e) {
+        startYtPlayback(song);
+      }
+    } else {
+      startYtPlayback(song);
+    }
+  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume]);
+
   // Track progress ticker + fallback threshold detector
   useEffect(() => {
     if (isPlaying) {
       progressTimerRef.current = setInterval(() => {
-        if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
-          const t = playerRef.current.getCurrentTime();
-          const d = playerRef.current.getDuration();
+        let t = 0;
+        let d = 0;
+
+        if (activeEngineRef.current === 'saavn') {
+          const a = audioRef.current;
+          if (!a) return;
+          t = a.currentTime || 0;
+          d = (a.duration && isFinite(a.duration)) ? a.duration : 0;
+          setCurrentTime(t);
+          if (d > 0) setDuration(d);
+        } else if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+          t = playerRef.current.getCurrentTime() || 0;
+          d = playerRef.current.getDuration() || 0;
           if (typeof t === 'number') setCurrentTime(t || 0);
           if (typeof d === 'number' && d > 0) setDuration(d);
+        } else {
+          return;
+        }
 
-          // Record history only after the song has actually played 10+ seconds
-          // (once per song; skips & quick switches never count as plays)
-          if (
-            currentSongRef.current?.videoId &&
-            historyRecordedVideoIdRef.current !== currentSongRef.current.videoId &&
-            t >= 10
-          ) {
-            historyRecordedVideoIdRef.current = currentSongRef.current.videoId;
-            const playedSong = currentSongRef.current;
-            if (addToHistoryRef.current) {
-              addToHistoryRef.current(playedSong);
-            } else {
-              storage.addToHistory(playedSong);
-              const currentUser = userRef.current || storage.getUser();
-              if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
-                const identifier = currentUser.dbId || currentUser.email || currentUser.id;
-                api.recordHistory(identifier, playedSong, currentUser.email).catch(console.warn);
-              }
+        // Lock-screen position sync
+        if ('mediaSession' in navigator && d > 0) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: d,
+              playbackRate: activeEngineRef.current === 'saavn' ? (audioRef.current?.playbackRate || 1) : 1,
+              position: Math.min(t, d)
+            });
+          } catch (e) {}
+        }
+
+        // Record history only after the song has actually played 10+ seconds
+        // (once per song; skips & quick switches never count as plays)
+        if (
+          currentSongRef.current?.videoId &&
+          historyRecordedVideoIdRef.current !== currentSongRef.current.videoId &&
+          t >= 10
+        ) {
+          historyRecordedVideoIdRef.current = currentSongRef.current.videoId;
+          const playedSong = currentSongRef.current;
+          if (addToHistoryRef.current) {
+            addToHistoryRef.current(playedSong);
+          } else {
+            storage.addToHistory(playedSong);
+            const currentUser = userRef.current || storage.getUser();
+            if (currentUser?.email || currentUser?.dbId || currentUser?.id) {
+              const identifier = currentUser.dbId || currentUser.email || currentUser.id;
+              api.recordHistory(identifier, playedSong, currentUser.email).catch(console.warn);
             }
           }
+        }
 
-          // Fallback autoplay trigger: if track reaches within 0.5s of the end and has not transitioned
-          if (typeof d === 'number' && d > 5 && typeof t === 'number' && t > 0 && (d - t <= 0.6) && !isTransitioningRef.current) {
-            isTransitioningRef.current = true;
-            if (handleSongEndedRef.current) {
-              handleSongEndedRef.current();
-            }
-            setTimeout(() => {
-              isTransitioningRef.current = false;
-            }, 3000);
+        // Fallback autoplay trigger: if track reaches within 0.5s of the end and has not transitioned
+        if (typeof d === 'number' && d > 5 && typeof t === 'number' && t > 0 && (d - t <= 0.6) && !isTransitioningRef.current) {
+          isTransitioningRef.current = true;
+          if (handleSongEndedRef.current) {
+            handleSongEndedRef.current();
           }
+          setTimeout(() => {
+            isTransitioningRef.current = false;
+          }, 3000);
         }
       }, 500);
     } else {
@@ -494,17 +722,13 @@ export function PlayerProvider({ children }) {
       setQueueIndex(0);
     }
 
-    ensurePlayer(song.videoId).then(player => {
-      if (player && typeof player.playVideo === 'function') {
-        player.playVideo();
-      }
-    });
+    startPlayback(song);
 
     // Auto-expand queue if small so queue is never just 1 song!
     if (isAutoplayRef.current && (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2)) {
       fetchAndAppendRelated(song);
     }
-  }, [ensurePlayer, fetchAndAppendRelated, disarmAutoplayUnblock]);
+  }, [startPlayback, fetchAndAppendRelated, disarmAutoplayUnblock]);
 
   // Play song directly by YouTube videoId (used for shared URLs & deep links)
   const playByVideoId = useCallback(async (videoId) => {
@@ -512,9 +736,7 @@ export function PlayerProvider({ children }) {
 
     if (currentSongRef.current?.videoId === videoId) {
       if (!isPlayingRef.current) {
-        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-          playerRef.current.playVideo();
-        }
+        resumeActiveEngine();
       }
       return;
     }
@@ -559,6 +781,14 @@ export function PlayerProvider({ children }) {
     // Autoplay-block watchdog: if the browser silently blocked playback, stop
     // the infinite loading spinner so the play button becomes clearly tappable
     setTimeout(() => {
+      if (activeEngineRef.current === 'saavn') {
+        const a = audioRef.current;
+        if (a && a.paused && !a.ended) {
+          setIsPlaying(false);
+          setIsLoading(false);
+        }
+        return;
+      }
       const player = playerRef.current;
       if (!player || typeof player.getPlayerState !== 'function') return;
       let state = -1;
@@ -568,7 +798,7 @@ export function PlayerProvider({ children }) {
         setIsLoading(false);
       }
     }, 4000);
-  }, [playSong, armAutoplayUnblock]);
+  }, [playSong, armAutoplayUnblock, resumeActiveEngine]);
 
   // Auto-fetch next batch of songs when approaching the end of queue
   useEffect(() => {
@@ -581,6 +811,19 @@ export function PlayerProvider({ children }) {
   }, [isAutoplay, queueIndex, queue.length, currentSong, fetchAndAppendRelated]);
 
   const togglePlay = useCallback(() => {
+    if (activeEngineRef.current === 'saavn') {
+      const a = audioRef.current;
+      if (!a) return;
+      if (isPlayingRef.current) {
+        try { a.pause(); } catch (e) {}
+      } else {
+        try {
+          const p = a.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch (e) {}
+      }
+      return;
+    }
     if (!playerRef.current) return;
     if (isPlayingRef.current) {
       playerRef.current.pauseVideo();
@@ -671,13 +914,22 @@ export function PlayerProvider({ children }) {
     if (timer?.type === 'end_of_song') {
       setSleepTimerState(null);
       setIsPlaying(false);
-      if (playerRef.current?.pauseVideo) playerRef.current.pauseVideo();
+      pauseActiveEngine();
       return;
     }
 
     const currentRepeat = repeatModeRef.current;
     if (currentRepeat === 'one') {
-      if (playerRef.current?.seekTo) {
+      if (activeEngineRef.current === 'saavn') {
+        const a = audioRef.current;
+        if (a) {
+          try {
+            a.currentTime = 0;
+            const p = a.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch (e) {}
+        }
+      } else if (playerRef.current?.seekTo) {
         playerRef.current.seekTo(0);
         playerRef.current.playVideo();
       }
@@ -687,7 +939,7 @@ export function PlayerProvider({ children }) {
     if (nextSongRef.current) {
       nextSongRef.current();
     }
-  }, []);
+  }, [pauseActiveEngine]);
 
   // Keep handleSongEndedRef updated
   useEffect(() => {
@@ -761,19 +1013,24 @@ export function PlayerProvider({ children }) {
     setSleepTimerState({ type: 'time', minutes: mins, endTime, label: `${mins}m` });
 
     sleepTimerTimeoutRef.current = setTimeout(() => {
-      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
-        playerRef.current.pauseVideo();
-      }
+      pauseActiveEngine();
       setIsPlaying(false);
       setSleepTimerState(null);
     }, mins * 60 * 1000);
-  }, []);
+  }, [pauseActiveEngine]);
 
   const prevSong = useCallback(() => {
-    if (currentTimeRef.current > 4 && playerRef.current?.seekTo) {
-      playerRef.current.seekTo(0);
-      setCurrentTime(0);
-      return;
+    if (currentTimeRef.current > 4) {
+      if (activeEngineRef.current === 'saavn' && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+        return;
+      }
+      if (playerRef.current?.seekTo) {
+        playerRef.current.seekTo(0);
+        setCurrentTime(0);
+        return;
+      }
     }
 
     const currentQ = queueRef.current;
@@ -790,11 +1047,27 @@ export function PlayerProvider({ children }) {
   }, [playSong]);
 
   const seekTo = useCallback((seconds) => {
+    if (activeEngineRef.current === 'saavn') {
+      const a = audioRef.current;
+      if (a) {
+        try {
+          a.currentTime = seconds;
+          setCurrentTime(seconds);
+        } catch (e) {}
+      }
+      return;
+    }
     if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
       playerRef.current.seekTo(seconds, true);
       setCurrentTime(seconds);
     }
   }, []);
+
+  // Keep prevSong / seekTo refs updated (used by MediaSession handlers)
+  useEffect(() => {
+    prevSongRef.current = prevSong;
+    seekToRef.current = seekTo;
+  }, [prevSong, seekTo]);
 
   const setVolumeLevel = useCallback((val) => {
     const clamped = Math.max(0, Math.min(1, val));
@@ -821,6 +1094,7 @@ export function PlayerProvider({ children }) {
       setVolumeLevel(volume || 1);
     } else {
       setIsMuted(true);
+      if (audioRef.current) audioRef.current.volume = 0;
       if (playerRef.current?.setVolume) playerRef.current.setVolume(0);
     }
   }, [isMuted, volume, setVolumeLevel]);
@@ -880,6 +1154,8 @@ export function PlayerProvider({ children }) {
         console.warn('Set playback quality warning:', err);
       }
     }
+    // Next Saavn resolutions pick up the new bitrate
+    saavnCacheRef.current.clear();
   }, []);
 
   // Update inactivity timeout minutes
@@ -916,32 +1192,81 @@ export function PlayerProvider({ children }) {
       const elapsedMins = (Date.now() - lastInteractionTimeRef.current) / (60 * 1000);
       if (elapsedMins >= timeoutMins) {
         console.log(`[Player] Pausing playback: Inactive for ${Math.round(elapsedMins)}m (timeout: ${timeoutMins}m)`);
-        if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
-          playerRef.current.pauseVideo();
-        }
+        pauseActiveEngine();
         setIsPlaying(false);
         setIsInactiveModalOpen(true);
       }
     }, 5000); // Check every 5 seconds
 
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, pauseActiveEngine]);
 
   // Resume playback from inactivity modal
   const resumeFromInactivity = useCallback(() => {
     lastInteractionTimeRef.current = Date.now();
     setIsInactiveModalOpen(false);
-    if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-      playerRef.current.playVideo();
-      setIsPlaying(true);
-    }
-  }, []);
+    resumeActiveEngine();
+    setIsPlaying(true);
+  }, [resumeActiveEngine]);
 
   // Dismiss inactivity modal
   const dismissInactiveModal = useCallback(() => {
     lastInteractionTimeRef.current = Date.now();
     setIsInactiveModalOpen(false);
   }, []);
+
+  // ── MediaSession: lock-screen & notification controls ────────────
+  // Works for both engines; with the JioSaavn HTML5 audio engine this gives
+  // real lock-screen play/pause/next/previous on Android & iOS.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+    try {
+      ms.setActionHandler('play', () => resumeActiveEngine());
+      ms.setActionHandler('pause', () => pauseActiveEngine());
+      ms.setActionHandler('previoustrack', () => prevSongRef.current?.());
+      ms.setActionHandler('nexttrack', () => nextSongRef.current?.());
+      ms.setActionHandler('seekto', (details) => {
+        if (details && typeof details.seekTime === 'number') {
+          seekToRef.current?.(details.seekTime);
+        }
+      });
+      ms.setActionHandler('stop', () => pauseActiveEngine());
+    } catch (e) {}
+    return () => {
+      try {
+        ['play', 'pause', 'previoustrack', 'nexttrack', 'seekto', 'stop'].forEach(action => {
+          ms.setActionHandler(action, null);
+        });
+      } catch (e) {}
+    };
+  }, [resumeActiveEngine, pauseActiveEngine]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || typeof window.MediaMetadata === 'undefined') return;
+    if (!currentSong) return;
+    try {
+      const artwork = currentSong.thumbnail ||
+        (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: currentSong.title || 'FreeSong.in',
+        artist: currentSong.artist || '',
+        album: currentSong.album || 'FreeSong.in',
+        artwork: [
+          { src: artwork, sizes: '96x96', type: 'image/jpeg' },
+          { src: artwork, sizes: '256x256', type: 'image/jpeg' },
+          { src: artwork, sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+    } catch (e) {}
+  }, [currentSong]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    } catch (e) {}
+  }, [isPlaying]);
 
   // Memoized main context value: during the 500ms progress tick only
   // currentTime/duration change, so this object keeps a stable identity and

@@ -146,6 +146,35 @@ export const api = {
     }
   },
 
+  // Resolve a direct JioSaavn stream URL for a song (HTML5 audio engine).
+  // Returns { streamUrl, title, artist, album, duration, image } or null —
+  // the player falls back to the YouTube IFrame engine when null.
+  async getSaavnStream(song, bitrate = 320) {
+    if (!song?.title) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    try {
+      const params = new URLSearchParams({
+        title: String(song.title || '').slice(0, 120),
+        artist: String(song.artist || '').slice(0, 120),
+        album: String(song.album || '').slice(0, 120),
+        duration: String(Math.round(song.duration || 0)),
+        bitrate: String(bitrate)
+      });
+      const res = await fetch(`${API_BASE}/saavn/match?${params.toString()}`, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.match || null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
   async getSong(id) {
     if (!id) return null;
     try {
