@@ -2706,13 +2706,18 @@ app.get('/api/analytics/live', async (req, res) => {
   if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
 
   try {
+    // Presence window: 30 minutes. Users seen in the last 5 minutes are
+    // "online"; older ones are "away" (phone locked / tab backgrounded) but
+    // their last-known now-playing info stays visible instead of vanishing.
     const rows = await query(`
       SELECT visitor_id AS visitorId, is_registered AS isRegistered, display_name AS displayName,
              current_video_id AS videoId, current_title AS title, current_artist AS artist, current_thumbnail AS thumbnail,
-             country, city, last_seen_at AS lastSeenAt
+             country, city, last_seen_at AS lastSeenAt,
+             TIMESTAMPDIFF(MINUTE, last_seen_at, NOW()) AS awayMinutes,
+             (last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)) AS isOnline
       FROM analytics_presence
-      WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-      ORDER BY is_registered DESC, last_seen_at DESC
+      WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+      ORDER BY isOnline DESC, last_seen_at DESC
     `);
 
     const users = (rows || []).map(r => ({
@@ -2721,6 +2726,8 @@ app.get('/api/analytics/live', async (req, res) => {
       name: r.displayName || (r.isRegistered ? 'Registered User' : 'Guest'),
       country: r.country || null,
       city: r.city || null,
+      online: Number(r.isOnline) === 1,
+      awayMinutes: Number(r.awayMinutes) || 0,
       currentSong: r.videoId ? {
         videoId: r.videoId,
         title: r.title || 'Unknown Title',
@@ -2730,12 +2737,14 @@ app.get('/api/analytics/live', async (req, res) => {
       lastSeenAt: r.lastSeenAt
     }));
 
+    const onlineUsers = users.filter(u => u.online);
+
     res.json({
       success: true,
       data: {
-        totalOnline: users.length,
-        guestsOnline: users.filter(u => u.type === 'guest').length,
-        registeredOnline: users.filter(u => u.type === 'registered').length,
+        totalOnline: onlineUsers.length,
+        guestsOnline: onlineUsers.filter(u => u.type === 'guest').length,
+        registeredOnline: onlineUsers.filter(u => u.type === 'registered').length,
         users
       }
     });

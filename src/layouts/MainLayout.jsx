@@ -64,7 +64,20 @@ export function MainLayout() {
     };
     sendPresence();
     const interval = setInterval(sendPresence, 60000);
-    return () => clearInterval(interval);
+
+    // Screen locked / tab switched / app backgrounded: browsers throttle timers,
+    // so fire an instant keepalive presence ping the moment visibility changes —
+    // the last-known song stays fresh in the admin Live Now panel.
+    const onVisibility = () => sendPresence();
+    const onPageHide = () => sendPresence();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+    };
   }, [currentSong, isAuthenticated, user]);
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;

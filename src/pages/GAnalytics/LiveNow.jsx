@@ -60,7 +60,9 @@ export function LiveNow() {
     return new Date(dateStr).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
   };
 
-  const playingUsers = (live?.users || []).filter(u => u.currentSong);
+  // "Now Playing Right Now" shows only truly-online listeners — away users
+  // (phone locked / tab backgrounded) keep their song visible in the list below
+  const playingUsers = (live?.users || []).filter(u => u.online && u.currentSong);
 
   // Live list pagination (keep current page stable across auto-refresh, clamp when list shrinks)
   const liveUsers = live?.users || [];
@@ -142,7 +144,9 @@ export function LiveNow() {
           <Radio size={18} className="fs-ga-section-icon" />
           <h2 className="fs-ga-section-title">Live Listeners</h2>
           <span className="fs-ga-section-sub">
-            {lastUpdated ? `Updated ${formatTimeIST(lastUpdated)} IST · ${liveUsers.length} online` : 'Active in last 5 minutes'}
+            {lastUpdated
+              ? `Updated ${formatTimeIST(lastUpdated)} IST · ${(live?.users || []).filter(x => x.online).length} online · ${(live?.users || []).filter(x => !x.online).length} away`
+              : 'Active in last 30 minutes'}
           </span>
           {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
         </div>
@@ -159,7 +163,7 @@ export function LiveNow() {
                 <span className="fs-ga-live-col-seen">Last Seen</span>
               </div>
               {pageUsers.map((u, i) => (
-                <div key={`${u.visitorId}-${i}`} className="fs-ga-live-row">
+                <div key={`${u.visitorId}-${i}`} className={`fs-ga-live-row ${u.online ? '' : 'away'}`}>
                   {/* User */}
                   <div className="fs-ga-live-col-user">
                     <div className={`fs-ga-avatar ${u.type === 'registered' ? 'letter' : 'icon'}`}>
@@ -207,8 +211,14 @@ export function LiveNow() {
 
                   {/* Last Seen */}
                   <div className="fs-ga-live-col-seen">
-                    <span className="fs-ga-live-seen-time">{formatTimeIST(u.lastSeenAt)} IST</span>
-                    <span className="fs-ga-live-seen-date">{formatDateIST(u.lastSeenAt)}</span>
+                    <span className="fs-ga-live-seen-time">
+                      {u.online
+                        ? `${formatTimeIST(u.lastSeenAt)} IST`
+                        : `Away • ${u.awayMinutes || '?'}m ago`}
+                    </span>
+                    <span className="fs-ga-live-seen-date">
+                      {u.online ? formatDateIST(u.lastSeenAt) : 'phone locked / tab away'}
+                    </span>
                   </div>
                 </div>
               ))}
