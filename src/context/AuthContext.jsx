@@ -84,6 +84,12 @@ export function AuthProvider({ children }) {
           if (synced?.user?.id) {
             profileData.dbId = synced.user.id;
           }
+          // DB is the source of truth: custom name/dob/city saved in Settings must survive reloads
+          if (synced?.user) {
+            profileData.name = synced.user.name || profileData.name;
+            profileData.dob = synced.user.dob || null;
+            profileData.city = synced.user.city || null;
+          }
         } catch {}
         setUser(profileData);
         storage.saveUser(profileData);
@@ -112,6 +118,12 @@ export function AuthProvider({ children }) {
       try {
         const synced = await api.syncUser(profile);
         if (synced?.user?.id) profile.dbId = synced.user.id;
+        // DB values win: custom name/dob/city must survive
+        if (synced?.user) {
+          profile.name = synced.user.name || profile.name;
+          profile.dob = synced.user.dob || null;
+          profile.city = synced.user.city || null;
+        }
       } catch {}
       setUser(profile);
       storage.saveUser(profile);
@@ -143,6 +155,12 @@ export function AuthProvider({ children }) {
       try {
         const synced = await api.syncUser(profileData);
         if (synced?.user?.id) profileData.dbId = synced.user.id;
+        // DB values win: custom name/dob/city must survive
+        if (synced?.user) {
+          profileData.name = synced.user.name || profileData.name;
+          profileData.dob = synced.user.dob || null;
+          profileData.city = synced.user.city || null;
+        }
       } catch {}
       setUser(profileData);
       storage.saveUser(profileData);
@@ -173,6 +191,12 @@ export function AuthProvider({ children }) {
     try {
       const synced = await api.syncUser(profileData);
       if (synced?.user?.id) profileData.dbId = synced.user.id;
+      // DB values win: custom name/dob/city must survive
+      if (synced?.user) {
+        profileData.name = synced.user.name || profileData.name;
+        profileData.dob = synced.user.dob || null;
+        profileData.city = synced.user.city || null;
+      }
     } catch {}
     setUser(profileData);
     storage.saveUser(profileData);

@@ -1126,7 +1126,6 @@ app.post('/api/user/sync', async (req, res) => {
         registered_user_agent, last_login_at, last_login_ip
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
       ON DUPLICATE KEY UPDATE
-        name = COALESCE(VALUES(name), name),
         avatar_url = COALESCE(VALUES(avatar_url), avatar_url),
         firebase_uid = COALESCE(VALUES(firebase_uid), firebase_uid),
         registered_ip = CASE WHEN registered_ip IN ('::1', '127.0.0.1', 'localhost') OR registered_ip IS NULL THEN VALUES(registered_ip) ELSE registered_ip END,
@@ -1158,8 +1157,14 @@ app.post('/api/user/sync', async (req, res) => {
       resolvedIp
     ]);
 
-    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const users = await query(
+      'SELECT *, DATE_FORMAT(dob, \'%Y-%m-%d\') AS dob_str FROM users WHERE email = ?',
+      [email]
+    );
     const user = users[0];
+    if (user) {
+      user.dob = user.dob_str || null;
+    }
 
     if (user?.id) {
       await query(
@@ -1314,7 +1319,10 @@ app.post('/api/user/login-password', async (req, res) => {
   const userAgent = req.headers['user-agent'] || '';
 
   try {
-    const users = await query('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+    const users = await query(
+      'SELECT *, DATE_FORMAT(dob, \'%Y-%m-%d\') AS dob_str FROM users WHERE LOWER(email) = ?',
+      [cleanEmail]
+    );
     if (!users || users.length === 0) {
       return res.status(404).json({
         error: 'No account found with this email. Would you like to create one?',
@@ -1365,7 +1373,7 @@ app.post('/api/user/login-password', async (req, res) => {
       picture: user.avatar_url || '',
       provider: user.auth_provider || 'email',
       hasPassword: true,
-      dob: user.dob,
+      dob: user.dob_str || null,
       city: user.city,
       location_tracking_enabled: user.location_tracking_enabled,
       joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''
@@ -1461,7 +1469,7 @@ app.post('/api/user/register-password', async (req, res) => {
       picture: user.avatar_url || '',
       provider: user.auth_provider || 'email',
       hasPassword: true,
-      dob: user.dob,
+      dob: user.dob_str || null,
       city: user.city,
       location_tracking_enabled: user.location_tracking_enabled,
       joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''
@@ -1643,8 +1651,16 @@ app.put('/api/user/profile', async (req, res) => {
       await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
     }
 
-    const users = await query('SELECT * FROM users WHERE id = ?', [resolvedUserId]);
-    res.json({ success: true, user: users[0] });
+    const users = await query(
+      'SELECT *, DATE_FORMAT(dob, \'%Y-%m-%d\') AS dob_str FROM users WHERE id = ?',
+      [resolvedUserId]
+    );
+    const updatedUser = users[0];
+    if (updatedUser) {
+      updatedUser.dob = updatedUser.dob_str || null;
+      delete updatedUser.password_hash;
+    }
+    res.json({ success: true, user: updatedUser });
   } catch (err) {
     console.warn('Update profile error:', err.message);
     res.status(500).json({ error: 'Failed to update profile' });
