@@ -38,7 +38,7 @@ export function PlayerProvider({ children }) {
   });
   const [isInactiveModalOpen, setIsInactiveModalOpen] = useState(false);
   const [stableVolume, setStableVolumeState] = useState(() => storage.getSettings().stableVolume === true);
-  const [crossfade, setCrossfadeState] = useState(() => Number(storage.getSettings().crossfade) || 0);
+  const [crossfade, setCrossfadeState] = useState(() => Math.min(8, Number(storage.getSettings().crossfade) || 0));
 
   const audioQualityRef = useRef(audioQuality);
   const inactivityTimeoutRef = useRef(inactivityTimeout);
@@ -57,11 +57,8 @@ export function PlayerProvider({ children }) {
   const volumeRef = useRef(volume);
   const stableVolumeRef = useRef(stableVolume);
   const crossfadeRef = useRef(crossfade);
-  const standbyPlayerRef = useRef(null);
-  const standbyPlayResolveRef = useRef(null);
   const crossfadeTokenRef = useRef(0);
   const crossfadeRampRef = useRef(null);
-  const crossfadePreloadRef = useRef(null);
   const fadeInRampRef = useRef(null);
   const lastFadedVideoIdRef = useRef(null);
 
@@ -76,6 +73,7 @@ export function PlayerProvider({ children }) {
   const sleepTimerRef = useRef(sleepTimer);
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
+  const playSongRef = useRef(null);
   const historyRecordedVideoIdRef = useRef(null);
   const volumeSaveTimeoutRef = useRef(null);
 
@@ -206,7 +204,7 @@ export function PlayerProvider({ children }) {
       fadeInRampRef.current = null;
     }
     const targetEff = computeEffectiveVolume(volumeRef.current);
-    const fadeMs = Math.min(1200, Math.max(400, cf * 500));
+    const fadeMs = Math.min(3000, Math.max(400, cf * 500));
     const start = performance.now();
     try { player.setVolume(0); } catch (e) {}
     fadeInRampRef.current = setInterval(() => {
@@ -221,18 +219,6 @@ export function PlayerProvider({ children }) {
 
   // Shared state handler: only the active player drives global playback state
   const handlePlayerStateChange = useCallback((event) => {
-    if (standbyPlayerRef.current && event.target === standbyPlayerRef.current) {
-      if (event.data === 1) {
-        if (standbyPlayResolveRef.current) {
-          const resolve = standbyPlayResolveRef.current;
-          standbyPlayResolveRef.current = null;
-          resolve(true);
-        } else if (!crossfadeRampRef.current) {
-          try { event.target.pauseVideo(); } catch (e) {}
-        }
-      }
-      return;
-    }
     if (playerRef.current && event.target !== playerRef.current) return;
 
     // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
@@ -257,23 +243,23 @@ export function PlayerProvider({ children }) {
     } else if (event.data === 3) {
       setIsLoading(true);
     } else if (event.data === 0) {
+      // Track ended: clear any running fade ramp, restore volume, then advance.
+      // A stale ramp used to keep the player at volume 0 ("sudden stop" bug).
       const ramp = crossfadeRampRef.current;
-      if (ramp && !ramp.finalized && ramp.track && ramp.standby) {
-        // Song ended mid-blend: complete the crossfade swap immediately (prevents double-advance)
+      if (ramp) {
         if (ramp.intervalId) clearInterval(ramp.intervalId);
-        ramp.finalized = true;
-        finalizeCrossfade(ramp.track, ramp.nextIdx, ramp.standby, ramp.oldPlayer);
-        return;
+        crossfadeRampRef.current = null;
+        applyPlayerVolume(volumeRef.current);
+        isTransitioningRef.current = false;
       }
       if (handleSongEndedRef.current) {
         handleSongEndedRef.current();
       }
     }
-  }, []);
+  }, [applyPlayerVolume]);
 
   // Shared error handler: only the active player triggers skip-to-next
   const handlePlayerError = useCallback((event) => {
-    if (standbyPlayerRef.current && event.target === standbyPlayerRef.current) return;
     if (playerRef.current && event.target !== playerRef.current) return;
     console.warn('YT Player error:', event.data);
     setIsLoading(false);
@@ -285,156 +271,37 @@ export function PlayerProvider({ children }) {
     }, 1000);
   }, []);
 
-  // Create the second hidden YT player used as crossfade standby
-  const createStandbyPlayer = useCallback((videoId, autoStart = true) => {
-    return new Promise((resolve, reject) => {
-      if (!window.YT || !window.YT.Player) {
-        reject(new Error('YT API unavailable'));
-        return;
-      }
-      let host = document.getElementById('fs-standby-player-host');
-      if (!host) {
-        host = document.createElement('div');
-        host.id = 'fs-standby-player-host';
-        host.style.position = 'fixed';
-        host.style.bottom = '0';
-        host.style.left = '0';
-        host.style.width = '200px';
-        host.style.height = '200px';
-        host.style.opacity = '0.001';
-        host.style.pointerEvents = 'none';
-        host.style.zIndex = '-9999';
-        document.body.appendChild(host);
-      }
-      host.innerHTML = '';
-      const mount = document.createElement('div');
-      host.appendChild(mount);
-      const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
-      try {
-        new window.YT.Player(mount, {
-          height: '1',
-          width: '1',
-          videoId: videoId,
-          playerVars: {
-            autoplay: autoStart ? 1 : 0,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1,
-            playsinline: 1,
-            enablejsapi: 1,
-            origin: window.location.origin
-          },
-          events: {
-            onReady: (event) => {
-              try {
-                event.target.setVolume(0);
-                if (typeof event.target.setPlaybackQuality === 'function') {
-                  event.target.setPlaybackQuality(quality);
-                }
-                if (autoStart) {
-                  event.target.playVideo();
-                } else {
-                  event.target.cueVideoById({ videoId, suggestedQuality: quality });
-                }
-              } catch (e) {}
-              resolve(event.target);
-            },
-            onStateChange: handlePlayerStateChange,
-            onError: () => reject(new Error('Standby player failed to load'))
-          }
-        });
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }, [handlePlayerStateChange]);
+  // ─── Crossfade Engine (simple & bulletproof) ──────────────────────────────
+  // Fade-out the current track over its final seconds, switch instantly at the end,
+  // fade-in the next track. Single player = no stuck states, no dead air, instant advance.
 
-  // Determine the next track in the queue (sync, side-effect free) for crossfade preload
-  const computeNextTrack = useCallback(() => {
-    const currentQ = queueRef.current;
-    const currentIdx = queueIndexRef.current;
-    if (!currentQ || currentQ.length === 0) return null;
-
-    let nextIdx = currentIdx + 1;
-    if (isShuffleRef.current) {
-      if (currentQ.length > 1) {
-        let randomIdx = Math.floor(Math.random() * currentQ.length);
-        while (randomIdx === currentIdx && currentQ.length > 1) {
-          randomIdx = Math.floor(Math.random() * currentQ.length);
-        }
-        nextIdx = randomIdx;
-      } else {
-        nextIdx = 0;
-      }
-    }
-
-    if (nextIdx >= currentQ.length) {
-      if (repeatModeRef.current === 'all') {
-        nextIdx = 0;
-      } else {
-        return null;
-      }
-    }
-
-    return { track: currentQ[nextIdx], nextIdx };
-  }, []);
-
-  // Pre-buffer the next track on the standby player so the crossfade engages instantly
-  const preloadNextForCrossfade = useCallback(() => {
-    const nextInfo = computeNextTrack();
-    if (!nextInfo || !nextInfo.track?.videoId) return;
-    const videoId = nextInfo.track.videoId;
-    if (crossfadePreloadRef.current?.videoId === videoId) return;
-
-    const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
-    let standby = standbyPlayerRef.current;
-    if (standby && typeof standby.cueVideoById === 'function') {
-      try {
-        standby.setVolume(0);
-        standby.cueVideoById({ videoId, suggestedQuality: quality });
-        crossfadePreloadRef.current = { videoId, player: standby, track: nextInfo.track, nextIdx: nextInfo.nextIdx };
-      } catch (e) {}
-    } else {
-      createStandbyPlayer(videoId, false).then(player => {
-        standbyPlayerRef.current = player;
-        crossfadePreloadRef.current = { videoId, player, track: nextInfo.track, nextIdx: nextInfo.nextIdx };
-      }).catch(() => {});
-    }
-  }, [computeNextTrack, createStandbyPlayer]);
-
-  // Cancel any running crossfade blend and restore normal volume
+  // Cancel any running fade and restore normal volume
   const abortCrossfade = useCallback(() => {
     crossfadeTokenRef.current += 1;
-    if (standbyPlayResolveRef.current) {
-      standbyPlayResolveRef.current = null;
-    }
-    crossfadePreloadRef.current = null;
     const ramp = crossfadeRampRef.current;
-    if (ramp && !ramp.finalized) {
+    if (ramp) {
       if (ramp.intervalId) clearInterval(ramp.intervalId);
-      if (ramp.standby && typeof ramp.standby.pauseVideo === 'function') {
-        try { ramp.standby.pauseVideo(); } catch (e) {}
-      }
-      applyPlayerVolume(volumeRef.current);
-      isTransitioningRef.current = false;
       crossfadeRampRef.current = null;
     }
     if (fadeInRampRef.current) {
       clearInterval(fadeInRampRef.current);
       fadeInRampRef.current = null;
     }
+    applyPlayerVolume(volumeRef.current);
+    isTransitioningRef.current = false;
   }, [applyPlayerVolume]);
 
-  // Fallback: simply fade the current track out during its final seconds
-  const startFadeOutOnly = useCallback((remainingSec) => {
+  // Natural song ending: fade the current track out over its final `cf` seconds
+  const startEndFadeOut = useCallback((remainingSec) => {
     const player = playerRef.current;
     if (!player || typeof player.setVolume !== 'function') {
       isTransitioningRef.current = false;
       return;
     }
+    isTransitioningRef.current = true;
     const token = crossfadeTokenRef.current;
-    const rampMs = Math.max(300, remainingSec * 1000 - 250);
+    const cfMs = (Number(crossfadeRef.current) || 0) * 1000;
+    const rampMs = Math.max(300, Math.min(cfMs, remainingSec * 1000 - 200));
     const baseEff = computeEffectiveVolume(volumeRef.current);
     const start = performance.now();
     const intervalId = setInterval(() => {
@@ -444,212 +311,66 @@ export function PlayerProvider({ children }) {
       }
       const p = Math.min(1, (performance.now() - start) / rampMs);
       try { player.setVolume(Math.round(baseEff * (1 - p))); } catch (e) {}
-      if (p >= 1) clearInterval(intervalId);
-    }, 80);
-    crossfadeRampRef.current = { intervalId, finalized: false, standby: null, fadeOutOnly: true };
-  }, [computeEffectiveVolume]);
-
-  // Swap players and global state once the crossfade blend completes
-  const finalizeCrossfade = useCallback((track, nextIdx, newPlayer, oldPlayer) => {
-    crossfadeRampRef.current = null;
-    crossfadePreloadRef.current = null;
-    lastFadedVideoIdRef.current = track.videoId;
-    try { oldPlayer.stopVideo(); } catch (e) {}
-    try { oldPlayer.setVolume(0); } catch (e) {}
-
-    playerRef.current = newPlayer;
-    standbyPlayerRef.current = oldPlayer;
-
-    // Safety: make sure the incoming player is audible after the swap
-    try {
-      const st = newPlayer.getPlayerState ? newPlayer.getPlayerState() : 1;
-      if (st !== 1 && st !== 3 && typeof newPlayer.playVideo === 'function') {
-        newPlayer.playVideo();
-      }
-    } catch (e) {}
-
-    currentSongRef.current = track;
-    setCurrentSong(track);
-    setIsPlaying(true);
-    setIsLoading(false);
-    queueIndexRef.current = nextIdx;
-    setQueueIndex(nextIdx);
-
-    let nt = 0;
-    let nd = 0;
-    try {
-      nt = typeof newPlayer.getCurrentTime === 'function' ? newPlayer.getCurrentTime() : 0;
-      nd = typeof newPlayer.getDuration === 'function' ? newPlayer.getDuration() : 0;
-    } catch (e) {}
-    setCurrentTime(nt || 0);
-    setDuration(nd || track.duration || 0);
-
-    // History is recorded by the progress ticker only after 10+ seconds of playback
-    historyRecordedVideoIdRef.current = null;
-    trackPlay(track, userRef.current || storage.getUser());
-
-    applyPlayerVolume(volumeRef.current);
-    isTransitioningRef.current = false;
-  }, [applyPlayerVolume]);
-
-  // Spotify-style crossfade: preload next track on the standby player, then blend volumes
-  const startCrossfadeTransition = useCallback(async (remainingSec) => {
-    isTransitioningRef.current = true;
-    const token = ++crossfadeTokenRef.current;
-    const triggerAt = performance.now();
-
-    // Repeat-one & sleep-timer end-of-song transitions never crossfade
-    if (repeatModeRef.current === 'one' || sleepTimerRef.current?.type === 'end_of_song') {
-      startFadeOutOnly(remainingSec);
-      return;
-    }
-
-    // Prefer the pre-buffered track (validated against the queue at preload time)
-    const preloaded = crossfadePreloadRef.current;
-    let nextInfo = null;
-    if (preloaded?.track?.videoId) {
-      const currentQ = queueRef.current;
-      const qTrack = currentQ ? currentQ[preloaded.nextIdx] : null;
-      if (qTrack && qTrack.videoId === preloaded.videoId) {
-        nextInfo = { track: preloaded.track, nextIdx: preloaded.nextIdx };
-      }
-    }
-    if (!nextInfo) {
-      nextInfo = computeNextTrack();
-    }
-    if (!nextInfo || !nextInfo.track?.videoId) {
-      startFadeOutOnly(remainingSec);
-      return;
-    }
-
-    const { track, nextIdx } = nextInfo;
-    const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
-    let standby = standbyPlayerRef.current;
-
-    try {
-      if (standby && typeof standby.playVideo === 'function') {
-        // Reuse the standby player: pre-buffered track becomes audible within moments
-        if (!preloaded || preloaded.videoId !== track.videoId) {
-          try { standby.setVolume(0); } catch (e) {}
-          standby.loadVideoById({ videoId: track.videoId, suggestedQuality: quality });
-          if (typeof standby.setPlaybackQuality === 'function') {
-            standby.setPlaybackQuality(quality);
-          }
-        }
-        try { standby.setVolume(0); } catch (e) {}
-        standby.playVideo();
-      } else {
-        standby = await createStandbyPlayer(track.videoId);
-        if (token !== crossfadeTokenRef.current) return;
-        standbyPlayerRef.current = standby;
-      }
-    } catch (err) {
-      console.warn('Crossfade standby load failed:', err);
-      startFadeOutOnly(remainingSec);
-      return;
-    }
-
-    const oldPlayer = playerRef.current;
-    if (!oldPlayer) {
-      isTransitioningRef.current = false;
-      return;
-    }
-
-    // Blend: fade the current player down while fading the standby up.
-    // The ramp starts immediately so slow buffering can never cancel the fade.
-    const elapsed = performance.now() - triggerAt;
-    const cfMs = (Number(crossfadeRef.current) || 3) * 1000;
-    const rampMs = Math.max(500, Math.min(cfMs, remainingSec * 1000 - elapsed - 150));
-    const baseEff = computeEffectiveVolume(volumeRef.current);
-    const rampStart = performance.now();
-    console.log('[Crossfade] Blending into next track:', track.title, `(${Math.round(rampMs)}ms blend)`);
-    crossfadeRampRef.current = { intervalId: null, finalized: false, standby, oldPlayer, track, nextIdx };
-    const intervalId = setInterval(() => {
-      if (token !== crossfadeTokenRef.current) {
-        clearInterval(intervalId);
-        return;
-      }
-      const p = Math.min(1, (performance.now() - rampStart) / rampMs);
-      try { oldPlayer.setVolume(Math.round(baseEff * (1 - p))); } catch (e) {}
-      try { standby.setVolume(Math.round(baseEff * p)); } catch (e) {}
       if (p >= 1) {
         clearInterval(intervalId);
-        if (crossfadeRampRef.current) crossfadeRampRef.current.finalized = true;
-        finalizeCrossfade(track, nextIdx, standby, oldPlayer);
+        // Guard: if the track keeps playing past the estimated end (bad duration estimate),
+        // bring the audio back but do not re-trigger the fade; state 0 will advance.
+        setTimeout(() => {
+          if (token !== crossfadeTokenRef.current) return;
+          let state = -1;
+          try { state = player.getPlayerState ? player.getPlayerState() : -1; } catch (e) {}
+          if (state === 1) {
+            applyPlayerVolume(volumeRef.current);
+          }
+        }, 1200);
       }
-    }, 80);
-    if (crossfadeRampRef.current) crossfadeRampRef.current.intervalId = intervalId;
-  }, [computeNextTrack, createStandbyPlayer, startFadeOutOnly, finalizeCrossfade, computeEffectiveVolume]);
+    }, 60);
+    crossfadeRampRef.current = { intervalId, token };
+  }, [computeEffectiveVolume, applyPlayerVolume]);
 
-  // Manual navigation crossfade: blend into a specific track (Spotify-style skip fade)
-  const crossfadeToTrack = useCallback(async (track, nextIdx) => {
+  // Manual skip / auto-advance: quick fade-out (≤400ms), instant switch, new track fades in
+  const crossfadeToTrack = useCallback((track, nextIdx) => {
     const cf = Number(crossfadeRef.current) || 0;
     if (cf <= 0 || !track?.videoId || !playerRef.current) return false;
     if (!isPlayingRef.current) return false;
     if (repeatModeRef.current === 'one' || sleepTimerRef.current?.type === 'end_of_song') return false;
 
-    // Cancel any running blend first so we always start from a clean state
-    abortCrossfade();
-    isTransitioningRef.current = true;
+    const player = playerRef.current;
     const token = ++crossfadeTokenRef.current;
 
-    const quality = QUALITY_MAP[audioQualityRef.current] || 'hd1080';
-    let standby = standbyPlayerRef.current;
-    const preloaded = crossfadePreloadRef.current;
-
-    try {
-      if (standby && typeof standby.playVideo === 'function') {
-        if (!preloaded || preloaded.videoId !== track.videoId) {
-          try { standby.setVolume(0); } catch (e) {}
-          standby.loadVideoById({ videoId: track.videoId, suggestedQuality: quality });
-          if (typeof standby.setPlaybackQuality === 'function') {
-            standby.setPlaybackQuality(quality);
-          }
-        }
-        try { standby.setVolume(0); } catch (e) {}
-        standby.playVideo();
-      } else {
-        standby = await createStandbyPlayer(track.videoId);
-        if (token !== crossfadeTokenRef.current) {
-          isTransitioningRef.current = false;
-          return false;
-        }
-        standbyPlayerRef.current = standby;
-      }
-    } catch (err) {
-      isTransitioningRef.current = false;
-      return false;
+    // Track already ended (natural end) → switch instantly, zero delay
+    let state = -1;
+    try { state = player.getPlayerState ? player.getPlayerState() : -1; } catch (e) {}
+    if (state === 0 || state === 5 || state === -1) {
+      queueIndexRef.current = nextIdx;
+      setQueueIndex(nextIdx);
+      if (playSongRef.current) playSongRef.current(track, queueRef.current);
+      return true;
     }
 
-    const oldPlayer = playerRef.current;
-    if (!oldPlayer) {
-      isTransitioningRef.current = false;
-      return false;
-    }
-
-    // Blend: fade the current player down while fading the standby up
-    const rampMs = Math.max(400, Math.min(cf * 1000, 2000));
     const baseEff = computeEffectiveVolume(volumeRef.current);
-    const rampStart = performance.now();
-    console.log('[Crossfade] Skip blend into:', track.title, `(${Math.round(rampMs)}ms blend)`);
-    crossfadeRampRef.current = { intervalId: null, finalized: false, standby, oldPlayer, track, nextIdx };
+    const fadeMs = Math.min(400, cf * 1000);
+    const start = performance.now();
     const intervalId = setInterval(() => {
       if (token !== crossfadeTokenRef.current) {
         clearInterval(intervalId);
         return;
       }
-      const p = Math.min(1, (performance.now() - rampStart) / rampMs);
-      try { oldPlayer.setVolume(Math.round(baseEff * (1 - p))); } catch (e) {}
-      try { standby.setVolume(Math.round(baseEff * p)); } catch (e) {}
+      const p = Math.min(1, (performance.now() - start) / fadeMs);
+      try { player.setVolume(Math.round(baseEff * (1 - p))); } catch (e) {}
       if (p >= 1) {
         clearInterval(intervalId);
-        if (crossfadeRampRef.current) crossfadeRampRef.current.finalized = true;
-        finalizeCrossfade(track, nextIdx, standby, oldPlayer);
+        if (token !== crossfadeTokenRef.current) return;
+        crossfadeRampRef.current = null;
+        isTransitioningRef.current = false;
+        queueIndexRef.current = nextIdx;
+        setQueueIndex(nextIdx);
+        if (playSongRef.current) playSongRef.current(track, queueRef.current);
       }
-    }, 80);
-    if (crossfadeRampRef.current) crossfadeRampRef.current.intervalId = intervalId;
+    }, 40);
+    crossfadeRampRef.current = { intervalId, token };
     return true;
-  }, [abortCrossfade, createStandbyPlayer, finalizeCrossfade, computeEffectiveVolume]);
+  }, [computeEffectiveVolume]);
 
   // Initialize YT Player on container
   const ensurePlayer = useCallback((videoId) => {
@@ -787,15 +508,10 @@ export function PlayerProvider({ children }) {
             }
           }
 
-          // Pre-buffer the next track on the standby player ~35s before the end
+          // Crossfade trigger: fade the current track out over its final N seconds
           const cf = Number(crossfadeRef.current) || 0;
-          if (cf > 0 && !isTransitioningRef.current && d > 40 && t > 0 && (d - t) <= 35) {
-            preloadNextForCrossfade();
-          }
-
-          // Crossfade trigger: start blending into the next track N seconds before the end
           if (cf > 0 && !isTransitioningRef.current && d > cf + 2 && t > 0 && (d - t) <= cf) {
-            startCrossfadeTransition(d - t);
+            startEndFadeOut(d - t);
           }
 
           // Fallback autoplay trigger: if track reaches within 0.5s of the end and has not transitioned
@@ -817,7 +533,7 @@ export function PlayerProvider({ children }) {
     return () => {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
-  }, [isPlaying, startCrossfadeTransition, preloadNextForCrossfade]);
+  }, [isPlaying, startEndFadeOut]);
 
   // Auto-fetch related tracks and append to queue for infinite playback
   const fetchAndAppendRelated = useCallback(async (baseSong) => {
@@ -1052,6 +768,11 @@ export function PlayerProvider({ children }) {
     nextSongRef.current = nextSong;
   }, [nextSong]);
 
+  // Keep playSongRef updated (used by the crossfade engine for instant switches)
+  useEffect(() => {
+    playSongRef.current = playSong;
+  }, [playSong]);
+
   // Handle track ending
   const handleSongEnded = useCallback(() => {
     const timer = sleepTimerRef.current;
@@ -1196,6 +917,13 @@ export function PlayerProvider({ children }) {
     }, 400);
   }, [applyPlayerVolume]);
 
+  // Imperative-only volume apply (zero React re-renders) — used by slider drag for buttery
+  // smoothness; state is committed afterwards via setVolumeLevel on drag end
+  const setVolumeDirect = useCallback((val) => {
+    const clamped = Math.max(0, Math.min(1, val));
+    applyPlayerVolume(clamped);
+  }, [applyPlayerVolume]);
+
   const toggleMute = useCallback(() => {
     if (isMuted) {
       setIsMuted(false);
@@ -1214,9 +942,9 @@ export function PlayerProvider({ children }) {
     applyPlayerVolume(volumeRef.current);
   }, [applyPlayerVolume]);
 
-  // Configure crossfade seconds (0 = off, max 12s)
+  // Configure crossfade seconds (0 = off, max 8s)
   const setCrossfade = useCallback((seconds) => {
-    const val = Math.max(0, Math.min(12, Number(seconds) || 0));
+    const val = Math.max(0, Math.min(8, Number(seconds) || 0));
     setCrossfadeState(val);
     crossfadeRef.current = val;
     storage.saveSettings({ ...storage.getSettings(), crossfade: val });
@@ -1358,6 +1086,7 @@ export function PlayerProvider({ children }) {
         prevSong,
         seekTo,
         setVolumeLevel,
+        setVolumeDirect,
         toggleMute,
         toggleShuffle,
         toggleRepeat,

@@ -1,4 +1,5 @@
 export { GAnalyticsLayout, useGAnalytics } from './GAnalyticsLayout';
+export { ChartTooltip } from './ChartTooltip';
 export { Dashboard } from './Dashboard';
 export { LiveNow } from './LiveNow';
 export { RegisteredUsers } from './RegisteredUsers';

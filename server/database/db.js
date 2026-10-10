@@ -182,6 +182,33 @@ export async function testDbConnection() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
     } catch {}
+    try {
+      // Safe auto-migration: admin-managed SEO overrides per page path
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS seo_overrides (
+          id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          page_path VARCHAR(255) NOT NULL,
+          title VARCHAR(255) NULL,
+          description VARCHAR(500) NULL,
+          keywords VARCHAR(1000) NULL,
+          noindex TINYINT(1) NOT NULL DEFAULT 0,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_seo_page_path (page_path(191))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
+    try {
+      // Safe auto-migration: tracking & verification config (GSC tag, GA measurement id)
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS seo_config (
+          config_key VARCHAR(100) NOT NULL,
+          config_value VARCHAR(500) NOT NULL,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (config_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch {}
     connection.release();
     return true;
   } catch (err) {

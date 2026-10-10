@@ -247,3 +247,97 @@ export async function getListeningHours(token) {
     return null;
   }
 }
+
+// ── SEO Manager (Admin-managed per-page SEO overrides) ───────────────────────
+
+// List all SEO overrides (token protected)
+export async function getSeoOverrides(token) {
+  const res = await fetch(`${API_BASE}/analytics/seo?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || 'Failed to fetch SEO overrides');
+    err.status = res.status;
+    throw err;
+  }
+  return data?.overrides || [];
+}
+
+// Save (upsert) an SEO override for a page path (token protected)
+export async function saveSeoOverride(token, override) {
+  const res = await fetch(`${API_BASE}/analytics/seo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, ...override })
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || 'Failed to save SEO override');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// Delete an SEO override (reset page back to default) (token protected)
+export async function deleteSeoOverride(token, pagePath) {
+  const res = await fetch(`${API_BASE}/analytics/seo?token=${encodeURIComponent(token)}&pagePath=${encodeURIComponent(pagePath)}`, {
+    method: 'DELETE'
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || 'Failed to reset SEO override');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// Public: fetch SEO overrides for site-wide application (no auth)
+export async function fetchPublicSeoOverrides() {
+  try {
+    const res = await fetch(`${API_BASE}/seo-overrides`, { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    return data?.overrides || [];
+  } catch {
+    return [];
+  }
+}
+
+// Get tracking config (GSC tag + GA measurement id) (token protected)
+export async function getSeoConfig(token) {
+  const res = await fetch(`${API_BASE}/analytics/seo/config?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || 'Failed to fetch tracking config');
+    err.status = res.status;
+    throw err;
+  }
+  return data?.config || { gscVerification: '', gaMeasurementId: '' };
+}
+
+// Save tracking config (token protected)
+export async function saveSeoConfig(token, config) {
+  const res = await fetch(`${API_BASE}/analytics/seo/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, ...config })
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || 'Failed to save tracking config');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// Public: fetch tracking config for site-wide injection (no auth)
+export async function fetchPublicSeoConfig() {
+  try {
+    const res = await fetch(`${API_BASE}/seo-config`, { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    return data?.config || { gscVerification: '', gaMeasurementId: '' };
+  } catch {
+    return { gscVerification: '', gaMeasurementId: '' };
+  }
+}

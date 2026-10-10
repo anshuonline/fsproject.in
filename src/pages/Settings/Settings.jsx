@@ -638,8 +638,7 @@ export function Settings() {
               <option value={0}>Off (Instant Switch)</option>
               <option value={3}>3 Seconds (Recommended)</option>
               <option value={5}>5 Seconds</option>
-              <option value={8}>8 Seconds</option>
-              <option value={12}>12 Seconds (DJ Mode)</option>
+              <option value={8}>8 Seconds (Max)</option>
             </select>
           </div>
 

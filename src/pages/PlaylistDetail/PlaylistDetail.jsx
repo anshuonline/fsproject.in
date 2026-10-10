@@ -7,6 +7,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
+import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
 
 export function PlaylistDetail() {
@@ -20,6 +21,13 @@ export function PlaylistDetail() {
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Playlists are personalized content: keep them out of search indexes
+  useSeo({
+    title: playlist ? `${playlist.name || 'Playlist'} - Free Playlist | freesong.in` : undefined,
+    description: playlist?.description || undefined,
+    noindex: true
+  });
 
   // Check if this playlist is a user-created local playlist
   const isCustom = playlists.some(p => p.id === id);

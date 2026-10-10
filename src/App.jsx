@@ -22,6 +22,7 @@ import { History } from './pages/History/History';
 import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
 import { GAnalyticsLayout, Dashboard, LiveNow, RegisteredUsers, TopSearches, TopSongs, AdminLogs, Daily, ListeningHours } from './pages/GAnalytics';
+import { SeoAdmin } from './pages/SeoAdmin/SeoAdmin';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
@@ -29,6 +30,7 @@ import { ResetPassword } from './pages/ResetPassword/ResetPassword';
 import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
+import { SeoManager } from './components/Common/SeoManager';
 
 export default function App() {
   // Suppress native browser context menu app-wide (custom GlobalContextMenu
@@ -48,6 +50,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <SeoManager />
       <ContextMenuProvider>
         <AuthProvider>
           <LibraryProvider>
@@ -93,6 +96,9 @@ export default function App() {
                     <Route path="/about" element={<AboutUs />} />
                     <Route path="/contact" element={<ContactUs />} />
                   </Route>
+
+                  {/* Standalone SEO Manager Portal (Admin only) */}
+                  <Route path="/seo" element={<SeoAdmin />} />
 
                   {/* Auth Pages */}
                   <Route element={<AuthLayout />}>

@@ -5,6 +5,7 @@ import {
   BarChart3, Headphones, ArrowRight, LoaderCircle
 } from 'lucide-react';
 import { useGAnalytics } from './GAnalyticsLayout';
+import { ChartTooltip } from './ChartTooltip';
 import './Dashboard.css';
 
 export function Dashboard() {
@@ -76,7 +77,13 @@ export function Dashboard() {
             </div>
             <div className="fs-ga-dash-bars">
               {(week?.days || []).map(d => (
-                <div key={d.day} className="fs-ga-dash-bar-col" title={`${d.label}: ${formatNumber(d.visitors)} visitors`}>
+                <div key={d.day} className="fs-ga-dash-bar-col">
+                  <ChartTooltip
+                    dotClass="fs-dot-visitors"
+                    label={d.label}
+                    value={formatNumber(d.visitors)}
+                    unit="visitors"
+                  />
                   <div className="fs-ga-dash-bar-track">
                     <div className="fs-ga-dash-bar fill-visitors" style={{ height: `${Math.round((d.visitors / maxVisitors) * 100)}%` }} />
                   </div>
@@ -92,7 +99,13 @@ export function Dashboard() {
             </div>
             <div className="fs-ga-dash-bars">
               {(week?.days || []).map(d => (
-                <div key={d.day} className="fs-ga-dash-bar-col" title={`${d.label}: ${formatNumber(d.plays)} streams`}>
+                <div key={d.day} className="fs-ga-dash-bar-col">
+                  <ChartTooltip
+                    dotClass="fs-dot-plays"
+                    label={d.label}
+                    value={formatNumber(d.plays)}
+                    unit="streams"
+                  />
                   <div className="fs-ga-dash-bar-track">
                     <div className="fs-ga-dash-bar fill-plays" style={{ height: `${Math.round((d.plays / maxPlays) * 100)}%` }} />
                   </div>

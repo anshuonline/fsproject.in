@@ -4,6 +4,7 @@ import { Play, Shuffle, Disc, Loader2, ArrowLeft, RefreshCw, Clock } from 'lucid
 import { api } from '../../services/api';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
+import { useSeo } from '../../services/seo';
 import './AlbumDetail.css';
 
 export function AlbumDetail() {
@@ -15,6 +16,12 @@ export function AlbumDetail() {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Real album title & description once metadata loads (long-tail SEO)
+  useSeo({
+    title: album?.title ? `${album.title} - Ads Free Album Streaming | freesong.in` : undefined,
+    description: album?.description || undefined
+  });
 
   const loadAlbum = () => {
     setLoading(true);

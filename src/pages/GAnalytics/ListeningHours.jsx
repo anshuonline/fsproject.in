@@ -3,6 +3,7 @@ import { Clock3, Play, LoaderCircle, Headphones } from 'lucide-react';
 import { getListeningHours } from '../../services/analyticsService';
 import { useGAnalytics } from './GAnalyticsLayout';
 import { usePlayer } from '../../context/PlayerContext';
+import { ChartTooltip } from './ChartTooltip';
 import './ListeningHours.css';
 
 export function ListeningHours() {
@@ -90,7 +91,14 @@ export function ListeningHours() {
         <div className="fs-ga-hours-chart-card">
           <div className="fs-ga-hours-bars">
             {(hours?.days || []).map(d => (
-              <div key={d.day} className="fs-ga-hours-bar-col" title={`${d.label}: ${formatHours(d.hours)} · ${formatNumber(d.plays)} streams`}>
+              <div key={d.day} className="fs-ga-hours-bar-col">
+                <ChartTooltip
+                  dotClass="fs-dot-hours"
+                  label={d.label}
+                  value={formatHours(d.hours)}
+                  unit="listened"
+                  sublabel={`${formatNumber(d.plays)} streams`}
+                />
                 <div className="fs-ga-hours-bar-track">
                   <div className="fs-ga-hours-bar" style={{ height: `${Math.max(2, Math.round((d.hours / maxHours) * 100))}%` }} />
                 </div>

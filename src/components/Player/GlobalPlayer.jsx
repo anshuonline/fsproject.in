@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Play,
   Pause,
@@ -44,6 +44,7 @@ export function GlobalPlayer() {
     prevSong,
     seekTo,
     setVolumeLevel,
+    setVolumeDirect,
     toggleMute,
     toggleShuffle,
     toggleRepeat,
@@ -54,6 +55,33 @@ export function GlobalPlayer() {
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu } = useContextMenu();
   const progressBarRef = useRef(null);
+
+  // Local drag state: during volume drag only this component re-renders; context commits on release
+  const [dragVolume, setDragVolume] = useState(null);
+  const dragCommitTimerRef = useRef(null);
+  const shownVolume = dragVolume ?? (isMuted ? 0 : volume);
+
+  const handleVolumeDrag = (e) => {
+    const v = parseFloat(e.target.value);
+    setDragVolume(v);
+    setVolumeDirect(v);
+    // Safety commit for keyboard/edge cases (pointer-up handles the normal drag end)
+    if (dragCommitTimerRef.current) clearTimeout(dragCommitTimerRef.current);
+    dragCommitTimerRef.current = setTimeout(() => {
+      setDragVolume((current) => {
+        if (current !== null) setVolumeLevel(current);
+        return null;
+      });
+    }, 300);
+  };
+
+  const handleVolumeDragEnd = () => {
+    if (dragCommitTimerRef.current) clearTimeout(dragCommitTimerRef.current);
+    setDragVolume((current) => {
+      if (current !== null) setVolumeLevel(current);
+      return null;
+    });
+  };
 
   if (!currentSong) return null;
 
@@ -209,20 +237,22 @@ export function GlobalPlayer() {
               title={isMuted ? 'Unmute' : 'Mute'}
               aria-label={isMuted ? 'Unmute' : 'Mute'}
             >
-              {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              {isMuted || shownVolume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <input
               type="range"
               min={0}
               max={1}
               step={0.01}
-              value={isMuted ? 0 : volume}
-              onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
+              value={shownVolume}
+              onChange={handleVolumeDrag}
+              onPointerUp={handleVolumeDragEnd}
+              onBlur={handleVolumeDragEnd}
               className="fs-volume-input"
               aria-label="Volume"
               style={{
-                '--fs-vol-pct': `${(isMuted ? 0 : volume) * 100}%`,
-                background: `linear-gradient(to right, var(--color-white) ${(isMuted ? 0 : volume) * 100}%, #4d4d4d ${(isMuted ? 0 : volume) * 100}%)`
+                '--fs-vol-pct': `${shownVolume * 100}%`,
+                background: `linear-gradient(to right, var(--color-white) ${shownVolume * 100}%, #4d4d4d ${shownVolume * 100}%)`
               }}
             />
           </div>

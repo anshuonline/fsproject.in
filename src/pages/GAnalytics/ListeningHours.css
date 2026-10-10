@@ -24,6 +24,7 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  position: relative;
 }
 
 .fs-ga-hours-bar-track {

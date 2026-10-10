@@ -8,6 +8,7 @@ import { SongCard } from '../../components/Cards/SongCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
+import { useSeo } from '../../services/seo';
 import './ArtistDetail.css';
 
 export function ArtistDetail() {
@@ -16,6 +17,14 @@ export function ArtistDetail() {
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+
+  // Real artist name once metadata loads (long-tail SEO)
+  useSeo({
+    title: artist?.name ? `${artist.name} Songs - Free Music Streaming | freesong.in` : undefined,
+    description: artist?.name
+      ? `Listen to ${artist.name} songs ads free with real-time synced lyrics on FreeSong.in. Stream top tracks, albums & playlists free in high quality audio.`
+      : undefined
+  });
 
   useEffect(() => {
     setLoading(true);

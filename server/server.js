@@ -2625,8 +2625,9 @@ app.post('/api/analytics/track/visit', async (req, res) => {
 
 // Track Search (fire and forget from frontend)
 app.post('/api/analytics/track/search', async (req, res) => {
-  const { query, visitorId, isRegistered, resultCount } = req.body;
-  const cleanQuery = sanitizeAnalyticsQuery(query);
+  // NOTE: `query` must NOT shadow the db.js query() function import
+  const { query: rawSearchQuery, visitorId, isRegistered, resultCount } = req.body;
+  const cleanQuery = sanitizeAnalyticsQuery(rawSearchQuery);
   if (!cleanQuery) return res.status(400).json({ error: 'query is required' });
 
   try {
@@ -2901,6 +2902,168 @@ app.get('/api/analytics/overview', async (req, res) => {
   } catch (err) {
     console.error('Analytics overview error:', err);
     res.status(500).json({ error: 'Failed to fetch analytics overview' });
+  }
+});
+
+// ─── SEO Manager Endpoints (Admin-managed per-page SEO overrides) ─────────────
+
+function sanitizeSeoText(value, max) {
+  const clean = (value === null || value === undefined) ? '' : String(value);
+  return clean.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+// List all SEO overrides (token protected)
+app.get('/api/analytics/seo', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const rows = await query(
+      'SELECT page_path AS pagePath, title, description, keywords, noindex, updated_at AS updatedAt FROM seo_overrides ORDER BY page_path ASC LIMIT 200'
+    );
+    res.json({ success: true, overrides: (rows || []).map(r => ({ ...r, noindex: Number(r.noindex) === 1 })) });
+  } catch (err) {
+    console.warn('SEO overrides fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch SEO overrides' });
+  }
+});
+
+// Upsert an SEO override for a page path (token protected)
+app.post('/api/analytics/seo', async (req, res) => {
+  const session = getAnalyticsSession(req.body?.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  const pagePath = sanitizeSeoText(req.body?.pagePath, 255);
+  if (!pagePath || !pagePath.startsWith('/')) {
+    return res.status(400).json({ error: 'A valid page path starting with / is required' });
+  }
+
+  const title = sanitizeSeoText(req.body?.title, 255);
+  const description = sanitizeSeoText(req.body?.description, 500);
+  const keywords = sanitizeSeoText(req.body?.keywords, 1000);
+  const noindex = req.body?.noindex === true || req.body?.noindex === 1 ? 1 : 0;
+
+  if (!title && !description && !keywords) {
+    return res.status(400).json({ error: 'Provide at least a title, description or keywords' });
+  }
+
+  try {
+    await query(`
+      INSERT INTO seo_overrides (page_path, title, description, keywords, noindex)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        description = VALUES(description),
+        keywords = VALUES(keywords),
+        noindex = VALUES(noindex)
+    `, [pagePath, title, description, keywords, noindex]);
+    res.json({ success: true, pagePath });
+  } catch (err) {
+    console.warn('SEO override save error:', err.message);
+    res.status(500).json({ error: 'Failed to save SEO override' });
+  }
+});
+
+// Delete an SEO override (reset page back to default metadata) (token protected)
+app.delete('/api/analytics/seo', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  const pagePath = sanitizeSeoText(req.query.pagePath, 255);
+  if (!pagePath) return res.status(400).json({ error: 'pagePath is required' });
+
+  try {
+    await query('DELETE FROM seo_overrides WHERE page_path = ?', [pagePath]);
+    res.json({ success: true, pagePath });
+  } catch (err) {
+    console.warn('SEO override delete error:', err.message);
+    res.status(500).json({ error: 'Failed to reset SEO override' });
+  }
+});
+
+// Public endpoint: site-wide SEO overrides applied by the SPA SeoManager
+app.get('/api/seo-overrides', async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT page_path AS pagePath, title, description, keywords, noindex FROM seo_overrides LIMIT 200'
+    );
+    res.json({ success: true, overrides: (rows || []).map(r => ({ ...r, noindex: Number(r.noindex) === 1 })) });
+  } catch (err) {
+    console.warn('Public SEO overrides fetch error:', err.message);
+    res.json({ success: true, overrides: [] });
+  }
+});
+
+// ─── SEO Tracking & Verification Config (GSC tag + GA4) ──────────────────────
+
+const GA_ID_PATTERN = /^[A-Z]{1,2}-[A-Z0-9]+(-[0-9]+)?$/i;
+
+// Get tracking config (token protected)
+app.get('/api/analytics/seo/config', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const rows = await query(
+      "SELECT config_key AS configKey, config_value AS configValue FROM seo_config WHERE config_key IN ('gscVerification', 'gaMeasurementId')"
+    );
+    const config = { gscVerification: '', gaMeasurementId: '' };
+    (rows || []).forEach(r => {
+      if (r.configKey === 'gscVerification') config.gscVerification = r.configValue;
+      if (r.configKey === 'gaMeasurementId') config.gaMeasurementId = r.configValue;
+    });
+    res.json({ success: true, config });
+  } catch (err) {
+    console.warn('SEO config fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch tracking config' });
+  }
+});
+
+// Save tracking config (token protected)
+app.post('/api/analytics/seo/config', async (req, res) => {
+  const session = getAnalyticsSession(req.body?.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  const gsc = (req.body?.gscVerification || '').trim().slice(0, 255);
+  const gaId = (req.body?.gaMeasurementId || '').trim().slice(0, 50);
+
+  if (gaId && !GA_ID_PATTERN.test(gaId)) {
+    return res.status(400).json({ error: 'Invalid Google Analytics Measurement ID (expected format: G-XXXXXXXXXX)' });
+  }
+
+  try {
+    const entries = [
+      ['gscVerification', gsc],
+      ['gaMeasurementId', gaId]
+    ];
+    for (const [key, value] of entries) {
+      await query(
+        'INSERT INTO seo_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)',
+        [key, value]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('SEO config save error:', err.message);
+    res.status(500).json({ error: 'Failed to save tracking config' });
+  }
+});
+
+// Public endpoint: tracking config applied site-wide by the SPA
+app.get('/api/seo-config', async (req, res) => {
+  try {
+    const rows = await query(
+      "SELECT config_key AS configKey, config_value AS configValue FROM seo_config WHERE config_key IN ('gscVerification', 'gaMeasurementId')"
+    );
+    const config = { gscVerification: '', gaMeasurementId: '' };
+    (rows || []).forEach(r => {
+      if (r.configKey === 'gscVerification') config.gscVerification = r.configValue;
+      if (r.configKey === 'gaMeasurementId') config.gaMeasurementId = r.configValue;
+    });
+    res.json({ success: true, config });
+  } catch (err) {
+    console.warn('Public SEO config fetch error:', err.message);
+    res.json({ success: true, config: { gscVerification: '', gaMeasurementId: '' } });
   }
 });
 

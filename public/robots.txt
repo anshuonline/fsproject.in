@@ -1,11 +1,35 @@
+# FreeSong.in — Ads Free Music Streaming
+# https://freesong.in
+
 User-agent: *
 Allow: /
 Allow: /explore
 Allow: /search
+Allow: /album/
+Allow: /artist/
+Allow: /about
+Allow: /contact
 Allow: /privacy
 Allow: /terms
 Allow: /dmca
-Allow: /about
-Allow: /contact
+
+# Private user & app pages (require session, no unique content)
+Disallow: /library
+Disallow: /favorites
+Disallow: /followed
+Disallow: /history
+Disallow: /profile
+Disallow: /settings
+Disallow: /playlist/
+Disallow: /confirm-delete
+Disallow: /reset-password
+
+# Auth pages
+Disallow: /login
+Disallow: /register
+
+# Admin area
+Disallow: /ganalytics
+Disallow: /seo
 
 Sitemap: https://freesong.in/sitemap.xml
