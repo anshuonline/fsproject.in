@@ -248,6 +248,24 @@ export async function getListeningHours(token) {
   }
 }
 
+// Fetch user activity heatmap (day x hour, peaks, search rhythm) (token protected)
+export async function getUserActivity(token) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/activity?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch user activity');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data?.data || null;
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('User activity error:', err);
+    return null;
+  }
+}
+
 // ── SEO Manager (Admin-managed per-page SEO overrides) ───────────────────────
 
 // List all SEO overrides (token protected)

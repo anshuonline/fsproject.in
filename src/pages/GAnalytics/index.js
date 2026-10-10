@@ -5,6 +5,7 @@ export { LiveNow } from './LiveNow';
 export { RegisteredUsers } from './RegisteredUsers';
 export { Daily } from './Daily';
 export { ListeningHours } from './ListeningHours';
+export { UserActivity } from './UserActivity';
 export { TopSearches } from './TopSearches';
 export { TopSongs } from './TopSongs';
 export { AdminLogs } from './AdminLogs';

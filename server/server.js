@@ -2797,6 +2797,170 @@ app.get('/api/analytics/hours', async (req, res) => {
   }
 });
 
+// User Activity (token protected): YouTube Studio style day x hour heatmap, peaks, search rhythm
+app.get('/api/analytics/activity', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const weekStart = 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)';
+    const monthStart = 'DATE_SUB(CURDATE(), INTERVAL 27 DAY)';
+
+    const [visitCells, searchCells, playCells, searchTotals, todayActivity, weekActivity, hourSearchRows, daySearchRows] = await Promise.all([
+      query(`SELECT DAYOFWEEK(visited_at) AS dow, HOUR(visited_at) AS hr, COUNT(*) AS c FROM analytics_visits WHERE visited_at >= ${monthStart} GROUP BY dow, hr`),
+      query(`SELECT DAYOFWEEK(searched_at) AS dow, HOUR(searched_at) AS hr, COUNT(*) AS c FROM analytics_searches WHERE searched_at >= ${monthStart} GROUP BY dow, hr`),
+      query(`SELECT DAYOFWEEK(played_at) AS dow, HOUR(played_at) AS hr, COUNT(*) AS c FROM analytics_plays WHERE played_at >= ${monthStart} GROUP BY dow, hr`),
+      query(`SELECT
+        (SELECT COUNT(*) FROM analytics_searches WHERE searched_at >= CURDATE()) AS today,
+        (SELECT COUNT(*) FROM analytics_searches WHERE searched_at >= ${weekStart}) AS last7Days,
+        (SELECT COUNT(*) FROM analytics_searches WHERE searched_at >= ${monthStart}) AS last28Days,
+        (SELECT COUNT(*) FROM analytics_searches) AS allTime`),
+      query(`SELECT
+        (SELECT COUNT(*) FROM analytics_visits WHERE visited_at >= CURDATE()) +
+        (SELECT COUNT(*) FROM analytics_searches WHERE searched_at >= CURDATE()) +
+        (SELECT COUNT(*) FROM analytics_plays WHERE played_at >= CURDATE()) AS c`),
+      query(`SELECT
+        (SELECT COUNT(*) FROM analytics_visits WHERE visited_at >= ${weekStart}) +
+        (SELECT COUNT(*) FROM analytics_searches WHERE searched_at >= ${weekStart}) +
+        (SELECT COUNT(*) FROM analytics_plays WHERE played_at >= ${weekStart}) AS c`),
+      query(`SELECT HOUR(searched_at) AS hr, COUNT(*) AS c FROM analytics_searches WHERE searched_at >= ${weekStart} GROUP BY hr`),
+      query(`SELECT DATE(searched_at) AS day, COUNT(*) AS c FROM analytics_searches WHERE searched_at >= ${weekStart} GROUP BY DATE(searched_at)`)
+    ]);
+
+    // DAYOFWEEK(): 1 = Sunday ... 7 = Saturday. Rows ordered Monday -> Sunday
+    const DOW_ORDER = [2, 3, 4, 5, 6, 7, 1];
+    const DAY_NAMES = { 1: 'Sun', 2: 'Mon', 3: 'Tue', 4: 'Wed', 5: 'Thu', 6: 'Fri', 7: 'Sat' };
+
+    const buildMatrix = (rows) => {
+      const m = Array.from({ length: 7 }, () => new Array(24).fill(0));
+      for (const r of rows || []) {
+        const di = DOW_ORDER.indexOf(Number(r.dow));
+        if (di === -1) continue;
+        m[di][Number(r.hr)] = Number(r.c) || 0;
+      }
+      return m;
+    };
+
+    const addMatrices = (a, b) => a.map((row, i) => row.map((v, j) => v + b[i][j]));
+
+    const visitsMatrix = buildMatrix(visitCells);
+    const searchesMatrix = buildMatrix(searchCells);
+    const playsMatrix = buildMatrix(playCells);
+    const totalMatrix = addMatrices(addMatrices(visitsMatrix, searchesMatrix), playsMatrix);
+
+    const matrixMax = (m) => Math.max(...m.flat(), 0);
+    const rowSum = (m, i) => m[i].reduce((s, v) => s + v, 0);
+    const colSum = (m, j) => m.reduce((s, row) => s + row[j], 0);
+
+    const hourLabel = (h) => (h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`);
+
+    // Peak day x hour cell (ties resolved by earlier row)
+    let peakCell = null;
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j < 24; j++) {
+        if (!peakCell || totalMatrix[i][j] > peakCell.score) {
+          peakCell = { dow: DOW_ORDER[i], dayLabel: DAY_NAMES[DOW_ORDER[i]], hour: j, hourLabel: hourLabel(j), score: totalMatrix[i][j] };
+        }
+      }
+    }
+
+    // Peak weekday + peak hour
+    let peakDay = null;
+    for (let i = 0; i < 7; i++) {
+      const score = rowSum(totalMatrix, i);
+      if (!peakDay || score > peakDay.score) {
+        peakDay = { dow: DOW_ORDER[i], label: DAY_NAMES[DOW_ORDER[i]], score };
+      }
+    }
+    let peakHour = null;
+    for (let j = 0; j < 24; j++) {
+      const score = colSum(totalMatrix, j);
+      if (!peakHour || score > peakHour.score) {
+        peakHour = { hour: j, label: hourLabel(j), score };
+      }
+    }
+
+    const isoDay = (val) => new Date(val).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+    // Searches by hour (last 7 days aggregated)
+    const hourSearches = new Map();
+    for (let h = 0; h < 24; h++) hourSearches.set(h, 0);
+    for (const r of hourSearchRows || []) {
+      hourSearches.set(Number(r.hr), Number(r.c) || 0);
+    }
+
+    // Searches by day (last 7 days)
+    const daySearches = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const match = (daySearchRows || []).find(r => isoDay(r.day) === key);
+      daySearches.push({
+        day: key,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        count: Number(match?.c) || 0
+      });
+    }
+
+    // Quietest weekday (only meaningful when there is activity)
+    let quietDay = null;
+    if (peakDay && peakDay.score > 0) {
+      for (let i = 0; i < 7; i++) {
+        const score = rowSum(totalMatrix, i);
+        if (!quietDay || score < quietDay.score) {
+          quietDay = { dow: DOW_ORDER[i], label: DAY_NAMES[DOW_ORDER[i]], score };
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        heatmap: {
+          rows: DOW_ORDER.map(dow => ({ dow, label: DAY_NAMES[dow] })),
+          cells: {
+            total: totalMatrix,
+            visits: visitsMatrix,
+            searches: searchesMatrix,
+            plays: playsMatrix
+          },
+          max: {
+            total: matrixMax(totalMatrix),
+            visits: matrixMax(visitsMatrix),
+            searches: matrixMax(searchesMatrix),
+            plays: matrixMax(playsMatrix)
+          },
+          dayTotals: DOW_ORDER.map((dow, i) => ({ dow, label: DAY_NAMES[dow], total: rowSum(totalMatrix, i), visits: rowSum(visitsMatrix, i), searches: rowSum(searchesMatrix, i), plays: rowSum(playsMatrix, i) })),
+          hourTotals: Array.from({ length: 24 }, (_, j) => ({ hour: j, label: hourLabel(j), total: colSum(totalMatrix, j) }))
+        },
+        peak: {
+          cell: peakCell,
+          day: peakDay,
+          hour: peakHour
+        },
+        searches: {
+          today: Number(searchTotals[0]?.today) || 0,
+          last7Days: Number(searchTotals[0]?.last7Days) || 0,
+          last28Days: Number(searchTotals[0]?.last28Days) || 0,
+          allTime: Number(searchTotals[0]?.allTime) || 0,
+          byHour: Array.from({ length: 24 }, (_, h) => ({ hour: h, label: hourLabel(h), count: hourSearches.get(h) })),
+          byDay: daySearches
+        },
+        totals: {
+          activityToday: Number(todayActivity[0]?.c) || 0,
+          activityLast7Days: Number(weekActivity[0]?.c) || 0,
+          peakSummary: peakCell && peakCell.score > 0 ? `${peakCell.dayLabel}s around ${peakCell.hourLabel}` : 'Not enough data yet',
+          quietSummary: quietDay && peakDay && peakDay.score > 0 && quietDay.score < peakDay.score ? `${quietDay.label}s are the quietest days` : 'Busiest and quietest hours visible on the heatmap'
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Analytics activity error:', err);
+    res.status(500).json({ error: 'Failed to fetch user activity' });
+  }
+});
+
 // Analytics Overview (token protected): today stats, last 7 days trends, top searches, top 30 songs
 app.get('/api/analytics/overview', async (req, res) => {
   const session = getAnalyticsSession(req.query.token);
@@ -3069,31 +3233,149 @@ app.get('/api/seo-config', async (req, res) => {
 
 // Serve static frontend assets built by Vite in production
 if (fs.existsSync(distPath)) {
-  // Cached index.html + dynamic head injection (Google Search Console verification
-  // meta tag from DB). Search Console does NOT execute JavaScript, so the tag must
-  // exist in the raw served HTML — client-side injection alone fails verification.
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '\u0026amp;')
+      .replace(/</g, '\u0026lt;')
+      .replace(/>/g, '\u0026gt;')
+      .replace(/"/g, '\u0026quot;');
+  }
+
+  // ── Dynamic robots.txt (admin-managed indexability) ────────────────────────
+  // SEO portal "index" toggles emit Allow lines that beat equal-length Disallow
+  // rules (Google robots.txt spec), so Search Console can crawl enabled pages.
+  const ROBOTS_BASE = `# FreeSong.in — Ads Free Music Streaming
+# https://freesong.in
+
+User-agent: *
+Allow: /
+Allow: /explore
+Allow: /search
+Allow: /album/
+Allow: /artist/
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /dmca
+
+# Private user & app pages (require session, no unique content)
+Disallow: /library
+Disallow: /favorites
+Disallow: /followed
+Disallow: /history
+Disallow: /profile
+Disallow: /settings
+Disallow: /playlist/
+Disallow: /confirm-delete
+Disallow: /reset-password
+
+# Auth pages
+Disallow: /login
+Disallow: /register
+
+# Admin area
+Disallow: /ganalytics
+Disallow: /seo
+`;
+
+  app.get('/robots.txt', async (req, res) => {
+    let robots = ROBOTS_BASE;
+    try {
+      const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
+      const allowLines = (rows || [])
+        .filter(r => Number(r.noindex) === 0 && r.pagePath && r.pagePath.startsWith('/'))
+        .map(r => `Allow: ${r.pagePath}`)
+        .join('\n');
+      if (allowLines) {
+        robots = robots.replace(
+          '# Private user & app pages (require session, no unique content)\n',
+          `# Admin-enabled indexable pages (Allow wins over equal-length Disallow)\n${allowLines}\n\n# Private user & app pages (require session, no unique content)\n`
+        );
+      }
+    } catch {}
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(robots);
+  });
+
+  // ── Dynamic sitemap.xml (noindexed pages excluded automatically) ───────────
+  const SITEMAP_BASE = [
+    { loc: 'https://freesong.in/', priority: '1.0', freq: 'daily' },
+    { loc: 'https://freesong.in/explore', priority: '0.9', freq: 'daily' },
+    { loc: 'https://freesong.in/search', priority: '0.8', freq: 'daily' },
+    { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
+    { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
+    { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
+    { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
+    { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
+  ];
+
+  app.get('/sitemap.xml', async (req, res) => {
+    let urls = SITEMAP_BASE;
+    try {
+      const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
+      const blocked = new Set((rows || []).filter(r => Number(r.noindex) === 1).map(r => r.pagePath));
+      if (blocked.size > 0) {
+        urls = SITEMAP_BASE.filter(u => !blocked.has(new URL(u.loc).pathname));
+      }
+    } catch {}
+    const today = new Date().toISOString().split('T')[0];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+      .map(u => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
+      .join('\n')}\n</urlset>`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.send(xml);
+  });
+
+  // ── SEO-injected HTML for document requests ────────────────────────────────
+  // Search Console does NOT execute JavaScript, so the GSC verification tag,
+  // per-page robots meta and admin metadata must exist in the RAW served HTML.
   let cachedIndexHtml = null;
-  const getIndexHtmlWithSeo = async () => {
+  const getIndexHtmlWithSeo = async (reqPath = '/') => {
     if (!cachedIndexHtml) {
       cachedIndexHtml = await fs.promises.readFile(path.join(distPath, 'index.html'), 'utf8');
     }
     let html = cachedIndexHtml;
     try {
-      const rows = await query("SELECT config_value AS configValue FROM seo_config WHERE config_key = 'gscVerification' LIMIT 1");
-      const gsc = (rows && rows[0]?.configValue || '').replace(/[<>"']/g, '').trim();
+      const cfgRows = await query("SELECT config_value AS configValue FROM seo_config WHERE config_key = 'gscVerification' LIMIT 1");
+      const gsc = (cfgRows && cfgRows[0]?.configValue || '').replace(/[<>"']/g, '').trim();
       if (gsc && !html.includes('google-site-verification')) {
         html = html.replace('</head>', `    <meta name="google-site-verification" content="${gsc}" />\n  </head>`);
+      }
+    } catch {}
+    try {
+      const rows = await query('SELECT page_path AS pagePath, title, description, keywords, noindex FROM seo_overrides LIMIT 200');
+      const override = (rows || []).find(r => r.pagePath === reqPath);
+      if (override) {
+        const noindexed = Number(override.noindex) === 1;
+        const robotsValue = noindexed
+          ? 'noindex, nofollow'
+          : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+        if (/<meta name="robots"/.test(html)) {
+          html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/, `<meta name="robots" content="${robotsValue}" />`);
+        } else {
+          html = html.replace('</head>', `    <meta name="robots" content="${robotsValue}" />\n  </head>`);
+        }
+        if (override.title) {
+          html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(String(override.title))}</title>`);
+        }
+        if (override.description) {
+          html = html.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${escapeHtml(String(override.description))}" />`);
+        }
+        if (override.keywords) {
+          html = html.replace(/<meta name="keywords" content="[^"]*"\s*\/?>/, `<meta name="keywords" content="${escapeHtml(String(override.keywords))}" />`);
+        }
       }
     } catch {}
     return html;
   };
 
-  // SEO-injected HTML for document requests (extensionless paths like /, /explore, /seo)
+  // Extensionless paths (/, /explore, /seo...) get the SEO-injected document
   app.use(async (req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
     if (path.extname(req.path)) return next(); // static files fall through to express.static
     try {
-      const html = await getIndexHtmlWithSeo();
+      const html = await getIndexHtmlWithSeo(req.path);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(html);
     } catch {

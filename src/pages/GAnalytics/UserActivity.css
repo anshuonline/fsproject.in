@@ -1,0 +1,457 @@
+.fs-ga-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.fs-ga-act-header-spin {
+  margin-left: auto;
+}
+
+/* ── Mode Filter Chips ── */
+.fs-ga-act-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fs-ga-act-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.fs-ga-act-chip:hover {
+  color: var(--color-text-primary);
+  background: var(--color-card-hover);
+  border-color: var(--color-card-active);
+}
+
+.fs-ga-act-chip:active {
+  transform: scale(0.97);
+}
+
+.fs-ga-act-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.fs-ga-act-chip.active {
+  color: #000000;
+}
+
+.fs-ga-act-chip.active .fs-ga-act-chip-dot {
+  opacity: 0;
+}
+
+.fs-ga-act-chip.active.total {
+  background: rgb(0, 200, 83);
+  border-color: rgb(0, 200, 83);
+}
+
+.fs-ga-act-chip.active.visits {
+  background: rgb(38, 198, 218);
+  border-color: rgb(38, 198, 218);
+}
+
+.fs-ga-act-chip.active.searches {
+  background: rgb(255, 193, 7);
+  border-color: rgb(255, 193, 7);
+}
+
+.fs-ga-act-chip.active.plays {
+  background: rgb(118, 255, 3);
+  border-color: rgb(118, 255, 3);
+}
+
+/* ── Insight Strip ── */
+.fs-ga-act-insights {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.fs-ga-act-insight {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.fs-ga-act-insight svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.fs-ga-act-insight.quiet {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.fs-ga-act-insight.quiet svg {
+  color: var(--color-text-muted);
+}
+
+/* ── Heatmap Card ── */
+.fs-ga-act-heat-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.fs-ga-act-heat-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: 4px 4px 6px;
+}
+
+.fs-ga-act-heat-grid {
+  display: grid;
+  grid-template-columns: 44px repeat(24, minmax(16px, 1fr));
+  gap: 3px;
+  min-width: 560px;
+}
+
+.fs-ga-act-heat-corner {
+  height: 18px;
+}
+
+.fs-ga-act-heat-hour-label {
+  height: 18px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fs-ga-act-heat-day-label {
+  align-self: center;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--color-card);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-right: 6px;
+  text-align: left;
+}
+
+.fs-ga-act-heat-day-label.today {
+  color: var(--color-primary);
+}
+
+.fs-ga-act-heat-cell {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 3px;
+  background: var(--color-bg-secondary);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.fs-ga-act-heat-cell.filled:hover {
+  transform: scale(1.22);
+  filter: brightness(1.25) saturate(1.1);
+  z-index: 3;
+  position: relative;
+}
+
+.fs-ga-act-heat-cell.peak {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75), 0 0 12px rgba(0, 200, 83, 0.45);
+}
+
+.fs-ga-act-heat-cell.now {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.4);
+}
+
+.fs-ga-act-heat-cell.peak.now {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75), 0 0 12px rgba(0, 200, 83, 0.45), inset 0 0 0 1.5px rgba(255, 255, 255, 0.4);
+}
+
+.fs-ga-act-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.fs-ga-act-heat-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* ── Floating Heatmap Tooltip ── */
+.fs-ga-heat-tip {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 10px));
+  pointer-events: none;
+  z-index: 60;
+  animation: fs-ga-heat-tip-in 0.14s ease;
+}
+
+@keyframes fs-ga-heat-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 6px)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px)) scale(1);
+  }
+}
+
+.fs-ga-heat-tip-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: #212121;
+  border: 1px solid #333333;
+  border-radius: 10px;
+  padding: 10px 13px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
+.fs-ga-heat-tip-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #afafaf);
+  letter-spacing: 0.02em;
+}
+
+.fs-ga-heat-tip-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.fs-ga-heat-tip-unit {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #707070);
+}
+
+.fs-ga-heat-tip-breakdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #707070);
+}
+
+.fs-ga-heat-tip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.fs-ga-heat-tip-breakdown .fs-ga-heat-tip-dot:first-child {
+  margin-left: 0;
+}
+
+.fs-ga-heat-tip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-top-color: #212121;
+}
+
+/* ── Bar Charts (Searches by Hour, Busiest Days) ── */
+.fs-ga-act-chart-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.fs-ga-act-bars {
+  display: flex;
+  gap: 8px;
+  height: 170px;
+}
+
+.fs-ga-act-bars.days {
+  height: 190px;
+}
+
+.fs-ga-act-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+}
+
+.fs-ga-act-bar-track {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.fs-ga-act-bar {
+  width: 100%;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: linear-gradient(180deg, var(--color-primary), rgba(0, 200, 83, 0.35));
+  transition: height var(--transition-smooth);
+}
+
+.fs-ga-act-bar.days {
+  background: linear-gradient(180deg, var(--color-accent), rgba(118, 255, 3, 0.35));
+}
+
+.fs-ga-act-bar-col.peak .fs-ga-act-bar {
+  background: linear-gradient(180deg, var(--color-primary-hover), rgba(0, 230, 118, 0.45));
+  box-shadow: 0 0 14px rgba(0, 230, 118, 0.35);
+}
+
+.fs-ga-act-bar-col.peak .fs-ga-act-bar.days {
+  background: linear-gradient(180deg, var(--color-accent), rgba(118, 255, 3, 0.5));
+}
+
+.fs-ga-act-bar-value {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  min-height: 14px;
+}
+
+.fs-ga-act-bar-label {
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  min-height: 13px;
+}
+
+/* ChartTooltip hover support (ChartTooltip.css is global) */
+.fs-ga-act-bar-col:hover .fs-ga-chart-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.fs-ga-act-bar-col:first-child .fs-ga-chart-tooltip {
+  left: 0;
+  transform: translateX(0) translateY(6px) scale(0.94);
+}
+
+.fs-ga-act-bar-col:first-child:hover .fs-ga-chart-tooltip {
+  transform: translateX(0) translateY(0) scale(1);
+}
+
+.fs-ga-act-bar-col:first-child .fs-ga-chart-tooltip-arrow {
+  left: 14px;
+  transform: translateX(0);
+}
+
+.fs-ga-act-bar-col:last-child .fs-ga-chart-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(6px) scale(0.94);
+}
+
+.fs-ga-act-bar-col:last-child:hover .fs-ga-chart-tooltip {
+  transform: translateX(0) translateY(0) scale(1);
+}
+
+.fs-ga-act-bar-col:last-child .fs-ga-chart-tooltip-arrow {
+  left: auto;
+  right: 14px;
+  transform: translateX(0);
+}
+
+.fs-ga-act-bar-col:hover .fs-ga-act-bar {
+  filter: brightness(1.3) saturate(1.1);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .fs-ga-act-bars.days {
+    height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fs-ga-activity {
+    gap: 22px;
+  }
+
+  .fs-ga-act-heat-card,
+  .fs-ga-act-chart-card {
+    padding: 14px;
+  }
+
+  .fs-ga-act-heat-grid {
+    grid-template-columns: 38px repeat(24, minmax(14px, 1fr));
+    gap: 2px;
+    min-width: 520px;
+  }
+
+  .fs-ga-act-bars {
+    height: 120px;
+    gap: 5px;
+  }
+
+  .fs-ga-act-bars.days {
+    height: 130px;
+  }
+
+  .fs-ga-act-bar-value {
+    font-size: 0.62rem;
+  }
+
+  .fs-ga-act-chip {
+    padding: 7px 13px;
+    font-size: 0.8rem;
+  }
+
+  .fs-ga-act-insights {
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fs-ga-act-insight {
+    font-size: 0.8rem;
+  }
+}
