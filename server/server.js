@@ -109,9 +109,15 @@ app.get('/api/home', async (req, res) => {
     }
   } catch {}
 
+  // User identity for "Made for {name}" sections (guests fall back to "you")
+  const userName = (req.query.name || '').toString().slice(0, 40).trim();
+  const userPhoto = /^https:\/\//.test(req.query.photo || '') ? req.query.photo.toString().slice(0, 500) : '';
+  const userMeta = { name: userName, photo: userPhoto };
+  const metaKey = `${userName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}_${(userPhoto || '').length}`;
+
   const historyKey = (userHistory[0]?.videoId || userHistory[0]?.title || userHistory[0]?.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const likesKey = userLikes.slice(0, 8).map(l => l?.videoId || '').filter(Boolean).join('_');
-  const cacheKey = `home_algo_v8_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}_${likesKey}`;
+  const cacheKey = `home_algo_v9_${userGenres.slice().sort().join('_')}_${userArtists.slice().sort().join('_')}_${historyKey}_${likesKey}_${metaKey}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -123,7 +129,8 @@ app.get('/api/home', async (req, res) => {
       userHistory,
       getCached,
       setCache,
-      userLikes
+      userLikes,
+      userMeta
     );
 
     setCache(cacheKey, feed, 10 * 60 * 1000); // 10 min cache
@@ -3179,11 +3186,12 @@ function sanitizeSeoText(value, max) {
   return clean.replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-// ── SEO base rules & static file regeneration ────────────────────────────────
-// Hostinger's CDN (hcdn) serves robots.txt & sitemap.xml DIRECTLY from the
-// deployed folder, bypassing Node. So on every override change (and startup)
-// the physical files are regenerated in both public/ and dist/ — the CDN then
-// serves the updated files instantly without a restart.
+// ── SEO base rules ───────────────────────────────────────────────────────────
+// robots.txt & sitemap.xml are served DYNAMICALLY by Express (never as physical
+// static files). A static hcdn-served copy bypasses Node and its response lacks
+// cache headers, which leads Search Console to report "Couldn't fetch" — the
+// same setup on ganatube.in (Express-served) works flawlessly. Non-static paths
+// fall through hcdn to Node, so these routes always execute.
 
 const ROBOTS_BASE = `# FreeSong.in — Ads Free Music Streaming
 # https://freesong.in
@@ -3259,27 +3267,11 @@ function buildSitemapXml(overrides) {
 }
 
 async function regenerateStaticSeoFiles() {
-  try {
-    const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
-    const overrides = rows || [];
-    const robots = buildRobotsTxt(overrides);
-    const sitemap = buildSitemapXml(overrides);
-
-    const projectRoot = path.join(__dirname, '..');
-    const targets = [path.join(projectRoot, 'public'), path.join(projectRoot, 'dist')];
-    for (const dir of targets) {
-      try {
-        if (fs.existsSync(dir)) {
-          fs.writeFileSync(path.join(dir, 'robots.txt'), robots);
-          fs.writeFileSync(path.join(dir, 'sitemap.xml'), sitemap);
-        }
-      } catch {}
-    }
-    return true;
-  } catch (err) {
-    console.warn('Static SEO file regeneration error:', err.message);
-    return false;
-  }
+  // Physical robots.txt/sitemap.xml files are intentionally NOT written anymore:
+  // hcdn serves static files directly (bypassing Node) and that static path is
+  // what caused Search Console "Couldn't fetch". The dynamic Express routes
+  // below serve fresh, correctly-cached responses instead.
+  return true;
 }
 
 // List all SEO overrides (token protected)
@@ -3461,7 +3453,7 @@ if (fs.existsSync(distPath)) {
       robots = buildRobotsTxt(rows || []);
     } catch {}
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.setHeader('Cache-Control', 'public, max-age=0');
     res.send(robots);
   });
 
@@ -3475,7 +3467,7 @@ if (fs.existsSync(distPath)) {
       xml = buildSitemapXml([]);
     }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.setHeader('Cache-Control', 'public, max-age=0');
     res.setHeader('X-Robots-Tag', 'noindex');
     res.send(xml);
   });

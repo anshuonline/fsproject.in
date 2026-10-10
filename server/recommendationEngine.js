@@ -994,316 +994,9 @@ const GENIUS_TIME_BUCKETS = [
   }
 ];
 
-export function generateShelfPlan(preferences = {}, history = [], likes = []) {
-  const userArtists = (preferences.artists || []).filter(Boolean);
-  const userGenres = (preferences.genres || []).filter(Boolean);
-
-  // Smart taste profile: learns from liked songs, play history & onboarding choices
-  const taste = buildTasteProfile(preferences, history, likes);
-
-  // Artist pool: onboarding choices first, then artists inferred from likes & history
-  const primaryArtists = [...userArtists];
-  taste.topArtists.forEach(a => {
-    if (!primaryArtists.some(x => matchesArtist(x, a))) primaryArtists.push(a);
-  });
-  if (primaryArtists.length === 0) primaryArtists.push('Arijit Singh', 'Diljit Dosanjh', 'Taylor Swift');
-
-  const primaryGenres = userGenres.length > 0 ? userGenres : ['bollywood', 'punjabi', 'lofi'];
-
-  const shelves = [];
-  const mainArtist = primaryArtists[0] || 'Arijit Singh';
-  const mainGenre = primaryGenres[0].toLowerCase();
-  const capGenre = mainGenre.charAt(0).toUpperCase() + mainGenre.slice(1);
-
-  // 1. Real-Time Listening History Driven Shelves (TOP PRIORITY)
-  if (history && history.length > 0) {
-    const recentItem = history[0];
-    if (recentItem?.videoId) {
-      const cleanTitle = cleanSongTitle(recentItem.title) || recentItem.title;
-      shelves.push({
-        id: 'shelf-history-radio-0',
-        eyebrow: 'RADIO WAVE • BASED ON RECENT PLAY',
-        title: `Songs like ${cleanTitle}`,
-        videoId: recentItem.videoId,
-        artistHint: recentItem.artist,
-        type: 'radio_songs',
-        category: 'history'
-      });
-
-      if (recentItem.artist) {
-        const isFollowed = primaryArtists.some(
-          a => matchesArtist(a, recentItem.artist)
-        );
-        if (!isFollowed) {
-          shelves.push({
-            id: 'shelf-history-artist-0',
-            eyebrow: `MORE FROM ${(recentItem.artist || '').toUpperCase()}`,
-            title: `More from ${recentItem.artist}`,
-            searchQuery: `${recentItem.artist} new songs`,
-            artistFilter: recentItem.artist,
-            type: 'artist_songs',
-            category: 'history'
-          });
-        }
-      }
-    }
-
-    // Second recent track radio wave
-    if (history.length > 1 && history[1]?.videoId && history[1].videoId !== history[0]?.videoId) {
-      const secondItem = history[1];
-      const secondCleanTitle = cleanSongTitle(secondItem.title) || secondItem.title;
-      shelves.push({
-        id: 'shelf-history-radio-1',
-        eyebrow: 'CONTINUE LISTENING',
-        title: `Songs like ${secondCleanTitle}`,
-        videoId: secondItem.videoId,
-        artistHint: secondItem.artist,
-        type: 'radio_songs',
-        category: 'history'
-      });
-    }
-
-    // ── GENIUS: "On Repeat" — replay-count analysis resurfaces the songs the
-    // user keeps coming back to (Spotify's killer feature, done live from
-    // history with zero extra API calls)
-    const replayCounts = new Map();
-    for (const h of history) {
-      if (!h?.videoId) continue;
-      const cur = replayCounts.get(h.videoId) || { ...h, count: 0 };
-      cur.count += 1;
-      replayCounts.set(h.videoId, cur);
-    }
-    const onRepeatSongs = [...replayCounts.values()]
-      .filter(x => x.count >= 2)
-      .sort((a, b) => b.count - a.count);
-    if (onRepeatSongs.length >= 2) {
-      shelves.push({
-        id: 'shelf-on-repeat',
-        eyebrow: 'ON REPEAT • ON LOOP IN YOUR HEAD',
-        title: "Songs you can't stop playing",
-        type: 'history_items',
-        category: 'history',
-        items: onRepeatSongs.slice(0, 8).map(h => ({
-          videoId: h.videoId,
-          title: cleanSongTitle(h.title) || h.title,
-          artist: h.artist || 'Artist',
-          thumbnail: h.thumbnail || (h.videoId ? `https://i.ytimg.com/vi/${h.videoId}/hqdefault.jpg` : ''),
-          duration: h.duration || 0,
-          durationText: h.durationText || '',
-          type: 'song'
-        }))
-      });
-    }
-
-    // ── GENIUS: "Jump Back In" — instant resurfacing of the last unique plays
-    if (taste.recentSongs.length >= 3) {
-      shelves.push({
-        id: 'shelf-jump-back-in',
-        eyebrow: 'JUMP BACK IN',
-        title: 'Pick up where you left off',
-        type: 'history_items',
-        category: 'history',
-        items: taste.recentSongs.map(s => ({
-          ...s,
-          thumbnail: s.thumbnail || (s.videoId ? `https://i.ytimg.com/vi/${s.videoId}/hqdefault.jpg` : ''),
-          duration: s.duration || 0,
-          durationText: s.durationText || '',
-          type: 'song'
-        }))
-      });
-    }
-  }
-
-  // 1b. "Because you liked" shelves — algorithmic radio seeded from user's liked songs
-  const usedRadioIds = new Set(
-    shelves.filter(s => s.type === 'radio_songs').map(s => s.videoId)
-  );
-  taste.topLikedSongs.slice(0, 2).forEach((likedSong, idx) => {
-    if (!likedSong?.videoId || usedRadioIds.has(likedSong.videoId)) return;
-    usedRadioIds.add(likedSong.videoId);
-    shelves.push({
-      id: `shelf-liked-radio-${idx}`,
-      eyebrow: 'BASED ON YOUR LIKES',
-      title: `Because you liked ${likedSong.title}`,
-      videoId: likedSong.videoId,
-      artistHint: likedSong.artist,
-      type: 'radio_songs',
-      category: 'likes'
-    });
-  });
-
-  // 2. QUICK PICKS (Genius rotation: blends main artist, liked artists, recent
-  // history artists and secondary taste artists — rotates every window)
-  const quickPickPool = [];
-  const seenQp = new Set();
-  const addQp = (q) => {
-    if (q && !seenQp.has(q.toLowerCase())) {
-      seenQp.add(q.toLowerCase());
-      quickPickPool.push(q);
-    }
-  };
-  addQp(`${mainArtist} top hits`);
-  addQp(taste.topLikedSongs[0]?.artist ? `${taste.topLikedSongs[0].artist} top songs` : null);
-  addQp(history?.[0]?.artist ? `${history[0].artist} hit songs` : null);
-  addQp(taste.topArtists[1] ? `${taste.topArtists[1]} top hits` : null);
-  addQp(`${mainArtist} best songs`);
-  const pickedQuickPick = pickGenreVariety(quickPickPool, 1, 'genius_quickpicks')[0] || `${mainArtist} top hits`;
-  shelves.push({
-    id: 'shelf-quickpicks',
-    eyebrow: 'START RADIO BASED ON A SONG',
-    title: 'Quick picks for you',
-    searchQuery: pickedQuickPick,
-    type: 'quickpicks',
-    category: 'picks'
-  });
-
-  // 2b. GENIUS TIME MACHINE — shelves matched to the user's moment of the day
-  // (IST). Weekend evenings get an extra party boost.
-  const istHour = getIstHour();
-  const istDay = (() => {
-    try {
-      return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date());
-    } catch {
-      return new Date().toLocaleDateString('en-US', { weekday: 'short' });
-    }
-  })();
-  const isWeekend = istDay === 'Sat' || istDay === 'Sun';
-  const timeBucket = GENIUS_TIME_BUCKETS.find(b => b.hours.includes(istHour)) || GENIUS_TIME_BUCKETS[2];
-  pickGenreVariety(timeBucket.picks, 2, `genius_time_${timeBucket.id}`).forEach((p, pi) => {
-    shelves.push({
-      id: `shelf-genius-time-${pi}`,
-      eyebrow: timeBucket.eyebrow,
-      title: p.title,
-      searchQuery: p.query,
-      type: 'songs',
-      category: 'mood'
-    });
-  });
-  if (isWeekend && (timeBucket.id === 'evening' || timeBucket.id === 'night')) {
-    shelves.push({
-      id: 'shelf-genius-weekend',
-      eyebrow: 'GENIUS WEEKEND MODE',
-      title: 'Weekend Party Starters',
-      searchQuery: 'weekend party songs bollywood',
-      type: 'songs',
-      category: 'mood'
-    });
-  }
-
-  // 3. LATEST RELEASES & FRESH DROPS (Brand new songs powered by official editorial releases & drops)
-  shelves.push({
-    id: 'shelf-latest-releases-main',
-    eyebrow: 'FRESH DROPS & NEW MUSIC',
-    title: 'Latest Releases & Fresh Drops',
-    genre: mainGenre,
-    type: 'latest_releases',
-    category: 'latest'
-  });
-
-  // 4. LIVE TRENDING CHART (Official YouTube Music Editorial Streaming Hitlists)
-  shelves.push({
-    id: 'shelf-official-trending-india',
-    eyebrow: 'OFFICIAL LIVE CHART',
-    title: 'India Trending (Top Weekly)',
-    chartKey: 'trending_india',
-    type: 'chart_songs',
-    category: 'hits'
-  });
-
-  // 5. OFFICIAL NEW ALBUMS & SINGLES (Official discography drops)
-  shelves.push({
-    id: 'shelf-new-albums',
-    eyebrow: 'OFFICIAL NEW RELEASES',
-    title: 'New Albums & Fresh Singles',
-    type: 'official_albums',
-    category: 'latest'
-  });
-
-  // 6. LATEST HITS & CHARTBUSTERS (Genre trending chart)
-  shelves.push({
-    id: 'shelf-latest-hits-main',
-    eyebrow: 'HOT ON THE CHARTS',
-    title: `Latest Hits: ${capGenre} & Trending`,
-    genre: mainGenre,
-    chartKey: OFFICIAL_CHARTS[mainGenre] ? mainGenre : 'bollywood',
-    type: 'chart_songs',
-    category: 'hits'
-  });
-
-  // 7. Signature Artist Best Songs
-  shelves.push({
-    id: 'shelf-art-best-0',
-    eyebrow: 'SIGNATURE ARTIST',
-    title: `Best of ${mainArtist}`,
-    searchQuery: `${mainArtist} hit songs`,
-    artistFilter: mainArtist,
-    type: 'artist_songs',
-    category: 'artist'
-  });
-
-  // 8. Signature Artist Playlist & Essentials
-  shelves.push({
-    id: 'shelf-art-special-0',
-    eyebrow: `${mainArtist.toUpperCase()} ESSENTIALS`,
-    title: `${mainArtist} Radio & Mixes`,
-    searchQuery: `${mainArtist} official playlist`,
-    type: 'playlists',
-    category: 'artist'
-  });
-
-  // 9. Secondary Followed Artists (Each gets 1 Best Of shelf + 1 Curated Spotlight shelf)
-  if (primaryArtists.length > 1) {
-    primaryArtists.slice(1, 4).forEach((artist, idx) => {
-      shelves.push({
-        id: `shelf-art-best-${idx + 1}`,
-        eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
-        title: `Best of ${artist}`,
-        searchQuery: `${artist} hit songs`,
-        artistFilter: artist,
-        type: 'artist_songs',
-        category: 'artist'
-      });
-
-      shelves.push({
-        id: `shelf-art-special-${idx + 1}`,
-        eyebrow: `${artist.toUpperCase()} SPOTLIGHT`,
-        title: `${artist} Special`,
-        searchQuery: `${artist} official playlist`,
-        type: 'playlists',
-        category: 'artist'
-      });
-    });
-  } else {
-    shelves.push({
-      id: 'shelf-art-romantic',
-      eyebrow: 'HEARTFELT & EMOTIONAL',
-      title: `${mainArtist} Romantic Melodies`,
-      searchQuery: `${mainArtist} romantic songs`,
-      type: 'songs',
-      category: 'mood'
-    });
-
-    shelves.push({
-      id: 'shelf-art-party',
-      eyebrow: 'HIGH ENERGY & DANCE',
-      title: `Party with ${mainArtist}`,
-      searchQuery: `${mainArtist} party dance songs`,
-      type: 'songs',
-      category: 'mood'
-    });
-
-    shelves.push({
-      id: 'shelf-art-acoustic',
-      eyebrow: 'STRIPPED DOWN & RAW',
-      title: `${mainArtist} Acoustic & Unplugged`,
-      searchQuery: `${mainArtist} acoustic unplugged`,
-      type: 'songs',
-      category: 'mood'
-    });
-  }
-
-  // 10. Regional & Preferred Genre Shelves (Clean Smart Queries)
-  const GENRE_LABELS = {
+// ─── Genre Personalization Labels (module-level: shared by variety engine
+// and the Made-For sections without temporal-dead-zone pitfalls) ───────────
+const GENRE_LABELS = {
     tamil: { 
       name: 'Tamil Kollywood Hits', 
       latest: 'Latest Tamil Releases & Drops',
@@ -1565,6 +1258,382 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
     }
   };
 
+export function generateShelfPlan(preferences = {}, history = [], likes = [], userMeta = {}) {
+  const userArtists = (preferences.artists || []).filter(Boolean);
+  const userGenres = (preferences.genres || []).filter(Boolean);
+
+  // Smart taste profile: learns from liked songs, play history & onboarding choices
+  const taste = buildTasteProfile(preferences, history, likes);
+
+  // Artist pool: onboarding choices first, then artists inferred from likes & history
+  const primaryArtists = [...userArtists];
+  taste.topArtists.forEach(a => {
+    if (!primaryArtists.some(x => matchesArtist(x, a))) primaryArtists.push(a);
+  });
+  if (primaryArtists.length === 0) primaryArtists.push('Arijit Singh', 'Diljit Dosanjh', 'Taylor Swift');
+
+  const primaryGenres = userGenres.length > 0 ? userGenres : ['bollywood', 'punjabi', 'lofi'];
+
+  const shelves = [];
+  const mainArtist = primaryArtists[0] || 'Arijit Singh';
+  const mainGenre = primaryGenres[0].toLowerCase();
+  const capGenre = mainGenre.charAt(0).toUpperCase() + mainGenre.slice(1);
+
+  // 1. Real-Time Listening History Driven Shelves (TOP PRIORITY)
+  if (history && history.length > 0) {
+    const recentItem = history[0];
+    if (recentItem?.videoId) {
+      const cleanTitle = cleanSongTitle(recentItem.title) || recentItem.title;
+      shelves.push({
+        id: 'shelf-history-radio-0',
+        eyebrow: 'RADIO WAVE • BASED ON RECENT PLAY',
+        title: `Songs like ${cleanTitle}`,
+        videoId: recentItem.videoId,
+        artistHint: recentItem.artist,
+        type: 'radio_songs',
+        category: 'history'
+      });
+
+      if (recentItem.artist) {
+        const isFollowed = primaryArtists.some(
+          a => matchesArtist(a, recentItem.artist)
+        );
+        if (!isFollowed) {
+          shelves.push({
+            id: 'shelf-history-artist-0',
+            eyebrow: `MORE FROM ${(recentItem.artist || '').toUpperCase()}`,
+            title: `More from ${recentItem.artist}`,
+            searchQuery: `${recentItem.artist} new songs`,
+            artistFilter: recentItem.artist,
+            type: 'artist_songs',
+            category: 'history'
+          });
+        }
+      }
+    }
+
+    // Second recent track radio wave
+    if (history.length > 1 && history[1]?.videoId && history[1].videoId !== history[0]?.videoId) {
+      const secondItem = history[1];
+      const secondCleanTitle = cleanSongTitle(secondItem.title) || secondItem.title;
+      shelves.push({
+        id: 'shelf-history-radio-1',
+        eyebrow: 'CONTINUE LISTENING',
+        title: `Songs like ${secondCleanTitle}`,
+        videoId: secondItem.videoId,
+        artistHint: secondItem.artist,
+        type: 'radio_songs',
+        category: 'history'
+      });
+    }
+
+    // ── GENIUS: "On Repeat" — replay-count analysis resurfaces the songs the
+    // user keeps coming back to (Spotify's killer feature, done live from
+    // history with zero extra API calls)
+    const replayCounts = new Map();
+    for (const h of history) {
+      if (!h?.videoId) continue;
+      const cur = replayCounts.get(h.videoId) || { ...h, count: 0 };
+      cur.count += 1;
+      replayCounts.set(h.videoId, cur);
+    }
+    const onRepeatSongs = [...replayCounts.values()]
+      .filter(x => x.count >= 2)
+      .sort((a, b) => b.count - a.count);
+    if (onRepeatSongs.length >= 2) {
+      shelves.push({
+        id: 'shelf-on-repeat',
+        eyebrow: 'ON REPEAT • ON LOOP IN YOUR HEAD',
+        title: "Songs you can't stop playing",
+        type: 'history_items',
+        category: 'history',
+        items: onRepeatSongs.slice(0, 8).map(h => ({
+          videoId: h.videoId,
+          title: cleanSongTitle(h.title) || h.title,
+          artist: h.artist || 'Artist',
+          thumbnail: h.thumbnail || (h.videoId ? `https://i.ytimg.com/vi/${h.videoId}/hqdefault.jpg` : ''),
+          duration: h.duration || 0,
+          durationText: h.durationText || '',
+          type: 'song'
+        }))
+      });
+    }
+
+    // ── GENIUS: "Jump Back In" — instant resurfacing of the last unique plays
+    if (taste.recentSongs.length >= 3) {
+      shelves.push({
+        id: 'shelf-jump-back-in',
+        eyebrow: 'JUMP BACK IN',
+        title: 'Pick up where you left off',
+        type: 'history_items',
+        category: 'history',
+        items: taste.recentSongs.map(s => ({
+          ...s,
+          thumbnail: s.thumbnail || (s.videoId ? `https://i.ytimg.com/vi/${s.videoId}/hqdefault.jpg` : ''),
+          duration: s.duration || 0,
+          durationText: s.durationText || '',
+          type: 'song'
+        }))
+      });
+    }
+  }
+
+  // 1b. "Because you liked" shelves — algorithmic radio seeded from user's liked songs
+  const usedRadioIds = new Set(
+    shelves.filter(s => s.type === 'radio_songs').map(s => s.videoId)
+  );
+  taste.topLikedSongs.slice(0, 2).forEach((likedSong, idx) => {
+    if (!likedSong?.videoId || usedRadioIds.has(likedSong.videoId)) return;
+    usedRadioIds.add(likedSong.videoId);
+    shelves.push({
+      id: `shelf-liked-radio-${idx}`,
+      eyebrow: 'BASED ON YOUR LIKES',
+      title: `Because you liked ${likedSong.title}`,
+      videoId: likedSong.videoId,
+      artistHint: likedSong.artist,
+      type: 'radio_songs',
+      category: 'likes'
+    });
+  });
+
+  // 2. QUICK PICKS (Genius rotation: blends main artist, liked artists, recent
+  // history artists and secondary taste artists — rotates every window)
+  const quickPickPool = [];
+  const seenQp = new Set();
+  const addQp = (q) => {
+    if (q && !seenQp.has(q.toLowerCase())) {
+      seenQp.add(q.toLowerCase());
+      quickPickPool.push(q);
+    }
+  };
+  addQp(`${mainArtist} top hits`);
+  addQp(taste.topLikedSongs[0]?.artist ? `${taste.topLikedSongs[0].artist} top songs` : null);
+  addQp(history?.[0]?.artist ? `${history[0].artist} hit songs` : null);
+  addQp(taste.topArtists[1] ? `${taste.topArtists[1]} top hits` : null);
+  addQp(`${mainArtist} best songs`);
+  const pickedQuickPick = pickGenreVariety(quickPickPool, 1, 'genius_quickpicks')[0] || `${mainArtist} top hits`;
+  shelves.push({
+    id: 'shelf-quickpicks',
+    eyebrow: 'START RADIO BASED ON A SONG',
+    title: 'Quick picks for you',
+    searchQuery: pickedQuickPick,
+    type: 'quickpicks',
+    category: 'picks'
+  });
+
+  // 2a. MADE FOR {USER} — personalized mix playlists with the user's photo on
+  // the cover (Spotify Daily Mix style). Guests get "Made for you".
+  const displayName = (userMeta?.name || '').trim();
+  const firstName = displayName ? displayName.split(/\s+/)[0] : '';
+  const nameSlug = displayName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'you';
+  const userBadge = (firstName || displayName || 'F').charAt(0).toUpperCase();
+  const madeForLabel = displayName ? `MADE FOR ${displayName.toUpperCase()}` : 'MADE FOR YOU';
+  const mixCreator = displayName ? `${firstName}'s FreeSong Mix` : 'FreeSong Mix';
+  const secondMixArtist = taste.topArtists[1] || taste.topLikedSongs[0]?.artist || primaryArtists[1] || 'Diljit Dosanjh';
+  const thirdMixArtist = taste.topArtists[2] || primaryArtists[2] || 'Shreya Ghoshal';
+  const mainGenreHitsQuery = GENRE_LABELS[mainGenre]?.hitsQuery || `${mainGenre} trending songs`;
+  const userCover = userMeta?.photo || '';
+
+  shelves.push({
+    id: `shelf-made-for-${nameSlug}`,
+    eyebrow: madeForLabel,
+    title: displayName ? `Made for ${displayName}` : 'Made for you',
+    type: 'made_for',
+    category: 'personal',
+    mixes: [
+      {
+        id: `mix-1-${nameSlug}`,
+        title: 'Daily Mix 1',
+        creator: mixCreator,
+        badge: userBadge,
+        views: `${mainArtist} and more`,
+        thumbnail: userCover,
+        mixQueries: [`${mainArtist} top hits`, mainGenreHitsQuery]
+      },
+      {
+        id: `mix-2-${nameSlug}`,
+        title: 'Daily Mix 2',
+        creator: mixCreator,
+        badge: userBadge,
+        views: `${secondMixArtist} and more`,
+        thumbnail: userCover,
+        mixQueries: [`${secondMixArtist} best songs`, `${mainArtist} romantic songs`]
+      },
+      {
+        id: `mix-3-${nameSlug}`,
+        title: 'Discover Mix',
+        creator: mixCreator,
+        badge: userBadge,
+        views: 'Fresh finds picked for you',
+        thumbnail: userCover,
+        mixQueries: [`${mainGenre} new songs`, `${thirdMixArtist} hits`]
+      }
+    ]
+  });
+
+  // 2a-bis. {USER}'s MIX — a songs shelf named after the user, blending their
+  // top artists and top genre into one interleaved mix.
+  shelves.push({
+    id: `shelf-user-mix-${nameSlug}`,
+    eyebrow: madeForLabel,
+    title: firstName ? `${firstName}'s Mix` : 'Your Mix',
+    type: 'made_for_mix',
+    category: 'personal',
+    mixQueries: [
+      `${mainArtist} top hits`,
+      `${secondMixArtist} best songs`,
+      mainGenreHitsQuery
+    ]
+  });
+
+  // 2b. GENIUS TIME MACHINE — shelves matched to the user's moment of the day
+  // (IST). Weekend evenings get an extra party boost.
+  const istHour = getIstHour();
+  const istDay = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-US', { weekday: 'short' });
+    }
+  })();
+  const isWeekend = istDay === 'Sat' || istDay === 'Sun';
+  const timeBucket = GENIUS_TIME_BUCKETS.find(b => b.hours.includes(istHour)) || GENIUS_TIME_BUCKETS[2];
+  pickGenreVariety(timeBucket.picks, 2, `genius_time_${timeBucket.id}`).forEach((p, pi) => {
+    shelves.push({
+      id: `shelf-genius-time-${pi}`,
+      eyebrow: timeBucket.eyebrow,
+      title: p.title,
+      searchQuery: p.query,
+      type: 'songs',
+      category: 'mood'
+    });
+  });
+  if (isWeekend && (timeBucket.id === 'evening' || timeBucket.id === 'night')) {
+    shelves.push({
+      id: 'shelf-genius-weekend',
+      eyebrow: 'GENIUS WEEKEND MODE',
+      title: 'Weekend Party Starters',
+      searchQuery: 'weekend party songs bollywood',
+      type: 'songs',
+      category: 'mood'
+    });
+  }
+
+  // 3. LATEST RELEASES & FRESH DROPS (Brand new songs powered by official editorial releases & drops)
+  shelves.push({
+    id: 'shelf-latest-releases-main',
+    eyebrow: 'FRESH DROPS & NEW MUSIC',
+    title: 'Latest Releases & Fresh Drops',
+    genre: mainGenre,
+    type: 'latest_releases',
+    category: 'latest'
+  });
+
+  // 4. LIVE TRENDING CHART (Official YouTube Music Editorial Streaming Hitlists)
+  shelves.push({
+    id: 'shelf-official-trending-india',
+    eyebrow: 'OFFICIAL LIVE CHART',
+    title: 'India Trending (Top Weekly)',
+    chartKey: 'trending_india',
+    type: 'chart_songs',
+    category: 'hits'
+  });
+
+  // 5. OFFICIAL NEW ALBUMS & SINGLES (Official discography drops)
+  shelves.push({
+    id: 'shelf-new-albums',
+    eyebrow: 'OFFICIAL NEW RELEASES',
+    title: 'New Albums & Fresh Singles',
+    type: 'official_albums',
+    category: 'latest'
+  });
+
+  // 6. LATEST HITS & CHARTBUSTERS (Genre trending chart)
+  shelves.push({
+    id: 'shelf-latest-hits-main',
+    eyebrow: 'HOT ON THE CHARTS',
+    title: `Latest Hits: ${capGenre} & Trending`,
+    genre: mainGenre,
+    chartKey: OFFICIAL_CHARTS[mainGenre] ? mainGenre : 'bollywood',
+    type: 'chart_songs',
+    category: 'hits'
+  });
+
+  // 7. Signature Artist Best Songs
+  shelves.push({
+    id: 'shelf-art-best-0',
+    eyebrow: 'SIGNATURE ARTIST',
+    title: `Best of ${mainArtist}`,
+    searchQuery: `${mainArtist} hit songs`,
+    artistFilter: mainArtist,
+    type: 'artist_songs',
+    category: 'artist'
+  });
+
+  // 8. Signature Artist Playlist & Essentials
+  shelves.push({
+    id: 'shelf-art-special-0',
+    eyebrow: `${mainArtist.toUpperCase()} ESSENTIALS`,
+    title: `${mainArtist} Radio & Mixes`,
+    searchQuery: `${mainArtist} official playlist`,
+    type: 'playlists',
+    category: 'artist'
+  });
+
+  // 9. Secondary Followed Artists (Each gets 1 Best Of shelf + 1 Curated Spotlight shelf)
+  if (primaryArtists.length > 1) {
+    primaryArtists.slice(1, 4).forEach((artist, idx) => {
+      shelves.push({
+        id: `shelf-art-best-${idx + 1}`,
+        eyebrow: 'FOR FANS OF ' + artist.toUpperCase(),
+        title: `Best of ${artist}`,
+        searchQuery: `${artist} hit songs`,
+        artistFilter: artist,
+        type: 'artist_songs',
+        category: 'artist'
+      });
+
+      shelves.push({
+        id: `shelf-art-special-${idx + 1}`,
+        eyebrow: `${artist.toUpperCase()} SPOTLIGHT`,
+        title: `${artist} Special`,
+        searchQuery: `${artist} official playlist`,
+        type: 'playlists',
+        category: 'artist'
+      });
+    });
+  } else {
+    shelves.push({
+      id: 'shelf-art-romantic',
+      eyebrow: 'HEARTFELT & EMOTIONAL',
+      title: `${mainArtist} Romantic Melodies`,
+      searchQuery: `${mainArtist} romantic songs`,
+      type: 'songs',
+      category: 'mood'
+    });
+
+    shelves.push({
+      id: 'shelf-art-party',
+      eyebrow: 'HIGH ENERGY & DANCE',
+      title: `Party with ${mainArtist}`,
+      searchQuery: `${mainArtist} party dance songs`,
+      type: 'songs',
+      category: 'mood'
+    });
+
+    shelves.push({
+      id: 'shelf-art-acoustic',
+      eyebrow: 'STRIPPED DOWN & RAW',
+      title: `${mainArtist} Acoustic & Unplugged`,
+      searchQuery: `${mainArtist} acoustic unplugged`,
+      type: 'songs',
+      category: 'mood'
+    });
+  }
+
+  // 10. Regional & Preferred Genre Shelves (Clean Smart Queries)
+  
+
   primaryGenres.slice(0, 4).forEach((genre, idx) => {
     const g = genre.toLowerCase();
     const meta = GENRE_LABELS[g] || {
@@ -1763,7 +1832,7 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
 }
 
 // ─── Feed Builder with YTMusic Client ───────────────────────────────────────
-export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, cacheSet, likes = []) {
+export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, cacheSet, likes = [], userMeta = {}) {
   // 1. Retrieve or fetch YouTube Music official home sections
   let homeSections = [];
   const homeSecCacheKey = 'yt_home_sections_v5';
@@ -1785,7 +1854,7 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
   const officialQuickPicksSec = homeSections.find(s => s.title?.toLowerCase().includes('quick picks'));
 
   // 2. Generate customized shelf plan (learns from history + likes)
-  const shelfPlan = generateShelfPlan(preferences, history, likes);
+  const shelfPlan = generateShelfPlan(preferences, history, likes, userMeta);
 
   // 3. Populate shelves concurrently
   const populatedShelves = await Promise.all(
