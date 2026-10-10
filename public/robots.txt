@@ -13,6 +13,12 @@ Allow: /privacy
 Allow: /terms
 Allow: /dmca
 
+# Admin-enabled indexable pages (Allow wins over equal-length Disallow)
+Allow: /followed
+Allow: /login
+Allow: /history
+Allow: /register
+
 # Private user & app pages (require session, no unique content)
 Disallow: /library
 Disallow: /favorites
@@ -31,5 +37,3 @@ Disallow: /register
 # Admin area
 Disallow: /ganalytics
 Disallow: /seo
-
-Sitemap: https://freesong.in/sitemap.xml

@@ -3076,6 +3076,106 @@ function sanitizeSeoText(value, max) {
   return clean.replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
+// ── SEO base rules & static file regeneration ────────────────────────────────
+// Hostinger's CDN (hcdn) serves robots.txt & sitemap.xml DIRECTLY from the
+// deployed folder, bypassing Node. So on every override change (and startup)
+// the physical files are regenerated in both public/ and dist/ — the CDN then
+// serves the updated files instantly without a restart.
+
+const ROBOTS_BASE = `# FreeSong.in — Ads Free Music Streaming
+# https://freesong.in
+
+User-agent: *
+Allow: /
+Allow: /explore
+Allow: /search
+Allow: /album/
+Allow: /artist/
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /dmca
+
+# Private user & app pages (require session, no unique content)
+Disallow: /library
+Disallow: /favorites
+Disallow: /followed
+Disallow: /history
+Disallow: /profile
+Disallow: /settings
+Disallow: /playlist/
+Disallow: /confirm-delete
+Disallow: /reset-password
+
+# Auth pages
+Disallow: /login
+Disallow: /register
+
+# Admin area
+Disallow: /ganalytics
+Disallow: /seo
+`;
+
+const SITEMAP_BASE = [
+  { loc: 'https://freesong.in/', priority: '1.0', freq: 'daily' },
+  { loc: 'https://freesong.in/explore', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
+  { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
+  { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
+  { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
+  { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
+];
+
+function buildRobotsTxt(overrides) {
+  const allowLines = (overrides || [])
+    .filter(r => Number(r.noindex) === 0 && r.pagePath && r.pagePath.startsWith('/'))
+    .map(r => `Allow: ${r.pagePath}`)
+    .join('\n');
+  let robots = ROBOTS_BASE;
+  if (allowLines) {
+    robots = robots.replace(
+      '# Private user & app pages (require session, no unique content)\n',
+      `# Admin-enabled indexable pages (Allow wins over equal-length Disallow)\n${allowLines}\n\n# Private user & app pages (require session, no unique content)\n`
+    );
+  }
+  return robots;
+}
+
+function buildSitemapXml(overrides) {
+  const blocked = new Set((overrides || []).filter(r => Number(r.noindex) === 1).map(r => r.pagePath));
+  const urls = SITEMAP_BASE.filter(u => !blocked.has(new URL(u.loc).pathname));
+  const today = new Date().toISOString().split('T')[0];
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+    .map(u => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
+    .join('\n')}\n</urlset>`;
+}
+
+async function regenerateStaticSeoFiles() {
+  try {
+    const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
+    const overrides = rows || [];
+    const robots = buildRobotsTxt(overrides);
+    const sitemap = buildSitemapXml(overrides);
+
+    const projectRoot = path.join(__dirname, '..');
+    const targets = [path.join(projectRoot, 'public'), path.join(projectRoot, 'dist')];
+    for (const dir of targets) {
+      try {
+        if (fs.existsSync(dir)) {
+          fs.writeFileSync(path.join(dir, 'robots.txt'), robots);
+          fs.writeFileSync(path.join(dir, 'sitemap.xml'), sitemap);
+        }
+      } catch {}
+    }
+    return true;
+  } catch (err) {
+    console.warn('Static SEO file regeneration error:', err.message);
+    return false;
+  }
+}
+
 // List all SEO overrides (token protected)
 app.get('/api/analytics/seo', async (req, res) => {
   const session = getAnalyticsSession(req.query.token);
@@ -3121,6 +3221,7 @@ app.post('/api/analytics/seo', async (req, res) => {
         keywords = VALUES(keywords),
         noindex = VALUES(noindex)
     `, [pagePath, title, description, keywords, noindex]);
+    await regenerateStaticSeoFiles();
     res.json({ success: true, pagePath });
   } catch (err) {
     console.warn('SEO override save error:', err.message);
@@ -3138,6 +3239,7 @@ app.delete('/api/analytics/seo', async (req, res) => {
 
   try {
     await query('DELETE FROM seo_overrides WHERE page_path = ?', [pagePath]);
+    await regenerateStaticSeoFiles();
     res.json({ success: true, pagePath });
   } catch (err) {
     console.warn('SEO override delete error:', err.message);
@@ -3244,85 +3346,25 @@ if (fs.existsSync(distPath)) {
   // ── Dynamic robots.txt (admin-managed indexability) ────────────────────────
   // SEO portal "index" toggles emit Allow lines that beat equal-length Disallow
   // rules (Google robots.txt spec), so Search Console can crawl enabled pages.
-  const ROBOTS_BASE = `# FreeSong.in — Ads Free Music Streaming
-# https://freesong.in
-
-User-agent: *
-Allow: /
-Allow: /explore
-Allow: /search
-Allow: /album/
-Allow: /artist/
-Allow: /about
-Allow: /contact
-Allow: /privacy
-Allow: /terms
-Allow: /dmca
-
-# Private user & app pages (require session, no unique content)
-Disallow: /library
-Disallow: /favorites
-Disallow: /followed
-Disallow: /history
-Disallow: /profile
-Disallow: /settings
-Disallow: /playlist/
-Disallow: /confirm-delete
-Disallow: /reset-password
-
-# Auth pages
-Disallow: /login
-Disallow: /register
-
-# Admin area
-Disallow: /ganalytics
-Disallow: /seo
-`;
-
   app.get('/robots.txt', async (req, res) => {
     let robots = ROBOTS_BASE;
     try {
       const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
-      const allowLines = (rows || [])
-        .filter(r => Number(r.noindex) === 0 && r.pagePath && r.pagePath.startsWith('/'))
-        .map(r => `Allow: ${r.pagePath}`)
-        .join('\n');
-      if (allowLines) {
-        robots = robots.replace(
-          '# Private user & app pages (require session, no unique content)\n',
-          `# Admin-enabled indexable pages (Allow wins over equal-length Disallow)\n${allowLines}\n\n# Private user & app pages (require session, no unique content)\n`
-        );
-      }
+      robots = buildRobotsTxt(rows || []);
     } catch {}
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.send(robots);
   });
 
   // ── Dynamic sitemap.xml (noindexed pages excluded automatically) ───────────
-  const SITEMAP_BASE = [
-    { loc: 'https://freesong.in/', priority: '1.0', freq: 'daily' },
-    { loc: 'https://freesong.in/explore', priority: '0.9', freq: 'daily' },
-    { loc: 'https://freesong.in/search', priority: '0.8', freq: 'daily' },
-    { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
-    { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
-    { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
-    { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
-    { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
-  ];
-
   app.get('/sitemap.xml', async (req, res) => {
-    let urls = SITEMAP_BASE;
+    let xml;
     try {
       const rows = await query('SELECT page_path AS pagePath, noindex FROM seo_overrides LIMIT 200');
-      const blocked = new Set((rows || []).filter(r => Number(r.noindex) === 1).map(r => r.pagePath));
-      if (blocked.size > 0) {
-        urls = SITEMAP_BASE.filter(u => !blocked.has(new URL(u.loc).pathname));
-      }
-    } catch {}
-    const today = new Date().toISOString().split('T')[0];
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-      .map(u => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
-      .join('\n')}\n</urlset>`;
+      xml = buildSitemapXml(rows || []);
+    } catch {
+      xml = buildSitemapXml([]);
+    }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.send(xml);
   });
@@ -3396,5 +3438,5 @@ Disallow: /seo
 
 app.listen(PORT, () => {
   console.log(`FreeSong.in API server running on port ${PORT}`);
-  testDbConnection();
+  testDbConnection().then(() => regenerateStaticSeoFiles());
 });
