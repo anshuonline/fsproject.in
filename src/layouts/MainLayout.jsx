@@ -5,6 +5,7 @@ import { Sidebar } from '../components/Navigation/Sidebar';
 import { MobileNav } from '../components/Navigation/MobileNav';
 import { GlobalPlayer } from '../components/Player/GlobalPlayer';
 import { FullScreenPlayer } from '../components/Player/FullScreenPlayer';
+import { MiniPlayer } from '../components/Player/MiniPlayer';
 import { QueueDrawer } from '../components/Player/QueueDrawer';
 import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
 import { EditPlaylistModal } from '../components/Common/EditPlaylistModal';
@@ -108,6 +109,7 @@ export function MainLayout() {
 
       {/* Global Overlays & Players */}
       <GlobalPlayer />
+      <MiniPlayer />
       <FullScreenPlayer />
       <QueueDrawer />
       <MobileNav />

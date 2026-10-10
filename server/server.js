@@ -3472,6 +3472,16 @@ if (fs.existsSync(distPath)) {
     return html;
   };
 
+  // SEO files: hard-guaranteed serving with correct content-type (never HTML)
+  app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    res.sendFile(path.join(distPath, 'sitemap.xml'));
+  });
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.sendFile(path.join(distPath, 'robots.txt'));
+  });
+
   // Extensionless paths (/, /explore, /seo...) get the SEO-injected document
   app.use(async (req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
@@ -3488,8 +3498,10 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 
   // SPA fallback: any non-API GET request serves index.html
+  // (sitemap.xml / robots.txt are never caught — real files must win)
   app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    const p = req.path.toLowerCase();
+    if (req.method === 'GET' && !p.startsWith('/api') && !p.endsWith('sitemap.xml') && !p.endsWith('robots.txt')) {
       return res.sendFile(path.join(distPath, 'index.html'));
     }
     next();

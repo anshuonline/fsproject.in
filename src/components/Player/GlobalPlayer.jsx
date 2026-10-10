@@ -11,6 +11,7 @@ import {
   VolumeX,
   ListMusic,
   Maximize2,
+  PictureInPicture2,
   Heart,
   Loader2,
   MoreVertical
@@ -49,12 +50,15 @@ export function GlobalPlayer() {
     toggleShuffle,
     toggleRepeat,
     setIsFullScreen,
-    setIsQueueOpen
+    setIsQueueOpen,
+    isMiniPlayer,
+    toggleMiniPlayer
   } = usePlayer();
 
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu } = useContextMenu();
   const progressBarRef = useRef(null);
+  const supportsPip = typeof window !== 'undefined' && 'documentPictureInPicture' in window;
 
   // Local drag state: during volume drag only this component re-renders; context commits on release
   const [dragVolume, setDragVolume] = useState(null);
@@ -83,7 +87,7 @@ export function GlobalPlayer() {
     });
   };
 
-  if (!currentSong) return null;
+  if (!currentSong || isMiniPlayer) return null;
 
   const handleSeekChange = (e) => {
     const val = parseFloat(e.target.value);
@@ -95,7 +99,7 @@ export function GlobalPlayer() {
 
   return (
     <div
-      className="fs-global-player"
+      className={`fs-global-player ${isPlaying ? 'playing' : ''}`}
       onContextMenu={(e) => {
         e.preventDefault();
         openMenu(currentSong, e);
@@ -124,6 +128,13 @@ export function GlobalPlayer() {
               className="fs-player-artwork"
               referrerPolicy="no-referrer"
             />
+            {isPlaying && (
+              <div className="fs-artwork-eq" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
           </div>
           <div className="fs-player-meta">
             <span className="fs-player-song-title truncate">{currentSong.title}</span>
@@ -266,6 +277,17 @@ export function GlobalPlayer() {
             <ListMusic size={19} />
             {queue.length > 0 && <span className="fs-queue-count">{queue.length}</span>}
           </button>
+
+          {supportsPip && (
+            <button
+              className="btn-icon fs-miniplayer-btn"
+              onClick={toggleMiniPlayer}
+              title="Miniplayer"
+              aria-label="Miniplayer"
+            >
+              <PictureInPicture2 size={18} />
+            </button>
+          )}
 
           <button
             className="btn-icon fs-fullscreen-btn"

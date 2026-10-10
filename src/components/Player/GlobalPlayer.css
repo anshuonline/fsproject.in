@@ -15,6 +15,12 @@
   display: flex;
   flex-direction: column;
   user-select: none;
+  animation: fs-player-slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fs-player-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .fs-player-micro-progress {
@@ -62,6 +68,38 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Spotify signature: bouncing equalizer badge over artwork while playing */
+.fs-artwork-eq {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  padding: 3px 4px;
+  border-radius: var(--radius-xs);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.fs-artwork-eq span {
+  width: 2.5px;
+  border-radius: 1px;
+  background-color: var(--color-primary-hover);
+  animation: fs-eq-bounce 0.9s ease-in-out infinite;
+}
+
+.fs-artwork-eq span:nth-child(1) { height: 55%; animation-delay: 0s; }
+.fs-artwork-eq span:nth-child(2) { height: 100%; animation-delay: 0.25s; }
+.fs-artwork-eq span:nth-child(3) { height: 70%; animation-delay: 0.5s; }
+
+@keyframes fs-eq-bounce {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
 }
 
 .fs-player-meta {
@@ -181,8 +219,8 @@
 
 /* Spotify signature: white circle play button, black icon */
 .fs-main-play-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
   background-color: var(--color-white);
   color: #000000;
@@ -191,17 +229,32 @@
   justify-content: center;
   border: none;
   cursor: pointer;
-  transition: transform 0.12s ease, background-color var(--transition-fast);
+  transition: transform 0.12s ease, background-color var(--transition-fast), box-shadow var(--transition-normal);
   margin: 0 4px;
+  will-change: transform;
 }
 
 .fs-main-play-btn:hover {
   background-color: var(--color-white);
-  transform: scale(1.07);
+  transform: scale(1.08);
 }
 
 .fs-main-play-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
+}
+
+/* Pro focus rings across all player controls */
+.fs-ctrl-btn:focus-visible,
+.fs-volume-btn:focus-visible,
+.fs-queue-btn:focus-visible,
+.fs-miniplayer-btn:focus-visible,
+.fs-fullscreen-btn:focus-visible,
+.fs-player-like-btn:focus-visible,
+.fs-player-more-btn:focus-visible,
+.fs-main-play-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
 }
 
 /* Scrubber */
@@ -344,14 +397,16 @@
   opacity: 1;
 }
 
-/* Queue + Fullscreen */
+/* Queue + Miniplayer + Fullscreen */
 .fs-queue-btn,
+.fs-miniplayer-btn,
 .fs-fullscreen-btn {
   color: #A7A7A7;
   transition: color var(--transition-fast), transform var(--transition-fast);
 }
 
 .fs-queue-btn:hover,
+.fs-miniplayer-btn:hover,
 .fs-fullscreen-btn:hover {
   color: var(--color-white);
   transform: scale(1.06);
@@ -448,5 +503,13 @@
 @media (max-width: 1100px) and (min-width: 769px) {
   .fs-player-volume-wrap {
     display: none;
+  }
+}
+
+/* ── Reduced motion: disable decorative animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .fs-global-player,
+  .fs-artwork-eq span {
+    animation: none;
   }
 }

@@ -13,6 +13,8 @@ Allow: /privacy
 Allow: /terms
 Allow: /dmca
 
+Sitemap: https://freesong.in/sitemap.xml
+
 # Admin-enabled indexable pages (Allow wins over equal-length Disallow)
 Allow: /followed
 Allow: /login

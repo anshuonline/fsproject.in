@@ -27,6 +27,7 @@ export function PlayerProvider({ children }) {
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'all' | 'one'
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isMiniPlayer, setIsMiniPlayer] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sleepTimer, setSleepTimerState] = useState(null); // null | { type: 'time'|'end_of_song', minutes, label, endTime }
@@ -785,6 +786,10 @@ export function PlayerProvider({ children }) {
     });
   }, []);
 
+  const toggleMiniPlayer = useCallback(() => {
+    setIsMiniPlayer(prev => !prev);
+  }, []);
+
   const addToQueue = useCallback((song) => {
     setQueue(prev => [...prev, song]);
   }, []);
@@ -895,6 +900,7 @@ export function PlayerProvider({ children }) {
         isShuffle,
         repeatMode,
         isFullScreen,
+        isMiniPlayer,
         isQueueOpen,
         isLoading,
         playSong,
@@ -918,6 +924,8 @@ export function PlayerProvider({ children }) {
         sleepTimer,
         setSleepTimer,
         setIsFullScreen,
+        setIsMiniPlayer,
+        toggleMiniPlayer,
         setIsQueueOpen,
         isAutoplay,
         toggleAutoplay,
