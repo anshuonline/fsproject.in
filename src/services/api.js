@@ -23,7 +23,7 @@ export function isEasyPassword(password) {
 }
 
 export const api = {
-  async getHomeFeed(prefs = null, history = null, likes = null) {
+  async getHomeFeed(prefs = null, history = null, likes = null, user = null) {
     try {
       let url = `${API_BASE}/home`;
       const params = new URLSearchParams();
@@ -37,6 +37,9 @@ export const api = {
             .filter(s => s.videoId)
         ));
       }
+      // Identity for "Made for {name}" sections (photo used on mix covers)
+      if (user?.name) params.set('name', user.name);
+      if (user?.picture) params.set('photo', user.picture);
       params.set('_t', Date.now().toString());
 
       const qs = params.toString();

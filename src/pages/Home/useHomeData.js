@@ -33,7 +33,8 @@ export function useHomeData() {
 
     try {
       setLoading(true);
-      const res = await api.getHomeFeed(prefs, history, likes);
+      const user = storage.getUser() || null;
+      const res = await api.getHomeFeed(prefs, history, likes, user);
       const nextData = res || { sections: [] };
       feedCache = { data: nextData, timestamp: Date.now(), key: cacheKey };
       setData(nextData);

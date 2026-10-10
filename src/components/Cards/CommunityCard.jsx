@@ -36,6 +36,9 @@ function CommunityCardBase({ item, queueContext = null }) {
   const handleCardClick = () => {
     if (item.videoId) {
       playSong(item, effectiveQueue);
+    } else if (item.songs && item.songs.length > 0) {
+      // Custom mixes (Made for you): play the embedded mix instantly
+      playSong(item.songs[0], item.songs);
     } else if (isAlbum) {
       navigate(`/album/${item.albumId || item.id}?name=${encodeURIComponent(item.title)}`);
     } else {

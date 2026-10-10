@@ -1864,6 +1864,78 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
         return { ...plan, items: (plan.items || []).slice(0, 12) };
       }
 
+      // ── TYPE: made_for (personalized mix playlists with user-photo covers) ──
+      if (plan.type === 'made_for' && Array.isArray(plan.mixes)) {
+        const cacheKey = `shelf_madefor_v1_${plan.id}`;
+        const cached = cacheGet(cacheKey);
+        if (cached && cached.length > 0) {
+          return { ...plan, items: cached };
+        }
+
+        const populatedMixes = await Promise.all(plan.mixes.map(async (mix) => {
+          const results = await Promise.all(
+            (mix.mixQueries || []).map(q => yt.searchSongs(q).catch(() => []))
+          );
+          const lists = results.map(r => (r || []).map(formatSong).filter(s => s && !isSpamOrJunkSong(s)));
+          const seen = new Set();
+          const songs = [];
+          let added = true;
+          while (added && songs.length < 12) {
+            added = false;
+            for (const list of lists) {
+              const next = list.shift();
+              if (next && !seen.has(next.videoId)) {
+                seen.add(next.videoId);
+                songs.push(next);
+                added = true;
+                if (songs.length >= 12) break;
+              }
+            }
+          }
+          return { ...mix, songs };
+        }));
+
+        const withSongs = populatedMixes.filter(m => m.songs.length >= 4);
+        if (withSongs.length > 0) {
+          cacheSet(cacheKey, withSongs, 15 * 60 * 1000);
+          return { ...plan, items: withSongs };
+        }
+        return { ...plan, items: [] };
+      }
+
+      // ── TYPE: made_for_mix (round-robin interleave of the user's taste sources) ──
+      if (plan.type === 'made_for_mix' && Array.isArray(plan.mixQueries)) {
+        const cacheKey = `shelf_usermix_v1_${plan.id}`;
+        const cached = cacheGet(cacheKey);
+        if (cached && cached.length > 0) {
+          return { ...plan, items: cached };
+        }
+
+        const results = await Promise.all(
+          plan.mixQueries.map(q => yt.searchSongs(q).catch(() => []))
+        );
+        const lists = results.map(r => (r || []).map(formatSong).filter(s => s && !isSpamOrJunkSong(s)));
+        const seen = new Set();
+        const mixed = [];
+        let added = true;
+        while (added && mixed.length < 16) {
+          added = false;
+          for (const list of lists) {
+            const next = list.shift();
+            if (next && !seen.has(next.videoId)) {
+              seen.add(next.videoId);
+              mixed.push(next);
+              added = true;
+              if (mixed.length >= 16) break;
+            }
+          }
+        }
+        if (mixed.length > 0) {
+          cacheSet(cacheKey, mixed, 15 * 60 * 1000);
+        }
+        return { ...plan, items: mixed };
+      }
+
       // ── TYPE: chart_songs (Direct YouTube Music Official Live Chart API) ──
       if (plan.type === 'chart_songs' && plan.chartKey) {
         const browseId = OFFICIAL_CHARTS[plan.chartKey];
