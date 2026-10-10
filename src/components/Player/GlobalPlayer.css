@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════════════════
+   Global Player Bar — Spotify Style
+   Left: artwork + meta | Center: controls + scrubber | Right: volume (hover reveal) + queue + fullscreen
+   ═══════════════════════════════════════════════════════════════ */
+
 .fs-global-player {
   position: fixed;
   bottom: 0;
@@ -27,30 +32,30 @@
 
 .fs-player-inner {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 2fr) 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 16px;
   gap: 16px;
 }
 
-/* Left Section */
+/* ── Left Section: Artwork + Meta ─────────────────────────── */
 .fs-player-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 30%;
-  min-width: 180px;
+  gap: 14px;
+  min-width: 0;
   cursor: pointer;
 }
 
 .fs-player-artwork-wrap {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: var(--radius-xs);
   overflow: hidden;
   background-color: var(--color-card);
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .fs-player-artwork {
@@ -62,64 +67,95 @@
 .fs-player-meta {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   overflow: hidden;
-  max-width: 220px;
+  min-width: 0;
 }
 
 .fs-player-song-title {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-text-primary);
   line-height: 1.3;
+  width: fit-content;
+  max-width: 100%;
+  transition: color var(--transition-fast);
 }
 
 .fs-player-song-artist {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-text-secondary);
+  width: fit-content;
+  max-width: 100%;
+  transition: color var(--transition-fast);
+}
+
+.fs-player-left:hover .fs-player-song-title {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fs-player-left:hover .fs-player-song-artist {
+  color: var(--color-text-primary);
 }
 
 .fs-player-like-btn {
   color: var(--color-text-muted);
   flex-shrink: 0;
+  transition: color var(--transition-fast), transform var(--transition-fast);
 }
 
-.fs-player-like-btn.liked {
+.fs-player-like-btn:hover {
+  color: var(--color-white);
+  transform: scale(1.08);
+}
+
+.fs-player-like-btn.liked,
+.fs-player-like-btn.liked:hover {
   color: var(--color-primary);
 }
 
 .fs-player-more-btn {
   color: var(--color-text-muted);
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.fs-player-left:hover .fs-player-more-btn,
+.fs-player-more-btn:focus-visible {
+  opacity: 1;
 }
 
 .fs-player-more-btn:hover {
   color: var(--color-white);
 }
 
-/* Center Section */
+/* ── Center Section: Controls + Scrubber ──────────────────── */
 .fs-player-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  flex: 1;
-  max-width: 650px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .fs-player-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .fs-ctrl-btn {
-  color: var(--color-text-secondary);
-  width: 34px;
-  height: 34px;
+  color: #A7A7A7;
+  width: 32px;
+  height: 32px;
+  transition: color var(--transition-fast), transform var(--transition-fast);
 }
 
 .fs-ctrl-btn:hover {
   color: var(--color-white);
+  transform: scale(1.06);
 }
 
 .fs-ctrl-btn.active {
@@ -134,40 +170,67 @@
 .fs-ctrl-btn.active::after {
   content: '';
   position: absolute;
-  bottom: 2px;
+  bottom: 1px;
   left: 50%;
   transform: translateX(-50%);
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background-color: var(--color-primary, #00C853);
-  box-shadow: 0 0 6px var(--color-primary, #00C853);
 }
 
+/* Spotify signature: white circle play button, black icon */
 .fs-main-play-btn {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-white);
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color var(--transition-fast);
+  margin: 0 4px;
 }
 
+.fs-main-play-btn:hover {
+  background-color: var(--color-white);
+  transform: scale(1.07);
+}
+
+.fs-main-play-btn:active {
+  transform: scale(0.97);
+}
+
+/* Scrubber */
 .fs-player-scrubber-row {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
+  max-width: 620px;
 }
 
 .fs-time-text {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  min-width: 32px;
+  font-size: 0.7rem;
+  color: #A7A7A7;
+  min-width: 36px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  transition: color var(--transition-fast);
+}
+
+.fs-player-scrubber-row:hover .fs-time-text {
+  color: var(--color-text-primary);
 }
 
 .fs-scrubber-track-wrap {
   flex: 1;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .fs-scrubber-input {
@@ -192,49 +255,98 @@
   height: 12px;
   border-radius: 50%;
   background: var(--color-white);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.fs-scrubber-input:hover::-webkit-slider-thumb {
+.fs-scrubber-input:hover::-webkit-slider-thumb,
+.fs-scrubber-input:focus-visible::-webkit-slider-thumb {
   opacity: 1;
 }
 
-/* Right Section */
+/* ── Right Section: Volume (hover reveal) + Queue + Fullscreen ── */
 .fs-player-right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  width: 25%;
-  min-width: 150px;
+  gap: 6px;
+  min-width: 0;
 }
 
+/* Volume: icon always visible, slider slides out on hover / keyboard focus */
 .fs-player-volume-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+}
+
+.fs-volume-btn {
+  color: #A7A7A7;
+  transition: color var(--transition-fast);
+}
+
+.fs-volume-btn:hover {
+  color: var(--color-white);
 }
 
 .fs-volume-input {
-  width: 80px;
+  width: 0;
+  opacity: 0;
+  margin-left: 0;
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
   border-radius: 2px;
   outline: none;
   cursor: pointer;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin-left 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.fs-player-volume-wrap:hover .fs-volume-input,
+.fs-player-volume-wrap:focus-within .fs-volume-input {
+  width: 92px;
+  opacity: 1;
+  margin-left: 8px;
+  pointer-events: auto;
+}
+
+/* Spotify touch: fill turns brand green while adjusting volume */
+.fs-player-volume-wrap:hover .fs-volume-input,
+.fs-player-volume-wrap:focus-within .fs-volume-input {
+  background: linear-gradient(to right, var(--color-primary-hover) var(--fs-vol-pct, 80%), #4d4d4d var(--fs-vol-pct, 80%)) !important;
 }
 
 .fs-volume-input::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: var(--color-white);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.fs-player-volume-wrap:hover .fs-volume-input::-webkit-slider-thumb,
+.fs-player-volume-wrap:focus-within .fs-volume-input::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* Queue + Fullscreen */
+.fs-queue-btn,
+.fs-fullscreen-btn {
+  color: #A7A7A7;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.fs-queue-btn:hover,
+.fs-fullscreen-btn:hover {
+  color: var(--color-white);
+  transform: scale(1.06);
 }
 
 .fs-queue-btn {
@@ -243,9 +355,9 @@
 
 .fs-queue-count {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 0.65rem;
+  top: 3px;
+  right: 3px;
+  font-size: 0.62rem;
   background-color: var(--color-primary);
   color: #000;
   font-weight: 800;
@@ -262,12 +374,12 @@
   to { transform: rotate(360deg); }
 }
 
-/* Mobile responsive bottom mini-player */
+/* ── Mobile: compact mini-player ── */
 @media (max-width: 768px) {
   .fs-global-player {
     bottom: var(--mobile-nav-height);
-    height: 56px;
-    background-color: #121212;
+    height: 58px;
+    background-color: #0f0f0f;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
@@ -282,18 +394,35 @@
   }
 
   .fs-player-inner {
+    display: flex;
     padding: 0 12px;
-    gap: 8px;
+    gap: 10px;
   }
 
   .fs-player-left {
     flex: 1;
-    width: auto;
+    min-width: 0;
   }
 
   .fs-player-artwork-wrap {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .fs-player-meta {
+    gap: 1px;
+  }
+
+  .fs-player-song-title {
+    font-size: 0.85rem;
+  }
+
+  .fs-player-song-artist {
+    font-size: 0.68rem;
+  }
+
+  .fs-player-more-btn {
+    opacity: 1;
   }
 
   .fs-player-center {
@@ -303,5 +432,13 @@
   .fs-main-play-btn {
     width: 36px;
     height: 36px;
+    margin: 0;
+  }
+}
+
+/* ── Tablet: hide volume wrap, keep queue + fullscreen ── */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .fs-player-volume-wrap {
+    display: none;
   }
 }

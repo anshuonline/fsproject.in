@@ -200,7 +200,7 @@ export function GlobalPlayer() {
           </div>
         </div>
 
-        {/* Right: Volume, Queue, Fullscreen */}
+          {/* Right: Volume, Queue, Fullscreen */}
         <div className="fs-player-right">
           <div className="fs-player-volume-wrap">
             <button
@@ -219,8 +219,10 @@ export function GlobalPlayer() {
               value={isMuted ? 0 : volume}
               onChange={(e) => setVolumeLevel(parseFloat(e.target.value))}
               className="fs-volume-input"
+              aria-label="Volume"
               style={{
-                background: `linear-gradient(to right, var(--color-white) ${(isMuted ? 0 : volume) * 100}%, #333333 ${(isMuted ? 0 : volume) * 100}%)`
+                '--fs-vol-pct': `${(isMuted ? 0 : volume) * 100}%`,
+                background: `linear-gradient(to right, var(--color-white) ${(isMuted ? 0 : volume) * 100}%, #4d4d4d ${(isMuted ? 0 : volume) * 100}%)`
               }}
             />
           </div>
