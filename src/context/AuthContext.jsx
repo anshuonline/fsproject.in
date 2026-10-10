@@ -155,12 +155,6 @@ export function AuthProvider({ children }) {
       try {
         const synced = await api.syncUser(profileData);
         if (synced?.user?.id) profileData.dbId = synced.user.id;
-        // DB values win: custom name/dob/city must survive
-        if (synced?.user) {
-          profileData.name = synced.user.name || profileData.name;
-          profileData.dob = synced.user.dob || null;
-          profileData.city = synced.user.city || null;
-        }
       } catch {}
       setUser(profileData);
       storage.saveUser(profileData);
@@ -191,12 +185,6 @@ export function AuthProvider({ children }) {
     try {
       const synced = await api.syncUser(profileData);
       if (synced?.user?.id) profileData.dbId = synced.user.id;
-      // DB values win: custom name/dob/city must survive
-      if (synced?.user) {
-        profileData.name = synced.user.name || profileData.name;
-        profileData.dob = synced.user.dob || null;
-        profileData.city = synced.user.city || null;
-      }
     } catch {}
     setUser(profileData);
     storage.saveUser(profileData);
