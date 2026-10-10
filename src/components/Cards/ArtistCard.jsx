@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './ArtistCard.css';
 
-export function ArtistCard({ artist }) {
+function ArtistCardBase({ artist }) {
   const navigate = useNavigate();
 
   if (!artist) return null;
@@ -56,3 +56,5 @@ export function ArtistCard({ artist }) {
     </div>
   );
 }
+
+export const ArtistCard = memo(ArtistCardBase);

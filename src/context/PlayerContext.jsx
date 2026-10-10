@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { storage } from '../services/storage';
 import { api } from '../services/api';
 import { trackPlay } from '../services/analyticsService';
@@ -6,6 +6,11 @@ import { useAuth } from './AuthContext';
 import { useLibrary } from './LibraryContext';
 
 const PlayerContext = createContext(null);
+
+// Fast-changing playback progress lives in its own lightweight context so that
+// the 500ms progress tick never re-renders pages, cards or shelves — only the
+// player UIs (bar, fullscreen, PiP) subscribe to this.
+const PlayerProgressContext = createContext(null);
 
 const QUALITY_MAP = {
   'high': 'hd1080',
@@ -70,6 +75,12 @@ export function PlayerProvider({ children }) {
   const nextSongRef = useRef(null);
   const historyRecordedVideoIdRef = useRef(null);
   const volumeSaveTimeoutRef = useRef(null);
+  const autoplayUnblockRef = useRef(null);
+  const currentTimeRef = useRef(0);
+
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
   useEffect(() => {
     userRef.current = user;
@@ -181,15 +192,47 @@ export function PlayerProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // ── Autoplay unblock (reload restore path) ──────────────────────
+  // Browsers block unmuted autoplay right after a page reload (?v= deep link).
+  // These global listeners retry playVideo() on ANY user interaction (tap,
+  // click, keypress) until playback actually starts, then disarm themselves.
+  const disarmAutoplayUnblock = useCallback(() => {
+    if (autoplayUnblockRef.current) {
+      autoplayUnblockRef.current();
+      autoplayUnblockRef.current = null;
+    }
+  }, []);
+
+  const armAutoplayUnblock = useCallback(() => {
+    if (autoplayUnblockRef.current) return;
+    const attempt = () => {
+      const player = playerRef.current;
+      if (!player || typeof player.playVideo !== 'function') return;
+      let state = -1;
+      try { state = player.getPlayerState(); } catch (e) {}
+      if (state === 1) {
+        disarmAutoplayUnblock();
+        return;
+      }
+      try { player.playVideo(); } catch (e) {}
+    };
+    const events = ['pointerdown', 'touchend', 'keydown', 'click'];
+    events.forEach((evt) => window.addEventListener(evt, attempt, { capture: true }));
+    autoplayUnblockRef.current = () => {
+      events.forEach((evt) => window.removeEventListener(evt, attempt, { capture: true }));
+    };
+  }, [disarmAutoplayUnblock]);
+
   // Shared state handler: only the active player drives global playback state
   const handlePlayerStateChange = useCallback((event) => {
     if (playerRef.current && event.target !== playerRef.current) return;
 
-    // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
+    // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED, 5 = CUED
     if (event.data === 1) {
       setIsPlaying(true);
       setIsLoading(false);
       isTransitioningRef.current = false;
+      disarmAutoplayUnblock();
       if (event.target.getDuration) {
         setDuration(event.target.getDuration());
       }
@@ -205,6 +248,11 @@ export function PlayerProvider({ children }) {
       }
     } else if (event.data === 3) {
       setIsLoading(true);
+    } else if (event.data === 5) {
+      // Video cued but not playing — browser blocked autoplay. Stop the infinite
+      // loading spinner so the play button becomes clearly tappable.
+      setIsPlaying(false);
+      setIsLoading(false);
     } else if (event.data === 0) {
       isTransitioningRef.current = false;
       if (handleSongEndedRef.current) {
@@ -413,6 +461,9 @@ export function PlayerProvider({ children }) {
   const playSong = useCallback((song, customQueue = null) => {
     if (!song || !song.videoId) return;
 
+    // User-initiated playback replaces any pending autoplay-restore unblocking
+    disarmAutoplayUnblock();
+
     isTransitioningRef.current = false;
     currentSongRef.current = song;
     setCurrentSong(song);
@@ -453,14 +504,14 @@ export function PlayerProvider({ children }) {
     if (isAutoplayRef.current && (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2)) {
       fetchAndAppendRelated(song);
     }
-  }, [ensurePlayer, fetchAndAppendRelated]);
+  }, [ensurePlayer, fetchAndAppendRelated, disarmAutoplayUnblock]);
 
   // Play song directly by YouTube videoId (used for shared URLs & deep links)
   const playByVideoId = useCallback(async (videoId) => {
     if (!videoId) return;
 
     if (currentSongRef.current?.videoId === videoId) {
-      if (!isPlaying) {
+      if (!isPlayingRef.current) {
         if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
           playerRef.current.playVideo();
         }
@@ -501,15 +552,23 @@ export function PlayerProvider({ children }) {
       }).catch(() => {});
     }
 
-    // Attach one-time interaction unblocker for browser autoplay restrictions
-    const unblockPlayback = () => {
-      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-        playerRef.current.playVideo();
+    // Arm interaction unblocker for browser autoplay restrictions — any tap,
+    // click or keypress retries playVideo() until playback actually starts
+    armAutoplayUnblock();
+
+    // Autoplay-block watchdog: if the browser silently blocked playback, stop
+    // the infinite loading spinner so the play button becomes clearly tappable
+    setTimeout(() => {
+      const player = playerRef.current;
+      if (!player || typeof player.getPlayerState !== 'function') return;
+      let state = -1;
+      try { state = player.getPlayerState(); } catch (e) {}
+      if (state !== 1 && state !== 3) {
+        setIsPlaying(false);
+        setIsLoading(false);
       }
-    };
-    window.addEventListener('click', unblockPlayback, { once: true, capture: true });
-    window.addEventListener('touchend', unblockPlayback, { once: true, capture: true });
-  }, [playSong, isPlaying]);
+    }, 4000);
+  }, [playSong, armAutoplayUnblock]);
 
   // Auto-fetch next batch of songs when approaching the end of queue
   useEffect(() => {
@@ -523,12 +582,12 @@ export function PlayerProvider({ children }) {
 
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       playerRef.current.pauseVideo();
     } else {
       playerRef.current.playVideo();
     }
-  }, [isPlaying]);
+  }, []);
 
   const toggleAutoplay = useCallback(() => {
     setIsAutoplay(prev => !prev);
@@ -711,7 +770,7 @@ export function PlayerProvider({ children }) {
   }, []);
 
   const prevSong = useCallback(() => {
-    if (currentTime > 4 && playerRef.current?.seekTo) {
+    if (currentTimeRef.current > 4 && playerRef.current?.seekTo) {
       playerRef.current.seekTo(0);
       setCurrentTime(0);
       return;
@@ -728,7 +787,7 @@ export function PlayerProvider({ children }) {
       setQueueIndex(prevIdx);
       playSong(prevTrack, currentQ);
     }
-  }, [currentTime, playSong]);
+  }, [playSong]);
 
   const seekTo = useCallback((seconds) => {
     if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
@@ -884,63 +943,121 @@ export function PlayerProvider({ children }) {
     setIsInactiveModalOpen(false);
   }, []);
 
+  // Memoized main context value: during the 500ms progress tick only
+  // currentTime/duration change, so this object keeps a stable identity and
+  // every consumer (pages, cards, shelves) skips re-rendering entirely.
+  const contextValue = useMemo(() => ({
+    currentSong,
+    isPlaying,
+    volume,
+    isMuted,
+    stableVolume,
+    setStableVolume,
+    queue,
+    queueIndex,
+    isShuffle,
+    repeatMode,
+    isFullScreen,
+    isMiniPlayer,
+    isQueueOpen,
+    isLoading,
+    playSong,
+    playByVideoId,
+    togglePlay,
+    nextSong,
+    prevSong,
+    seekTo,
+    setVolumeLevel,
+    setVolumeDirect,
+    toggleMute,
+    toggleShuffle,
+    toggleRepeat,
+    addToQueue,
+    addSongsToQueue,
+    removeFromQueue,
+    clearQueue,
+    playNext,
+    playNextSongs,
+    startRadio,
+    sleepTimer,
+    setSleepTimer,
+    setIsFullScreen,
+    setIsMiniPlayer,
+    toggleMiniPlayer,
+    setIsQueueOpen,
+    isAutoplay,
+    toggleAutoplay,
+    setIsAutoplay,
+    audioQuality,
+    setAudioQuality,
+    inactivityTimeout,
+    setInactivityTimeout,
+    isInactiveModalOpen,
+    resumeFromInactivity,
+    dismissInactiveModal
+  }), [
+    currentSong,
+    isPlaying,
+    volume,
+    isMuted,
+    stableVolume,
+    setStableVolume,
+    queue,
+    queueIndex,
+    isShuffle,
+    repeatMode,
+    isFullScreen,
+    isMiniPlayer,
+    isQueueOpen,
+    isLoading,
+    playSong,
+    playByVideoId,
+    togglePlay,
+    nextSong,
+    prevSong,
+    seekTo,
+    setVolumeLevel,
+    setVolumeDirect,
+    toggleMute,
+    toggleShuffle,
+    toggleRepeat,
+    addToQueue,
+    addSongsToQueue,
+    removeFromQueue,
+    clearQueue,
+    playNext,
+    playNextSongs,
+    startRadio,
+    sleepTimer,
+    setSleepTimer,
+    setIsFullScreen,
+    setIsMiniPlayer,
+    toggleMiniPlayer,
+    setIsQueueOpen,
+    isAutoplay,
+    toggleAutoplay,
+    setIsAutoplay,
+    audioQuality,
+    setAudioQuality,
+    inactivityTimeout,
+    setInactivityTimeout,
+    isInactiveModalOpen,
+    resumeFromInactivity,
+    dismissInactiveModal
+  ]);
+
+  const progressValue = {
+    currentTime,
+    duration,
+    seekTo
+  };
+
   return (
-    <PlayerContext.Provider
-      value={{
-        currentSong,
-        isPlaying,
-        currentTime,
-        duration,
-        volume,
-        isMuted,
-        stableVolume,
-        setStableVolume,
-        queue,
-        queueIndex,
-        isShuffle,
-        repeatMode,
-        isFullScreen,
-        isMiniPlayer,
-        isQueueOpen,
-        isLoading,
-        playSong,
-        playByVideoId,
-        togglePlay,
-        nextSong,
-        prevSong,
-        seekTo,
-        setVolumeLevel,
-        setVolumeDirect,
-        toggleMute,
-        toggleShuffle,
-        toggleRepeat,
-        addToQueue,
-        addSongsToQueue,
-        removeFromQueue,
-        clearQueue,
-        playNext,
-        playNextSongs,
-        startRadio,
-        sleepTimer,
-        setSleepTimer,
-        setIsFullScreen,
-        setIsMiniPlayer,
-        toggleMiniPlayer,
-        setIsQueueOpen,
-        isAutoplay,
-        toggleAutoplay,
-        setIsAutoplay,
-        audioQuality,
-        setAudioQuality,
-        inactivityTimeout,
-        setInactivityTimeout,
-        isInactiveModalOpen,
-        resumeFromInactivity,
-        dismissInactiveModal
-      }}
-    >
-      {children}
-    </PlayerContext.Provider>
+    <PlayerProgressContext.Provider value={progressValue}>
+      <PlayerContext.Provider value={contextValue}>
+        {children}
+      </PlayerContext.Provider>
+    </PlayerProgressContext.Provider>
   );
 }
 
@@ -948,6 +1065,14 @@ export function usePlayer() {
   const context = useContext(PlayerContext);
   if (!context) {
     throw new Error('usePlayer must be used within a PlayerProvider');
+  }
+  return context;
+}
+
+export function usePlayerProgress() {
+  const context = useContext(PlayerProgressContext);
+  if (!context) {
+    throw new Error('usePlayerProgress must be used within a PlayerProvider');
   }
   return context;
 }

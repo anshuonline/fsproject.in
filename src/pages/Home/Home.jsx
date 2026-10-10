@@ -1,7 +1,6 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, memo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { useHomeData } from './useHomeData';
-import { usePlayer } from '../../context/PlayerContext';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { SongCard } from '../../components/Cards/SongCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
@@ -11,14 +10,108 @@ import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
 import './Home.css';
 
+// ─── Memoized shelves ────────────────────────────────────────────────────────
+// Home intentionally does NOT subscribe to PlayerContext: the 500ms progress
+// ticker re-renders context consumers, and without memoized shelves that would
+// re-render 300+ cards twice per second. These memo walls keep it silky.
+
+const ArtistsShelf = memo(function ArtistsShelf({ artists, title }) {
+  const rowRef = useRef(null);
+
+  const scroll = useCallback((direction) => {
+    if (rowRef.current) {
+      rowRef.current.scrollBy({ left: direction === 'left' ? -480 : 480, behavior: 'smooth' });
+    }
+  }, []);
+
+  return (
+    <section className="fs-shelf">
+      <div className="fs-shelf-header">
+        <div className="fs-shelf-title-wrap">
+          <span className="fs-shelf-eyebrow">TOP VOICES FOR YOU</span>
+          <h2 className="fs-shelf-title">{title}</h2>
+        </div>
+        <div className="fs-shelf-controls">
+          <button className="btn-icon fs-carousel-btn" onClick={() => scroll('left')} aria-label="Scroll left">
+            <ChevronLeft size={22} />
+          </button>
+          <button className="btn-icon fs-carousel-btn" onClick={() => scroll('right')} aria-label="Scroll right">
+            <ChevronRight size={22} />
+          </button>
+        </div>
+      </div>
+
+      <div className="fs-shelf-row" ref={rowRef}>
+        {artists.map((artist) => (
+          <div key={artist.id} className="fs-shelf-col fs-shelf-col-artist">
+            <ArtistCard artist={artist} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+});
+
+const QuickPicksShelf = memo(function QuickPicksShelf({ section }) {
+  return (
+    <section className="fs-shelf">
+      <div className="fs-shelf-header">
+        <div className="fs-shelf-title-wrap">
+          {section.eyebrow && <span className="fs-shelf-eyebrow">{section.eyebrow}</span>}
+          <h2 className="fs-shelf-title">{section.title}</h2>
+        </div>
+      </div>
+
+      <div className="fs-quickpicks-grid">
+        {section.items.map((song) => (
+          <SongCard key={song.videoId} song={song} queueContext={section.items} />
+        ))}
+      </div>
+    </section>
+  );
+});
+
+const SectionShelf = memo(function SectionShelf({ section }) {
+  const rowRef = useRef(null);
+
+  const scroll = useCallback((direction) => {
+    if (rowRef.current) {
+      rowRef.current.scrollBy({ left: direction === 'left' ? -480 : 480, behavior: 'smooth' });
+    }
+  }, []);
+
+  return (
+    <section className="fs-shelf">
+      <div className="fs-shelf-header">
+        <div className="fs-shelf-title-wrap">
+          {section.eyebrow && <span className="fs-shelf-eyebrow">{section.eyebrow}</span>}
+          <h2 className="fs-shelf-title">{section.title}</h2>
+        </div>
+        <div className="fs-shelf-controls">
+          <button className="btn-icon fs-carousel-btn" onClick={() => scroll('left')} aria-label="Scroll left">
+            <ChevronLeft size={22} />
+          </button>
+          <button className="btn-icon fs-carousel-btn" onClick={() => scroll('right')} aria-label="Scroll right">
+            <ChevronRight size={22} />
+          </button>
+        </div>
+      </div>
+
+      <div className="fs-shelf-row" ref={rowRef}>
+        {section.items.map((item) => (
+          <div key={item.id || item.videoId} className="fs-shelf-col">
+            <CommunityCard item={item} queueContext={section.items} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+});
+
 export function Home() {
   const { data, loading, refetch } = useHomeData();
-  const { currentSong } = usePlayer();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userPrefs, setUserPrefs] = useState(() => storage.getPreferences());
-
-  const artistsScrollRef = useRef(null);
-  const lastPlayedRef = useRef(null);
 
   // Check if first-time user hasn't completed onboarding
   useEffect(() => {
@@ -27,28 +120,10 @@ export function Home() {
     }
   }, []);
 
-  // Listen to playback changes and adapt feed dynamically based on user listening
-  useEffect(() => {
-    if (currentSong?.videoId && currentSong.videoId !== lastPlayedRef.current) {
-      lastPlayedRef.current = currentSong.videoId;
-      const timer = setTimeout(() => {
-        refetch();
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [currentSong, refetch]);
-
   const handleOnboardingComplete = (preferences) => {
     setUserPrefs(preferences);
     setShowOnboarding(false);
     refetch(preferences);
-  };
-
-  const scroll = (ref, direction) => {
-    if (ref.current) {
-      const scrollAmount = direction === 'left' ? -480 : 480;
-      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
   };
 
   // Followed artists computation
@@ -105,107 +180,19 @@ export function Home() {
       )}
 
       {/* ─── Shelf 1: Followed Artists ──────────────────────────────────── */}
-      <section className="fs-shelf">
-        <div className="fs-shelf-header">
-          <div className="fs-shelf-title-wrap">
-            <span className="fs-shelf-eyebrow">TOP VOICES FOR YOU</span>
-            <h2 className="fs-shelf-title">
-              {followedArtists.length > 0 ? 'Your Favorite Artists' : 'Explore Top Artists'}
-            </h2>
-          </div>
-          <div className="fs-shelf-controls">
-            <button
-              className="btn-icon fs-carousel-btn"
-              onClick={() => scroll(artistsScrollRef, 'left')}
-              aria-label="Scroll left"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <button
-              className="btn-icon fs-carousel-btn"
-              onClick={() => scroll(artistsScrollRef, 'right')}
-              aria-label="Scroll right"
-            >
-              <ChevronRight size={22} />
-            </button>
-          </div>
-        </div>
-
-        <div className="fs-shelf-row" ref={artistsScrollRef}>
-          {displayArtists.map((artist) => (
-            <div key={artist.id} className="fs-shelf-col fs-shelf-col-artist">
-              <ArtistCard artist={artist} />
-            </div>
-          ))}
-        </div>
-      </section>
+      <ArtistsShelf
+        artists={displayArtists}
+        title={followedArtists.length > 0 ? 'Your Favorite Artists' : 'Explore Top Artists'}
+      />
 
       {/* ─── Dynamic Algorithmic Shelves (Up to 20 Sections) ─────────────── */}
-      {sections.map((section) => {
-        const rowId = `fs-shelf-${section.id}`;
-
-        if (section.type === 'quickpicks') {
-          return (
-            <section key={section.id} className="fs-shelf">
-              <div className="fs-shelf-header">
-                <div className="fs-shelf-title-wrap">
-                  {section.eyebrow && <span className="fs-shelf-eyebrow">{section.eyebrow}</span>}
-                  <h2 className="fs-shelf-title">{section.title}</h2>
-                </div>
-              </div>
-
-              <div className="fs-quickpicks-grid">
-                {section.items.map((song) => (
-                  <SongCard
-                    key={song.videoId}
-                    song={song}
-                    queueContext={section.items}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        }
-
-        return (
-          <section key={section.id} className="fs-shelf">
-            <div className="fs-shelf-header">
-              <div className="fs-shelf-title-wrap">
-                {section.eyebrow && <span className="fs-shelf-eyebrow">{section.eyebrow}</span>}
-                <h2 className="fs-shelf-title">{section.title}</h2>
-              </div>
-              <div className="fs-shelf-controls">
-                <button
-                  className="btn-icon fs-carousel-btn"
-                  onClick={() => {
-                    document.getElementById(rowId)?.scrollBy({ left: -480, behavior: 'smooth' });
-                  }}
-                  aria-label="Scroll left"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-                <button
-                  className="btn-icon fs-carousel-btn"
-                  onClick={() => {
-                    document.getElementById(rowId)?.scrollBy({ left: 480, behavior: 'smooth' });
-                  }}
-                  aria-label="Scroll right"
-                >
-                  <ChevronRight size={22} />
-                </button>
-              </div>
-            </div>
-
-            <div className="fs-shelf-row" id={rowId}>
-              {section.items.map((item) => (
-                <div key={item.id || item.videoId} className="fs-shelf-col">
-                  <CommunityCard item={item} queueContext={section.items} />
-                </div>
-              ))}
-            </div>
-          </section>
-        );
-      })}
+      {sections.map((section) =>
+        section.type === 'quickpicks' ? (
+          <QuickPicksShelf key={section.id} section={section} />
+        ) : (
+          <SectionShelf key={section.id} section={section} />
+        )
+      )}
 
       {/* ─── SEO Discovery & Why FreeSong Section ──────────────────────── */}
       <SeoContentSection />

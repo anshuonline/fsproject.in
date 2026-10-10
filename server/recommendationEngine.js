@@ -186,6 +186,26 @@ export function isSpamOrJunkSong(s) {
   ];
   if (spamArtistPatterns.some(pat => pat.test(artist))) return true;
 
+  // 4. AI-generated music (Suno, Udio & generic AI channels) — banned from all feeds.
+  // Bare "suno" in TITLES is allowed (Hindi word "suno" = listen, e.g. "Suno Na
+  // Sangemarmar") — only unambiguous brand / AI-generation markers are banned.
+  const aiTitlePatterns = [
+    /\bsuno\s*(ai|\.ai|\.com)\b/i,
+    /\[\s*suno\s*\]|\(\s*suno\s*(ai)?\s*\)/i,
+    /\b(ai|a\.i)[-\s]*(generated|gen)\b/i,
+    /\bai\s+(music|songs?|covers?|remix|version|album|artist|singer|vocals?|voice)\b/i,
+    /(made|created|generated|produced)\s+(with|by|using)\s+(suno|udio|ai)\b/i,
+    /\bsunoai\b|\bsuno\.ai\b|\bsuno\.com\b/i
+  ];
+  const aiArtistPatterns = [
+    /\bsuno\b/i,
+    /\budio\b/i,
+    /\bai\s*(music|songs?|generated|studio|lab|vibes?|covers?|hits?|charts?)\b/i,
+    /aimusic|aisongs?|aigenerated|sunoai|suno\.ai|suno\.com/i
+  ];
+  if (aiTitlePatterns.some(pat => pat.test(title))) return true;
+  if (aiArtistPatterns.some(pat => pat.test(artist))) return true;
+
   return false;
 }
 
@@ -474,6 +494,86 @@ export async function fetchOfficialChart(yt, browseIdOrIds, cacheGet, cacheSet) 
   }
 }
 
+// ─── Fetch Live Daily Trending from YouTube Music Charts Page ───────────────
+// FEmusic_charts is YouTube Music's native chart page ("Top songs", "Trending
+// songs") which rotates DAILY — unlike weekly-updated editorial hitlists.
+export async function fetchLiveTrendingCharts(yt, cacheGet, cacheSet) {
+  const cacheKey = 'live_music_charts_v1';
+  if (cacheGet) {
+    const cached = cacheGet(cacheKey);
+    if (cached && cached.length > 0) return cached;
+  }
+
+  try {
+    const data = await yt.constructRequest('browse', { browseId: 'FEmusic_charts' });
+    const sections = data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+
+    const songs = [];
+    const seenVideos = new Set();
+    const seenTitles = new Set();
+
+    for (const sec of sections) {
+      const shelf = sec.musicCarouselShelfRenderer;
+      if (!shelf) continue;
+      const shelfTitle = (shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || '').toLowerCase();
+      // Only song/trending carousels — skip music videos, artists, albums, moods
+      if (shelfTitle.includes('video') || shelfTitle.includes('artist') || shelfTitle.includes('album')) continue;
+      if (!shelfTitle.includes('song') && !shelfTitle.includes('trending')) continue;
+
+      for (const c of shelf.contents || []) {
+        const r = c.musicTwoRowItemRenderer || c.musicResponsiveListItemRenderer;
+        if (!r) continue;
+        const nav = r.navigationEndpoint;
+        const videoId = nav?.watchEndpoint?.videoId;
+        if (!videoId || seenVideos.has(videoId)) continue;
+
+        const titleRuns = r.title?.runs
+          || r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs
+          || [];
+        const rawTitle = titleRuns[0]?.text;
+        if (!rawTitle) continue;
+
+        const subRuns = r.subtitle?.runs
+          || r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs
+          || [];
+        const artist = (subRuns[0]?.text || 'Artist').replace(/\s*[•·]\s*$/, '').trim();
+
+        const thumbs = r.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails
+          || r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails
+          || [];
+        const thumb = thumbs[thumbs.length - 1]?.url || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '');
+
+        const cleaned = cleanSongTitle(rawTitle) || rawTitle;
+        const normTitle = cleaned.toLowerCase().trim();
+        const item = {
+          videoId,
+          title: cleaned,
+          artist,
+          album: '',
+          duration: 0,
+          durationText: '',
+          thumbnail: toHDThumbnail(thumb, videoId),
+          type: 'song'
+        };
+
+        if (!isSpamOrJunkSong(item) && !seenTitles.has(normTitle)) {
+          seenVideos.add(videoId);
+          seenTitles.add(normTitle);
+          songs.push(item);
+        }
+      }
+    }
+
+    if (songs.length > 0 && cacheSet) {
+      cacheSet(cacheKey, songs, 30 * 60 * 1000);
+    }
+    return songs;
+  } catch (err) {
+    console.warn('fetchLiveTrendingCharts failed:', err.message);
+    return [];
+  }
+}
+
 // ─── Fetch Official New Album Releases Directly from YouTube Music ─────────
 export async function fetchOfficialNewAlbums(yt, cacheGet, cacheSet) {
   const cacheKey = 'official_new_albums_v2';
@@ -521,6 +621,379 @@ export async function fetchOfficialNewAlbums(yt, cacheGet, cacheSet) {
 }
 
 // ─── Shelf Plan Generator ───────────────────────────────────────────────────
+// ─── Genre Variety Terms Engine ─────────────────────────────────────────────
+// Every genre has a pool of themed sub-shelf terms (5-8 each). The home feed
+// picks a RANDOM 3-4 subset per genre per rotation window — never all at once,
+// so the feed feels fresh on every refresh.
+const GENRE_VARIETY_POOLS = {
+  bollywood: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Bollywood Chartbusters', query: 'trending bollywood songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Bollywood Releases', query: 'new bollywood songs' },
+    { eyebrow: 'DANCE FLOOR', title: 'Bollywood Dance Floor', query: 'bollywood dance hits' },
+    { eyebrow: 'LOVE DOSE', title: 'Bollywood Romantic Hits', query: 'bollywood romantic songs' },
+    { eyebrow: 'SOULFUL SIDE', title: 'Bollywood Soulful Melodies', query: 'bollywood soulful songs' },
+    { eyebrow: 'SUPERHITS', title: 'Filmy Superhits Mix', query: 'bollywood superhit songs' }
+  ],
+  punjabi: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Punjabi Chartbusters', query: 'trending punjabi songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Punjabi Drops', query: 'new punjabi songs' },
+    { eyebrow: 'PARTY MODE', title: 'Punjabi Party Bangers', query: 'punjabi party songs' },
+    { eyebrow: 'MOHABBAT', title: 'Punjabi Romantic', query: 'punjabi romantic songs' },
+    { eyebrow: 'DESI SWAG', title: 'Punjabi Desi Vibes', query: 'punjabi desi songs' },
+    { eyebrow: 'SLOW JAMS', title: 'Punjabi Slow Jams', query: 'punjabi slow songs romantic' }
+  ],
+  tamil: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Kollywood Chartbusters', query: 'trending tamil songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Kollywood Releases', query: 'new tamil songs' },
+    { eyebrow: 'KADHAL', title: 'Tamil Romantic Hits', query: 'tamil romantic songs' },
+    { eyebrow: 'GAANA FOLK', title: 'Tamil Folk & Gaana', query: 'tamil gaana folk songs' },
+    { eyebrow: 'MELDIES', title: 'Tamil Soulful Melodies', query: 'tamil melody songs' }
+  ],
+  telugu: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Tollywood Chartbusters', query: 'trending telugu songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Tollywood Releases', query: 'new telugu songs' },
+    { eyebrow: 'PREMA', title: 'Telugu Romantic Hits', query: 'telugu romantic songs' },
+    { eyebrow: 'MASS BEATS', title: 'Telugu Mass Bangers', query: 'telugu mass songs' },
+    { eyebrow: 'MELDIES', title: 'Telugu Soulful Melodies', query: 'telugu melody songs' }
+  ],
+  haryanvi: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Haryanvi Trending Hits', query: 'trending haryanvi songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Haryanvi Releases', query: 'new haryanvi songs' },
+    { eyebrow: 'DESI BEATS', title: 'Haryanvi Dance Beats', query: 'haryanvi dance songs' },
+    { eyebrow: 'RAGNI FOLK', title: 'Ragni & Folk Tales', query: 'haryanvi folk ragni songs' }
+  ],
+  bengali: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Bangla Chartbusters', query: 'trending bengali songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Bengali Releases', query: 'new bengali songs' },
+    { eyebrow: 'MONER KOTHA', title: 'Bengali Romantic', query: 'bengali romantic songs' },
+    { eyebrow: 'ROOTS', title: 'Rabindra Sangeet & Folk', query: 'rabindra sangeet bengali folk' }
+  ],
+  malayalam: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Mollywood Chartbusters', query: 'trending malayalam songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Malayalam Releases', query: 'new malayalam songs' },
+    { eyebrow: 'MELDIES', title: 'Malayalam Evergreen Melodies', query: 'malayalam melody songs' },
+    { eyebrow: 'INDIE WAVE', title: 'Malayalam Independent', query: 'malayalam indie songs' }
+  ],
+  kannada: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Sandalwood Chartbusters', query: 'trending kannada songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Kannada Releases', query: 'new kannada songs' },
+    { eyebrow: 'MASS BEATS', title: 'Kannada Mass Bangers', query: 'kannada mass songs' },
+    { eyebrow: 'MELDIES', title: 'Kannada Melodies', query: 'kannada melody songs' }
+  ],
+  bhojpuri: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Bhojpuri Superhits', query: 'trending bhojpuri songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Bhojpuri Releases', query: 'new bhojpuri songs' },
+    { eyebrow: 'DANCE FLOOR', title: 'Bhojpuri Dance Bangers', query: 'bhojpuri dance songs' },
+    { eyebrow: 'SAJAN', title: 'Bhojpuri Romantic', query: 'bhojpuri romantic songs' }
+  ],
+  lofi: [
+    { eyebrow: 'CHILL BEATS', title: 'Lo-Fi Chill Beats', query: 'lofi chill beats songs' },
+    { eyebrow: 'STUDY MODE', title: 'Study & Focus Lo-Fi', query: 'lofi study focus' },
+    { eyebrow: 'DESI LO-FI', title: 'Hindi Lo-Fi Chill', query: 'hindi lofi songs' },
+    { eyebrow: 'MIDNIGHT', title: 'Late Night Lo-Fi', query: 'lofi night sleep calm' },
+    { eyebrow: 'BOLLYWOOD FLIP', title: 'Bollywood Lo-Fi Flips', query: 'bollywood lofi songs' }
+  ],
+  romantic: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Romantic Chartbusters', query: 'trending romantic songs hindi' },
+    { eyebrow: 'DUETS', title: 'Bollywood Love Duets', query: 'bollywood romantic duets' },
+    { eyebrow: '90s ISHQ', title: '90s Romantic Gold', query: '90s romantic hindi songs' },
+    { eyebrow: 'PUNJABI ISHQ', title: 'Punjabi Love Songs', query: 'punjabi love songs' },
+    { eyebrow: 'ENGLISH LOVE', title: 'English Love Ballads', query: 'english love ballads songs' },
+    { eyebrow: 'FIRST LOVE', title: 'Soft First-Love Melodies', query: 'romantic melodies hindi soft' }
+  ],
+  desihiphop: [
+    { eyebrow: 'BANGERS', title: 'Desi Hip Hop Bangers', query: 'desi hip hop rap songs' },
+    { eyebrow: 'CYPHERS', title: 'Hindi Rap Cyphers', query: 'hindi rap songs' },
+    { eyebrow: 'PUNJABI RAP', title: 'Punjabi Hip Hop Heat', query: 'punjabi hip hop songs' },
+    { eyebrow: 'TRAP', title: 'Desi Trap Wave', query: 'desi trap songs' },
+    { eyebrow: 'NEW SCHOOL', title: 'New School Desi Rap', query: 'desi rap songs' }
+  ],
+  indianindie: [
+    { eyebrow: 'RISING', title: 'Indie Rising Stars', query: 'trending indian indie songs' },
+    { eyebrow: 'DISCOVER', title: 'Fresh Indie Discoveries', query: 'new indian indie songs' },
+    { eyebrow: 'INDIE ISHQ', title: 'Indie Love Songs', query: 'indian indie love songs' },
+    { eyebrow: 'ACOUSTIC', title: 'Indie Acoustic Sessions', query: 'indian indie acoustic songs' },
+    { eyebrow: 'HINDI POP', title: 'Hindi Indie Pop', query: 'hindi indie pop songs' }
+  ],
+  englishpop: [
+    { eyebrow: 'HOTLIST', title: 'Pop Hotlist', query: 'trending english pop songs' },
+    { eyebrow: 'NEW DROPS', title: 'New Pop Drops', query: 'new english pop songs' },
+    { eyebrow: 'CLASSICS', title: 'Pop Classics', query: 'english pop classic songs' },
+    { eyebrow: 'ACOUSTIC', title: 'Stripped Pop', query: 'english acoustic pop songs' },
+    { eyebrow: 'PARTY POP', title: 'Pop Party', query: 'english pop party songs' }
+  ],
+  hiphoprap: [
+    { eyebrow: 'GLOBAL HEAT', title: 'Global Rap Heat', query: 'trending rap songs' },
+    { eyebrow: 'LEGENDS', title: 'Hip Hop Classics', query: 'hip hop classics songs' },
+    { eyebrow: 'TRAP & DRILL', title: 'Trap & Drill Wave', query: 'trap drill rap songs' },
+    { eyebrow: 'OLD SCHOOL', title: 'Old School Rap', query: 'old school hip hop songs' },
+    { eyebrow: 'COLLABS', title: 'Epic Rap Collabs', query: 'rap collab songs' }
+  ],
+  devotional: [
+    { eyebrow: 'BHAJAN', title: 'Bhakti Chartbusters', query: 'trending devotional songs' },
+    { eyebrow: 'MORNING POOJA', title: 'Morning Aarti & Bhajan', query: 'morning bhajan aarti songs' },
+    { eyebrow: 'MAHADEV', title: 'Shiv Bhakti & Bhajans', query: 'shiv bhajan songs' },
+    { eyebrow: 'KRISHNA', title: 'Krishna Bhakti Ras', query: 'krishna bhajan songs' },
+    { eyebrow: 'MANTRA', title: 'Mantra Chants & Jaap', query: 'mantra chanting songs' }
+  ],
+  workout: [
+    { eyebrow: 'BEAST MODE', title: 'Beast Mode Bangers', query: 'workout motivation songs' },
+    { eyebrow: 'GYM PUMP', title: 'Hindi Gym Pump', query: 'gym hindi songs' },
+    { eyebrow: 'EDM LIFTS', title: 'EDM Workout Mix', query: 'workout edm songs' },
+    { eyebrow: 'CARDIO', title: 'Cardio Hip Hop', query: 'cardio rap workout songs' },
+    { eyebrow: 'PUNJABI POWER', title: 'Power Punjabi Gym', query: 'punjabi gym workout songs' }
+  ],
+  party: [
+    { eyebrow: 'KICKOFF', title: 'Party Starters', query: 'party songs bollywood' },
+    { eyebrow: 'CLUB', title: 'Club Bangers', query: 'club songs hindi' },
+    { eyebrow: 'DANCE FLOOR', title: 'Dance Floor Fillers', query: 'bollywood dance floor songs' },
+    { eyebrow: 'HOUSE PARTY', title: 'House Party Anthems', query: 'house party songs' },
+    { eyebrow: 'PUNJABI PARTY', title: 'Punjabi Party Nonstop', query: 'punjabi party dance songs' }
+  ],
+  '90s': [
+    { eyebrow: 'SUPERHITS', title: '90s Superhits', query: '90s bollywood hits' },
+    { eyebrow: 'ISHQ', title: '90s Romantic Gold', query: '90s romantic hindi songs' },
+    { eyebrow: 'MASALA', title: '90s Dance & Masala', query: '90s bollywood dance songs' },
+    { eyebrow: 'DARD', title: '90s Sad Classics', query: '90s sad hindi songs' },
+    { eyebrow: '2000s', title: 'Early 2000s Nostalgia', query: '2000s bollywood hits' }
+  ],
+  ghazals: [
+    { eyebrow: 'LEGENDS', title: 'Ghazal Greats', query: 'ghazal songs classic' },
+    { eyebrow: 'SUFI', title: 'Sufi & Qawwali Nights', query: 'sufi qawwali songs' },
+    { eyebrow: 'JAGJIT ERA', title: 'Golden Ghazal Era', query: 'ghazal jagjit singh mehdi hassan' },
+    { eyebrow: 'MODERN', title: 'Modern Ghazals', query: 'modern ghazal songs' },
+    { eyebrow: 'SUFI ROCK', title: 'Sufi Rock Fusion', query: 'sufi rock songs' }
+  ],
+  edm: [
+    { eyebrow: 'BANGERS', title: 'EDM Bangers', query: 'edm electronic dance songs' },
+    { eyebrow: 'FESTIVAL', title: 'Festival Anthems', query: 'edm festival anthems' },
+    { eyebrow: 'HOUSE', title: 'Deep & Tropical House', query: 'tropical deep house songs' },
+    { eyebrow: 'BIG ROOM', title: 'Big Room Energy', query: 'big room edm songs' },
+    { eyebrow: 'INDIAN EDM', title: 'Indian EDM Scene', query: 'indian edm songs' }
+  ],
+  rock: [
+    { eyebrow: 'ANTHEMS', title: 'Rock Anthems', query: 'rock alternative anthems' },
+    { eyebrow: 'HINDI ROCK', title: 'Hindi Rock Scene', query: 'hindi rock songs' },
+    { eyebrow: 'LEGENDS', title: 'Classic Rock Legends', query: 'classic rock songs' },
+    { eyebrow: 'BALLADS', title: 'Soft Rock Ballads', query: 'soft rock ballads songs' },
+    { eyebrow: 'INDIE ROCK', title: 'Indie Rock Picks', query: 'indie rock songs' }
+  ],
+  sleep: [
+    { eyebrow: 'DRIFT OFF', title: 'Sleep & Drift Away', query: 'sleep music relaxing' },
+    { eyebrow: 'RAIN', title: 'Rain & Nature Sounds', query: 'rain sounds sleep music' },
+    { eyebrow: 'DEEP SLEEP', title: 'Deep Sleep Ambient', query: 'deep sleep ambient music' },
+    { eyebrow: 'MEDITATE', title: 'Calm Meditation', query: 'meditation calm music' }
+  ],
+  focus: [
+    { eyebrow: 'DEEP WORK', title: 'Deep Focus Instrumentals', query: 'focus instrumental music' },
+    { eyebrow: 'STUDY', title: 'Study Concentration', query: 'study concentration music' },
+    { eyebrow: 'FLOW', title: 'Ambient Work Flow', query: 'ambient work music' },
+    { eyebrow: 'LO-FI STUDY', title: 'Lo-Fi Study Beats', query: 'lofi study beats' }
+  ],
+  sad: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Sad & Breakup Chartbusters', query: 'trending sad songs bollywood' },
+    { eyebrow: 'BEWAFAI', title: 'Heartbreak & Bewafai', query: 'sad songs bewafai hindi' },
+    { eyebrow: 'AKELAPAN', title: 'Alone & Lonely Nights', query: 'sad alone songs hindi' },
+    { eyebrow: 'BARISH', title: 'Emotional Rain Melodies', query: 'sad barish songs' },
+    { eyebrow: 'OLD DARD', title: 'Old Sad Classics', query: 'old sad hindi songs evergreen' },
+    { eyebrow: 'PUNJABI DARD', title: 'Punjabi Heartbreak Hits', query: 'punjabi sad songs' },
+    { eyebrow: 'NIGHT BLUES', title: 'Sad Lo-Fi Nights', query: 'sad lofi songs' }
+  ],
+  viral: [
+    { eyebrow: 'REELS', title: 'Reel Sensations', query: 'viral instagram reel songs' },
+    { eyebrow: 'TRENDING', title: 'Trending Everywhere', query: 'viral trending songs india' },
+    { eyebrow: 'PUNJABI VIRAL', title: 'Viral Punjabi', query: 'viral punjabi songs' },
+    { eyebrow: 'VIRAL ISHQ', title: 'Viral Love Anthems', query: 'viral love songs' },
+    { eyebrow: 'DANCE VIRAL', title: 'Internet Dance Breakers', query: 'viral dance songs' },
+    { eyebrow: 'GLOBAL VIRAL', title: 'Global Viral Crossovers', query: 'viral english songs trending' }
+  ],
+  wedding: [
+    { eyebrow: 'WEDDING ESSENTIALS', title: 'Best of Wedding Songs', query: 'best bollywood wedding songs' },
+    { eyebrow: 'CEREMONIES', title: 'Wedding Ceremonies & Rituals', query: 'indian wedding ceremony songs traditional' },
+    { eyebrow: 'SANGEET NIGHT', title: 'Sangeet Dance Floor Fillers', query: 'sangeet dance songs bollywood' },
+    { eyebrow: 'MEHNDI & HALDI', title: 'Mehndi & Haldi Melodies', query: 'mehndi haldi songs' },
+    { eyebrow: 'BAARAT', title: 'Baarat & Entry Anthems', query: 'baraat entry songs hindi' },
+    { eyebrow: 'FIRST DANCE', title: 'Romantic Wedding Duets', query: 'wedding romantic duets hindi' },
+    { eyebrow: 'VIDAAI', title: 'Emotional Vidaai Moments', query: 'vidai emotional songs' },
+    { eyebrow: 'PUNJABI SHADI', title: 'Punjabi Shaadi Bangers', query: 'punjabi wedding songs' }
+  ],
+  retro: [
+    { eyebrow: 'GOLDEN ERA', title: 'Golden Era Superhits', query: 'old hindi classic hits kishore rafi' },
+    { eyebrow: 'KISHORE DA', title: 'Kishore Kumar Timeless', query: 'kishore kumar best songs' },
+    { eyebrow: 'DUETS', title: 'Lata & Rafi Classic Duets', query: 'lata mangeshkar mohammed rafi duets' },
+    { eyebrow: 'DISCO', title: '70s & 80s Disco Fever', query: 'old hindi disco songs' },
+    { eyebrow: 'RETRO ISHQ', title: 'Retro Romantic Classics', query: 'old hindi romantic songs' },
+    { eyebrow: 'GHAZAL GOLD', title: 'Ghazal Era Gold', query: 'old hindi ghazal songs' },
+    { eyebrow: 'RETRO DANCE', title: 'Retro Dance Classics', query: 'old hindi dance songs' }
+  ],
+  marathi: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Marathi Chartbusters', query: 'trending marathi songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Marathi Releases', query: 'new marathi songs' },
+    { eyebrow: 'PREM GEETE', title: 'Marathi Romantic Hits', query: 'marathi romantic songs' },
+    { eyebrow: 'LAVANI', title: 'Lavani & Folk', query: 'lavani marathi folk songs' },
+    { eyebrow: 'MELDIES', title: 'Marathi Soulful Melodies', query: 'marathi melody songs' }
+  ],
+  gujarati: [
+    { eyebrow: 'GARBA NIGHT', title: 'Garba & Dandiya Night', query: 'garba dandiya songs' },
+    { eyebrow: 'CHARTBUSTERS', title: 'Gujarati Chartbusters', query: 'trending gujarati songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Gujarati Releases', query: 'new gujarati songs' },
+    { eyebrow: 'PREM', title: 'Gujarati Romantic Hits', query: 'gujarati romantic songs' },
+    { eyebrow: 'FOLK', title: 'Gujarati Folk Melodies', query: 'gujarati folk songs' }
+  ],
+  rajasthani: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Rajasthani Trending Hits', query: 'trending rajasthani songs' },
+    { eyebrow: 'LOK GEET', title: 'Folk & Lok Geet', query: 'rajasthani lok geet folk songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Rajasthani Releases', query: 'new rajasthani songs' },
+    { eyebrow: 'PREM', title: 'Rajasthani Romantic', query: 'rajasthani romantic songs' },
+    { eyebrow: 'DESERT BEATS', title: 'Desert Dance Beats', query: 'rajasthani dance songs' }
+  ],
+  kpop: [
+    { eyebrow: 'CHARTBUSTERS', title: 'K-Pop Chartbusters', query: 'trending kpop songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest K-Pop Releases', query: 'new kpop songs' },
+    { eyebrow: 'GIRL GROUPS', title: 'K-Pop Girl Groups', query: 'kpop girl group hits' },
+    { eyebrow: 'BOY GROUPS', title: 'K-Pop Boy Groups', query: 'kpop boy group hits' },
+    { eyebrow: 'BALLADS', title: 'K-Pop Ballads', query: 'kpop ballads acoustic' },
+    { eyebrow: 'K-HIPHOP', title: 'K-Hip Hop & R&B', query: 'korean hip hop rnb songs' }
+  ],
+  pakistani: [
+    { eyebrow: 'COKE STUDIO', title: 'Coke Studio Legends', query: 'coke studio pakistan best songs' },
+    { eyebrow: 'CHARTBUSTERS', title: 'Pakistani Chartbusters', query: 'trending pakistani songs' },
+    { eyebrow: 'FRESH DROPS', title: 'Latest Pakistani Pop', query: 'new pakistani pop songs' },
+    { eyebrow: 'SUFI ROCK', title: 'Sufi Rock & Qawwali', query: 'pakistani sufi rock qawwali songs' },
+    { eyebrow: 'MOHABBAT', title: 'Pakistani Romantic Hits', query: 'pakistani romantic songs' },
+    { eyebrow: 'VIRAL', title: 'Pakistani Viral Crossovers', query: 'pakistani viral songs' }
+  ],
+  metal: [
+    { eyebrow: 'HEAVY', title: 'Metal Bangers', query: 'heavy metal songs' },
+    { eyebrow: 'ANTHEMS', title: 'Hard Rock Anthems', query: 'hard rock anthems songs' },
+    { eyebrow: 'MODERN', title: 'Modern Metalcore', query: 'metalcore modern metal songs' },
+    { eyebrow: 'BALLADS', title: 'Rock Ballads That Hit Deep', query: 'rock ballads songs' },
+    { eyebrow: 'DESI METAL', title: 'Indian Metal Scene', query: 'indian metal bands songs' }
+  ],
+  jazz: [
+    { eyebrow: 'CLASSICS', title: 'Jazz Classics', query: 'jazz classics songs' },
+    { eyebrow: 'EVENING', title: 'Smooth Jazz Evening', query: 'smooth jazz saxophone songs' },
+    { eyebrow: 'BLUES', title: 'Blues Greats', query: 'blues classic songs' },
+    { eyebrow: 'COFFEE', title: 'Jazz & Coffee Mornings', query: 'jazz coffee morning music' },
+    { eyebrow: 'FUSION', title: 'Modern Jazz Fusion', query: 'modern jazz fusion songs' }
+  ],
+  rnb: [
+    { eyebrow: 'CHARTBUSTERS', title: 'R&B Chartbusters', query: 'trending rnb songs' },
+    { eyebrow: 'SOUL', title: 'Soul Classics', query: 'soul music classics' },
+    { eyebrow: 'LATE NIGHT', title: 'Late Night R&B', query: 'rnb late night slow songs' },
+    { eyebrow: 'NEO SOUL', title: 'Neo-Soul Vibes', query: 'neo soul songs' },
+    { eyebrow: 'LOVE', title: 'R&B Love Songs', query: 'rnb love songs' }
+  ],
+  classical: [
+    { eyebrow: 'LEGENDS', title: 'Hindustani Legends', query: 'hindustani classical vocal legendary' },
+    { eyebrow: 'CARNATIC', title: 'Carnatic Gems', query: 'carnatic classical songs' },
+    { eyebrow: 'INSTRUMENTAL', title: 'Sitar, Tabla & Sarod', query: 'indian classical instrumental sitar tabla' },
+    { eyebrow: 'FUSION', title: 'Classical Fusion', query: 'indian classical fusion songs' },
+    { eyebrow: 'RAAGAS', title: 'Raaga Deep Dives', query: 'indian classical raga renditions' },
+    { eyebrow: 'MORNING RAAG', title: 'Morning Ragas', query: 'morning raga classical songs' }
+  ],
+  acoustic: [
+    { eyebrow: 'UNPLUGGED', title: 'Unplugged Hits', query: 'unplugged acoustic hits bollywood' },
+    { eyebrow: 'COVERS', title: 'Acoustic Bollywood Covers', query: 'acoustic bollywood covers' },
+    { eyebrow: 'GUITAR', title: 'Raw Guitar Sessions', query: 'acoustic guitar sessions hindi' },
+    { eyebrow: 'INDIE ACOUSTIC', title: 'Indie Acoustic', query: 'indie acoustic songs' },
+    { eyebrow: 'STRIPPED', title: 'Stripped & Soulful', query: 'stripped acoustic songs' }
+  ],
+  happy: [
+    { eyebrow: 'CHARTBUSTERS', title: 'Happy Vibes Chartbusters', query: 'happy feel good songs bollywood' },
+    { eyebrow: 'SUNSHINE', title: 'Sunshine Pop (English)', query: 'feel good english pop songs' },
+    { eyebrow: 'ZINDAGI', title: 'Zindagi & Positivity', query: 'positive zindagi songs hindi' },
+    { eyebrow: 'DANCE SMILE', title: 'Dance-Inducing Happy Hits', query: 'happy dance songs bollywood' },
+    { eyebrow: 'PUNJABI JOY', title: 'Feel-Good Punjabi', query: 'feel good punjabi songs' },
+    { eyebrow: 'INSTRUMENTAL JOY', title: 'Good Mood Instrumentals', query: 'uplifting instrumental songs' }
+  ],
+  piano: [
+    { eyebrow: 'GREATS', title: 'Piano Greats', query: 'piano instrumental covers popular' },
+    { eyebrow: 'FOCUS', title: 'Calm Piano for Focus', query: 'calm piano melodies relaxing' },
+    { eyebrow: 'CINEMATIC', title: 'Cinematic Piano', query: 'cinematic piano music' },
+    { eyebrow: 'LOVE THEMES', title: 'Piano Love Themes', query: 'romantic piano instrumental' },
+    { eyebrow: 'BOLLYWOOD KEYS', title: 'Bollywood on Piano', query: 'piano bollywood covers instrumental' }
+  ]
+};
+
+// Deterministic pick for the current 10-minute rotation window — the same
+// window serves a stable variety mix (cache friendly), the next window rotates.
+function pickGenreVariety(pool, count, seedKey) {
+  const timeBucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  const key = `${seedKey}_${timeBucket}`;
+  let s = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    s ^= key.charCodeAt(i);
+    s = Math.imul(s, 16777619) >>> 0;
+  }
+  const arr = [...pool];
+  const rand = () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, Math.min(count, arr.length));
+}
+
+// Genius time machine: IST hour buckets so the feed matches the user's
+// moment of the day — morning freshness, afternoon focus, golden hour
+// romance, after-hours chill. Weekend evenings get a party boost.
+function getIstHour() {
+  try {
+    return parseInt(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata', hour: '2-digit', hourCycle: 'h23'
+    }).format(new Date()), 10) || 0;
+  } catch {
+    return new Date().getHours();
+  }
+}
+
+const GENIUS_TIME_BUCKETS = [
+  {
+    id: 'morning', hours: [5, 6, 7, 8, 9, 10, 11],
+    eyebrow: 'GENIUS TIME PICK • MORNING VIBES',
+    picks: [
+      { title: 'Good Morning Fresh Mix', query: 'morning fresh songs hindi uplifting' },
+      { title: 'Sunshine Starters', query: 'morning english pop fresh songs' },
+      { title: 'Morning Raagas & Calm', query: 'morning raga classical songs' },
+      { title: 'Wake Up Punjabi Energy', query: 'morning punjabi upbeat songs' }
+    ]
+  },
+  {
+    id: 'afternoon', hours: [12, 13, 14, 15, 16],
+    eyebrow: 'GENIUS TIME PICK • AFTERNOON FLOW',
+    picks: [
+      { title: 'Afternoon Focus Flow', query: 'focus study instrumental songs' },
+      { title: 'Midday Mood Lifters', query: 'afternoon mood uplifting songs hindi' },
+      { title: 'Timeless Afternoon Classics', query: 'timeless bollywood afternoon hits' },
+      { title: 'Chill Afternoon Acoustic', query: 'afternoon acoustic chill songs' }
+    ]
+  },
+  {
+    id: 'evening', hours: [17, 18, 19, 20, 21],
+    eyebrow: 'GENIUS TIME PICK • GOLDEN HOUR',
+    picks: [
+      { title: 'Golden Hour Romance', query: 'evening romantic songs hindi' },
+      { title: 'Sunset Drive Mix', query: 'driving songs hindi highway' },
+      { title: 'Evening Party Warmup', query: 'evening party songs bollywood' },
+      { title: 'Evening Unwind Sessions', query: 'evening soulful songs unwind' }
+    ]
+  },
+  {
+    id: 'night', hours: [22, 23, 0, 1, 2, 3, 4],
+    eyebrow: 'GENIUS TIME PICK • AFTER HOURS',
+    picks: [
+      { title: 'Late Night Lo-Fi & Chill', query: 'late night lofi chill songs' },
+      { title: 'Midnight Sad Melodies', query: 'midnight sad songs emotional' },
+      { title: 'After Hours Slow Jams', query: 'late night slow songs romantic' },
+      { title: 'Sleep-Ready Ambient', query: 'sleep ambient calming music' }
+    ]
+  }
+];
+
 export function generateShelfPlan(preferences = {}, history = [], likes = []) {
   const userArtists = (preferences.artists || []).filter(Boolean);
   const userGenres = (preferences.genres || []).filter(Boolean);
@@ -589,6 +1062,56 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
         category: 'history'
       });
     }
+
+    // ── GENIUS: "On Repeat" — replay-count analysis resurfaces the songs the
+    // user keeps coming back to (Spotify's killer feature, done live from
+    // history with zero extra API calls)
+    const replayCounts = new Map();
+    for (const h of history) {
+      if (!h?.videoId) continue;
+      const cur = replayCounts.get(h.videoId) || { ...h, count: 0 };
+      cur.count += 1;
+      replayCounts.set(h.videoId, cur);
+    }
+    const onRepeatSongs = [...replayCounts.values()]
+      .filter(x => x.count >= 2)
+      .sort((a, b) => b.count - a.count);
+    if (onRepeatSongs.length >= 2) {
+      shelves.push({
+        id: 'shelf-on-repeat',
+        eyebrow: 'ON REPEAT • ON LOOP IN YOUR HEAD',
+        title: "Songs you can't stop playing",
+        type: 'history_items',
+        category: 'history',
+        items: onRepeatSongs.slice(0, 8).map(h => ({
+          videoId: h.videoId,
+          title: cleanSongTitle(h.title) || h.title,
+          artist: h.artist || 'Artist',
+          thumbnail: h.thumbnail || (h.videoId ? `https://i.ytimg.com/vi/${h.videoId}/hqdefault.jpg` : ''),
+          duration: h.duration || 0,
+          durationText: h.durationText || '',
+          type: 'song'
+        }))
+      });
+    }
+
+    // ── GENIUS: "Jump Back In" — instant resurfacing of the last unique plays
+    if (taste.recentSongs.length >= 3) {
+      shelves.push({
+        id: 'shelf-jump-back-in',
+        eyebrow: 'JUMP BACK IN',
+        title: 'Pick up where you left off',
+        type: 'history_items',
+        category: 'history',
+        items: taste.recentSongs.map(s => ({
+          ...s,
+          thumbnail: s.thumbnail || (s.videoId ? `https://i.ytimg.com/vi/${s.videoId}/hqdefault.jpg` : ''),
+          duration: s.duration || 0,
+          durationText: s.durationText || '',
+          type: 'song'
+        }))
+      });
+    }
   }
 
   // 1b. "Because you liked" shelves — algorithmic radio seeded from user's liked songs
@@ -609,15 +1132,63 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
     });
   });
 
-  // 2. QUICK PICKS (Directly near top like YouTube Music)
+  // 2. QUICK PICKS (Genius rotation: blends main artist, liked artists, recent
+  // history artists and secondary taste artists — rotates every window)
+  const quickPickPool = [];
+  const seenQp = new Set();
+  const addQp = (q) => {
+    if (q && !seenQp.has(q.toLowerCase())) {
+      seenQp.add(q.toLowerCase());
+      quickPickPool.push(q);
+    }
+  };
+  addQp(`${mainArtist} top hits`);
+  addQp(taste.topLikedSongs[0]?.artist ? `${taste.topLikedSongs[0].artist} top songs` : null);
+  addQp(history?.[0]?.artist ? `${history[0].artist} hit songs` : null);
+  addQp(taste.topArtists[1] ? `${taste.topArtists[1]} top hits` : null);
+  addQp(`${mainArtist} best songs`);
+  const pickedQuickPick = pickGenreVariety(quickPickPool, 1, 'genius_quickpicks')[0] || `${mainArtist} top hits`;
   shelves.push({
     id: 'shelf-quickpicks',
     eyebrow: 'START RADIO BASED ON A SONG',
     title: 'Quick picks for you',
-    searchQuery: `${mainArtist} top hits`,
+    searchQuery: pickedQuickPick,
     type: 'quickpicks',
     category: 'picks'
   });
+
+  // 2b. GENIUS TIME MACHINE — shelves matched to the user's moment of the day
+  // (IST). Weekend evenings get an extra party boost.
+  const istHour = getIstHour();
+  const istDay = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-US', { weekday: 'short' });
+    }
+  })();
+  const isWeekend = istDay === 'Sat' || istDay === 'Sun';
+  const timeBucket = GENIUS_TIME_BUCKETS.find(b => b.hours.includes(istHour)) || GENIUS_TIME_BUCKETS[2];
+  pickGenreVariety(timeBucket.picks, 2, `genius_time_${timeBucket.id}`).forEach((p, pi) => {
+    shelves.push({
+      id: `shelf-genius-time-${pi}`,
+      eyebrow: timeBucket.eyebrow,
+      title: p.title,
+      searchQuery: p.query,
+      type: 'songs',
+      category: 'mood'
+    });
+  });
+  if (isWeekend && (timeBucket.id === 'evening' || timeBucket.id === 'night')) {
+    shelves.push({
+      id: 'shelf-genius-weekend',
+      eyebrow: 'GENIUS WEEKEND MODE',
+      title: 'Weekend Party Starters',
+      searchQuery: 'weekend party songs bollywood',
+      type: 'songs',
+      category: 'mood'
+    });
+  }
 
   // 3. LATEST RELEASES & FRESH DROPS (Brand new songs powered by official editorial releases & drops)
   shelves.push({
@@ -847,11 +1418,156 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
       chartKey: 'english',
       chill: 'Acoustic Pop Chill', 
       chillQuery: 'acoustic pop songs'
+    },
+    sad: {
+      name: 'Sad & Breakup Songs',
+      latest: 'Latest Sad Songs & Drops',
+      latestQuery: 'new sad songs hindi',
+      hits: 'Sad & Breakup Chartbusters',
+      hitsQuery: 'trending sad songs bollywood',
+      chill: 'Late Night Sad Melodies',
+      chillQuery: 'sad songs slow emotional'
+    },
+    viral: {
+      name: 'Viral & Trending Hits',
+      latest: 'Fresh Viral Drops',
+      latestQuery: 'new viral songs india',
+      hits: 'Viral Hits & Reel Sensations',
+      hitsQuery: 'viral trending songs india',
+      chill: 'Viral Chill Picks',
+      chillQuery: 'viral acoustic songs'
+    },
+    wedding: {
+      name: 'Wedding & Shaadi Songs',
+      latest: 'Latest Wedding Songs',
+      latestQuery: 'new wedding songs hindi',
+      hits: 'Shaadi Season Chartbusters',
+      hitsQuery: 'bollywood wedding songs hits',
+      chill: 'Wedding Romantic Melodies',
+      chillQuery: 'wedding romantic melodies'
+    },
+    retro: {
+      name: 'Retro Classics (60s–80s)',
+      latest: 'Timeless Retro Picks',
+      latestQuery: 'evergreen old hindi songs',
+      hits: 'Golden Era Superhits',
+      hitsQuery: 'old hindi classic hits kishore rafi',
+      chill: 'Retro Soft Melodies',
+      chillQuery: 'old hindi soft melodies'
+    },
+    marathi: {
+      name: 'Marathi Hits',
+      latest: 'Latest Marathi Releases',
+      latestQuery: 'new marathi songs',
+      hits: 'Marathi Chartbusters',
+      hitsQuery: 'trending marathi songs',
+      chill: 'Marathi Soulful Melodies',
+      chillQuery: 'marathi melodies songs'
+    },
+    gujarati: {
+      name: 'Gujarati Garba & Hits',
+      latest: 'Latest Gujarati Releases',
+      latestQuery: 'new gujarati songs',
+      hits: 'Gujarati Garba & Chartbusters',
+      hitsQuery: 'trending gujarati songs garba',
+      chill: 'Gujarati Folk Melodies',
+      chillQuery: 'gujarati folk songs'
+    },
+    rajasthani: {
+      name: 'Rajasthani Folk & Hits',
+      latest: 'Latest Rajasthani Releases',
+      latestQuery: 'new rajasthani songs',
+      hits: 'Rajasthani Trending Hits',
+      hitsQuery: 'trending rajasthani songs',
+      chill: 'Rajasthani Folk Melodies',
+      chillQuery: 'rajasthani folk songs'
+    },
+    kpop: {
+      name: 'K-Pop',
+      latest: 'Latest K-Pop Releases',
+      latestQuery: 'new kpop songs',
+      hits: 'K-Pop Chartbusters',
+      hitsQuery: 'trending kpop songs',
+      chill: 'K-Pop Ballads & Chill',
+      chillQuery: 'kpop ballads acoustic'
+    },
+    pakistani: {
+      name: 'Pakistani Pop & Coke Studio',
+      latest: 'Latest Pakistani Releases',
+      latestQuery: 'new pakistani pop songs',
+      hits: 'Pakistani Chartbusters & Coke Studio',
+      hitsQuery: 'trending pakistani songs coke studio',
+      chill: 'Pakistani Soulful Melodies',
+      chillQuery: 'coke studio soulful songs'
+    },
+    metal: {
+      name: 'Metal & Hard Rock',
+      latest: 'Latest Metal & Rock Drops',
+      latestQuery: 'new metal rock songs',
+      hits: 'Metal & Hard Rock Bangers',
+      hitsQuery: 'metal hard rock hits',
+      chill: 'Rock Ballads',
+      chillQuery: 'rock ballads acoustic'
+    },
+    jazz: {
+      name: 'Jazz & Blues',
+      latest: 'Latest Jazz Releases',
+      latestQuery: 'new jazz songs',
+      hits: 'Jazz & Blues Classics',
+      hitsQuery: 'jazz blues classics songs',
+      chill: 'Smooth Jazz Chill',
+      chillQuery: 'smooth jazz chill saxophone'
+    },
+    rnb: {
+      name: 'R&B & Soul',
+      latest: 'Latest R&B Releases',
+      latestQuery: 'new rnb soul songs',
+      hits: 'R&B & Soul Chartbusters',
+      hitsQuery: 'trending rnb soul songs',
+      chill: 'Smooth R&B Late Night',
+      chillQuery: 'smooth rnb soul chill'
+    },
+    classical: {
+      name: 'Indian Classical',
+      latest: 'Classical Renditions & Drops',
+      latestQuery: 'hindustani classical renditions',
+      hits: 'Classical Greats & Legends',
+      hitsQuery: 'indian classical instrumental legendary',
+      chill: 'Carnatic & Hindustani Chill',
+      chillQuery: 'carnatic classical melodies'
+    },
+    acoustic: {
+      name: 'Acoustic & Unplugged',
+      latest: 'Fresh Acoustic Covers',
+      latestQuery: 'new acoustic covers hindi',
+      hits: 'Unplugged & Acoustic Hits',
+      hitsQuery: 'unplugged acoustic hits',
+      chill: 'Coffee House Acoustic',
+      chillQuery: 'acoustic chill songs coffee house'
+    },
+    happy: {
+      name: 'Feel-Good & Happy Vibes',
+      latest: 'Fresh Feel-Good Drops',
+      latestQuery: 'new happy songs hindi',
+      hits: 'Happy Vibes Chartbusters',
+      hitsQuery: 'happy feel good songs bollywood',
+      chill: 'Sunny Uplifting Melodies',
+      chillQuery: 'uplifting feel good melodies'
+    },
+    piano: {
+      name: 'Instrumental & Piano',
+      latest: 'Latest Piano Instrumentals',
+      latestQuery: 'new piano instrumentals',
+      hits: 'Piano & Instrumental Greats',
+      hitsQuery: 'piano instrumental covers popular',
+      chill: 'Calm Piano for Focus',
+      chillQuery: 'calm piano melodies relaxing'
     }
   };
 
   primaryGenres.slice(0, 4).forEach((genre, idx) => {
-    const meta = GENRE_LABELS[genre.toLowerCase()] || {
+    const g = genre.toLowerCase();
+    const meta = GENRE_LABELS[g] || {
       name: genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hits',
       latest: `Latest ${genre} Releases`,
       latestQuery: `new ${genre} songs`,
@@ -861,17 +1577,60 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
       chillQuery: `${genre} chill songs`
     };
 
-    const isMainGenre = genre.toLowerCase() === mainGenre.toLowerCase();
+    const isMainGenre = g === mainGenre.toLowerCase();
+    const varietyPool = GENRE_VARIETY_POOLS[g];
 
-    // Only add latest & chart shelves for secondary genres (mainGenre already has top shelves)
-    if (!isMainGenre) {
-      // Genre Latest Releases (Uses official editorial new music playlist if available)
-      if (EDITORIAL_NEW_RELEASES[genre.toLowerCase()]) {
+    if (varietyPool && varietyPool.length > 0) {
+      // Variety rotation: random themed terms (4 for main genre, 3 for others).
+      // Never all at once — the pool rotates every refresh window.
+      const varietyCount = isMainGenre
+        ? Math.min(4, varietyPool.length)
+        : Math.min(3, varietyPool.length);
+      pickGenreVariety(varietyPool, varietyCount, `genre_variety_${g}`).forEach((v, vi) => {
+        shelves.push({
+          id: `shelf-genre-variety-${g}-${vi}`,
+          eyebrow: v.eyebrow,
+          title: v.title,
+          searchQuery: v.query,
+          type: 'songs',
+          category: 'genre'
+        });
+      });
+
+      // Core freshness shelf for the main genre + curated playlists for all
+      if (isMainGenre) {
         shelves.push({
           id: `shelf-genre-latest-${idx}`,
           eyebrow: 'NEW DROPS',
           title: meta.latest,
-          genre: genre.toLowerCase(),
+          searchQuery: meta.latestQuery,
+          type: 'songs',
+          category: 'latest'
+        });
+      }
+
+      shelves.push({
+        id: `shelf-genre-suggested-${idx}`,
+        eyebrow: 'RECOMMENDED PLAYLISTS',
+        title: `Curated: ${meta.name}`,
+        searchQuery: `${genre} hit playlist`,
+        type: 'playlists',
+        category: 'genre'
+      });
+      return;
+    }
+
+    // Fallback (genres without a variety pool): deterministic core shelves
+
+    // Only add latest & chart shelves for secondary genres (mainGenre already has top shelves)
+    if (!isMainGenre) {
+      // Genre Latest Releases (Uses official editorial new music playlist if available)
+      if (EDITORIAL_NEW_RELEASES[g]) {
+        shelves.push({
+          id: `shelf-genre-latest-${idx}`,
+          eyebrow: 'NEW DROPS',
+          title: meta.latest,
+          genre: g,
           type: 'latest_releases',
           category: 'latest'
         });
@@ -887,7 +1646,7 @@ export function generateShelfPlan(preferences = {}, history = [], likes = []) {
       }
 
       // Genre Trending Hits (Powered by official editorial hitlists!)
-      const effectiveChartKey = meta.chartKey || (OFFICIAL_CHARTS[genre.toLowerCase()] ? genre.toLowerCase() : null);
+      const effectiveChartKey = meta.chartKey || (OFFICIAL_CHARTS[g] ? g : null);
       if (effectiveChartKey && OFFICIAL_CHARTS[effectiveChartKey]) {
         shelves.push({
           id: `shelf-genre-chart-${idx}`,
@@ -1031,6 +1790,11 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
   // 3. Populate shelves concurrently
   const populatedShelves = await Promise.all(
     shelfPlan.map(async (plan) => {
+      // ── TYPE: history_items (precomputed from user history — instant, no API) ──
+      if (plan.type === 'history_items') {
+        return { ...plan, items: (plan.items || []).slice(0, 12) };
+      }
+
       // ── TYPE: chart_songs (Direct YouTube Music Official Live Chart API) ──
       if (plan.type === 'chart_songs' && plan.chartKey) {
         const browseId = OFFICIAL_CHARTS[plan.chartKey];

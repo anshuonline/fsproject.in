@@ -4,6 +4,14 @@
 // official-release preference, junk demotion (unless the user asked for it),
 // deduplication and a cleaned-query fallback for weak result sets.
 
+import { TOP_100_ARTISTS } from './artistsData.js';
+
+// Known popular artists act as an authority signal: the original release by a
+// mainstream artist outranks anonymous covers with the identical song title.
+const KNOWN_ARTIST_NAMES = new Set(
+  (TOP_100_ARTISTS || []).map(a => (a.name || '').toLowerCase().trim()).filter(Boolean)
+);
+
 const norm = (s) => (s || '')
   .toString()
   .toLowerCase()
@@ -16,13 +24,20 @@ const norm = (s) => (s || '')
 const tokens = (s) => norm(s).split(' ').filter(Boolean);
 
 // Query intent: user explicitly wants a variant, so never demote those keywords in results
-const JUNK_INTENT_RE = /\b(remix|lo-?fi|lofi|slowed|reverb|sped\s*up|speed\s*up|nightcore|8d|16d|karaoke|cover|instrumental|mashup|jukebox|mix|dj|acoustic|unplugged|reprise|version|flip|male|female)\b/i;
+const JUNK_INTENT_RE = /\b(remix|lo-?fi|lofi|slowed|reverb|sped\s*up|speed\s*up|nightcore|8d|16d|karaoke|cover|instrumental|mashup|jukebox|mix|dj|acoustic|unplugged|reprise|version|flip|male|female|suno|udio|ai)\b/i;
 
 // Heavy junk: never what a music searcher wants (unless intent matched)
-const HARD_JUNK_TITLE_RE = /\b(full album|jukebox|non-?stop|nonstop|mashup|medley|dj mix|mega ?mix|continuous mix|1 hour|lo-?fi|lofi|sped ?up|slowed|reverb|nightcore|8d|16d|karaoke|whatsapp status|status video|reaction|shorts|teaser|trailer|promo|ringtone|8-bit)\b/i;
+const HARD_JUNK_TITLE_RE = /\b(full album|jukebox|non-?stop|nonstop|mashup|medley|dj mix|mega ?mix|continuous mix|1 hour|lo-?fi|lofi|sped ?up|slowed|reverb|nightcore|8d|16d|karaoke|whatsapp status|status video|reaction|shorts|teaser|trailer|promo|ringtone|8-bit|lyrics|lyrical)\b/i;
 
 // Softer variants: demoted but not buried
-const SOFT_JUNK_TITLE_RE = /\b(remix|cover|tribute|reprise|female version|male version|instrumental|cover song|selfie|dance performance|dance cover)\b/i;
+const SOFT_JUNK_TITLE_RE = /\b(remix|cover|tribute|reprise|acoustic|female version|male version|instrumental|cover song|selfie|dance performance|dance cover)\b/i;
+
+// AI-generated music (Suno, Udio & generic AI channels) — bottom-ranked in search.
+// Bare "suno" is only checked in ARTIST (Hindi titles like "Suno Na Sangemarmar"
+// must survive); titles need unambiguous AI-generation markers.
+const AI_MUSIC_TITLE_RE = /\bsuno\s*(ai|\.ai|\.com)\b|\[\s*suno\s*\]|\(\s*suno\s*(ai)?\s*\)|\b(ai|a\.i)[-\s]*(generated|gen)\b|\bai\s+(music|songs?|covers?|remix|version|album|artist|singer|vocals?|voice)\b|(made|created|generated|produced)\s+(with|by|using)\s+(suno|udio|ai)\b|aimusic|aisongs?|aigenerated|sunoai|suno\.ai|suno\.com/i;
+const AI_MUSIC_ARTIST_RE = /\bsuno\b|\budio\b|\bai\s*(music|songs?|generated|studio|lab|vibes?|covers?|hits?|charts?)\b|aimusic|aisongs?|aigenerated|sunoai|suno\.ai|suno\.com/i;
+const AI_INTENT_RE = /\b(suno|udio|ai|a\.i)\b/i;
 
 // Query noise: production metadata that pollutes YouTube Music matching
 const NOISE_PATTERNS = [
@@ -68,14 +83,16 @@ export function cleanSearchQuery(query) {
     words.pop();
   }
 
-  return words.join(' ').trim();
+  // Strip dangling separators ("saiyaan -" -> "saiyaan")
+  return words.join(' ').replace(/[\s\-–—|/,]+$/g, '').replace(/^[\s\-–—|/,]+/g, '').trim();
 }
 
 // ─── Song Scoring ────────────────────────────────────────────────────────────
 
 export function scoreSearchSong(song, rawQuery, opts = {}) {
-  const q = norm(opts.query ?? rawQuery);
-  const qToks = tokens(rawQuery);
+  const matchQuery = opts.query ?? rawQuery;
+  const q = norm(matchQuery);
+  const qToks = tokens(matchQuery);
   if (!q || !qToks.length) return 0;
 
   const title = norm(song.title);
@@ -104,16 +121,45 @@ export function scoreSearchSong(song, rawQuery, opts = {}) {
     }
   }
 
+  // Authority: mainstream/known artists outrank anonymous covers that share
+  // the exact song title ("Tum Hi Ho - Arijit Singh" > "Tum Hi Ho - Honey")
+  if (artist && KNOWN_ARTIST_NAMES.has(artist)) score += 5;
+
   // Album name match (query may be the movie/album name)
   if (album && q.length > 3 && album.includes(q)) score += 4;
 
   // Official release (album-backed songs beat random video uploads)
-  if (song.album) score += 2;
+  if (song.album) score += 4;
+  else if (qToks.length >= 2) score *= 0.75;
 
-  // Junk demotion — skipped when the user explicitly asked for a variant
+  // Variant demotion: a title that only becomes an exact match after stripping
+  // its bracket suffix ("Tum Hi Ho (Tunisian)", "(Workout Mix)", "(feat. X)")
+  // is a variant, not the original release. Production metadata suffixes
+  // ("Official Video", "From "...""") belong to the real song and stay untouched.
   if (!junkIntent) {
-    if (HARD_JUNK_TITLE_RE.test(song.title || '')) score -= 10;
-    else if (SOFT_JUNK_TITLE_RE.test(song.title || '')) score -= 6;
+    const rawTitle = (song.title || '').toLowerCase();
+    const bracket = rawTitle.match(/[\(\[\{]([^\)\]\}]*)[\)\]\}]/);
+    if (bracket && title === q && !/official|audio|video|lyrical|from|movie/i.test(bracket[1])) {
+      score *= 0.45;
+    }
+  }
+
+  // Junk scaling — skipped when the user explicitly asked for a variant.
+  // Multiplier (not subtraction) so junk never outranks clean results via
+  // exact-match bonuses earned from stripped suffixes like "(Slowed + Reverb)".
+  let junkScale = 1;
+  if (!junkIntent) {
+    if (HARD_JUNK_TITLE_RE.test(song.title || '')) junkScale = 0.25;
+    else if (SOFT_JUNK_TITLE_RE.test(song.title || '')) junkScale = 0.6;
+  }
+
+  // AI-generated music demotion is independent of generic junk intent — a
+  // "sad song lofi" query still wants real music, not Suno spam. Only an
+  // explicit AI-tools query ("suno ai song") skips it.
+  if (!AI_INTENT_RE.test(rawQuery) && junkScale > 0.08) {
+    if (AI_MUSIC_TITLE_RE.test(song.title || '') || AI_MUSIC_ARTIST_RE.test(song.artist || '')) {
+      junkScale = 0.08;
+    }
   }
 
   // Duration sanity: compilations and ringtones sink
@@ -123,14 +169,13 @@ export function scoreSearchSong(song, rawQuery, opts = {}) {
     if (song.duration < 40) score -= 6;
   }
 
-  return score;
+  return Math.round(score * junkScale * 100) / 100;
 }
 
 // Score, dedupe (one entry per song: title+artist, best variant wins) and sort
 export function rankSearchSongs(songs, rawQuery, opts = {}) {
   const junkIntent = opts.junkIntent ?? JUNK_INTENT_RE.test(rawQuery);
   const byKey = new Map();
-  let topScore = 0;
 
   for (const s of songs || []) {
     if (!s || !s.videoId) continue;
@@ -140,12 +185,9 @@ export function rankSearchSongs(songs, rawQuery, opts = {}) {
     if (!prev || score > prev.score) byKey.set(key, { s, score });
   }
 
-  const ranked = [...byKey.values()]
-    .sort((a, b) => b.score - a.score)
-    .map(x => x.s);
-
-  topScore = ranked.length ? Math.max(0, [...byKey.values()].sort((a, b) => b.score - a.score)[0].score) : 0;
-  return { ranked, topScore };
+  const pairs = [...byKey.values()].sort((a, b) => b.score - a.score);
+  const topScore = pairs.length ? Math.max(0, pairs[0].score) : 0;
+  return { ranked: pairs.map(x => x.s), topScore };
 }
 
 // ─── Artist / Album / Playlist Ranking ───────────────────────────────────────

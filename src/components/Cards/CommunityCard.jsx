@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
@@ -6,7 +6,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './CommunityCard.css';
 
-export function CommunityCard({ item, queueContext = null }) {
+function CommunityCardBase({ item, queueContext = null }) {
   const { playSong } = usePlayer();
   const { openMenu, openPlaylistMenu } = useContextMenu();
   const navigate = useNavigate();
@@ -130,3 +130,5 @@ export function CommunityCard({ item, queueContext = null }) {
     </div>
   );
 }
+
+export const CommunityCard = memo(CommunityCardBase);

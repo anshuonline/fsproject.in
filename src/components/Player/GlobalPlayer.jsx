@@ -16,7 +16,7 @@ import {
   Loader2,
   MoreVertical
 } from 'lucide-react';
-import { usePlayer } from '../../context/PlayerContext';
+import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import './GlobalPlayer.css';
@@ -32,8 +32,6 @@ export function GlobalPlayer() {
   const {
     currentSong,
     isPlaying,
-    currentTime,
-    duration,
     volume,
     isMuted,
     queue,
@@ -43,7 +41,6 @@ export function GlobalPlayer() {
     togglePlay,
     nextSong,
     prevSong,
-    seekTo,
     setVolumeLevel,
     setVolumeDirect,
     toggleMute,
@@ -54,6 +51,8 @@ export function GlobalPlayer() {
     isMiniPlayer,
     toggleMiniPlayer
   } = usePlayer();
+
+  const { currentTime, duration, seekTo } = usePlayerProgress();
 
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu } = useContextMenu();

@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play, Disc } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './AlbumCard.css';
 
-export function AlbumCard({ album }) {
+export const AlbumCard = memo(function AlbumCard({ album }) {
   const { playSong } = usePlayer();
   const navigate = useNavigate();
 
@@ -67,4 +67,5 @@ export function AlbumCard({ album }) {
       </div>
     </div>
   );
-}
+
+});

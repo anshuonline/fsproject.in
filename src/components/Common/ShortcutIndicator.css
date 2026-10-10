@@ -1,0 +1,96 @@
+/* ── Keyboard Shortcut Indicator (centered fade overlay) ── */
+.fs-shortcut-indicator {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 12000;
+}
+
+.fs-shortcut-indicator-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 26px;
+  border-radius: 16px;
+  background: rgba(24, 24, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  transform: scale(0.9) translateY(6px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.fs-shortcut-indicator.visible .fs-shortcut-indicator-card {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.fs-shortcut-indicator-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(0, 200, 83, 0.14);
+  color: var(--color-primary, #00c853);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fs-shortcut-indicator-icon.filled svg {
+  fill: currentColor;
+}
+
+.fs-shortcut-indicator-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 120px;
+}
+
+.fs-shortcut-indicator-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Volume mini progress bar (YouTube TV style) */
+.fs-shortcut-indicator-bar {
+  width: 150px;
+  height: 4px;
+  border-radius: var(--radius-full, 999px);
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.fs-shortcut-indicator-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full, 999px);
+  background: linear-gradient(90deg, var(--color-primary, #00c853), var(--color-accent, #76ff03));
+  transition: width 0.12s ease;
+}
+
+@media (max-width: 650px) {
+  .fs-shortcut-indicator-card {
+    padding: 13px 20px;
+    gap: 12px;
+  }
+
+  .fs-shortcut-indicator-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .fs-shortcut-indicator-bar {
+    width: 110px;
+  }
+}

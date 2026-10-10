@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Heart, MoreVertical, Trash2 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
@@ -7,7 +7,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongCard.css';
 
-export function SongCard({
+function SongCardBase({
   song,
   queueContext = [],
   index = null,
@@ -208,3 +208,5 @@ export function SongCard({
     </div>
   );
 }
+
+export const SongCard = memo(SongCardBase);

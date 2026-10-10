@@ -13,6 +13,19 @@ export function SharedSongHandler() {
   const { playByVideoId, currentSong } = usePlayer();
   const lastHandledVideoIdRef = useRef(null);
 
+  // Keep ?v= in the URL synced with the currently playing song (YT Music style),
+  // so a reload restores the song. replaceState keeps history clean & avoids
+  // re-triggering React Router.
+  useEffect(() => {
+    if (!currentSong?.videoId) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('v') === currentSong.videoId) return;
+    params.set('v', currentSong.videoId);
+    ['videoId', 'video', 'track'].forEach((key) => params.delete(key));
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [location.pathname, searchParams, currentSong?.videoId]);
+
   useEffect(() => {
     // 1. Check query parameters (?v=..., ?videoId=..., ?video=..., ?track=...)
     const queryVideoId =

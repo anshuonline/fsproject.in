@@ -175,6 +175,10 @@
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE 10+ */
   padding: 4px 4px 12px 4px;
+  /* Scroll performance: isolate layout/paint scope + GPU compositing */
+  contain: content;
+  overscroll-behavior-x: contain;
+  will-change: scroll-position;
 }
 
 .fs-shelf-row::-webkit-scrollbar {

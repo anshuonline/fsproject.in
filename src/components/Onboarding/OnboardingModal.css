@@ -168,114 +168,63 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Step 1: Spotify-Style Vibrant Genre Tiles
+   Step 1: Spotify-Style Compact Genre Pills (no glow, flat)
    ───────────────────────────────────────────────────────────── */
-.fs-onboarding-genres-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+.fs-onboarding-genres-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   width: 100%;
+  padding: 4px 0 12px;
   box-sizing: border-box;
   min-width: 0;
 }
 
-.fs-genre-spotify-card {
-  position: relative;
-  min-height: 104px;
-  border-radius: 14px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+.fs-genre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 20px;
+  border-radius: 500px;
+  background-color: #202020;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  overflow: hidden;
   user-select: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  outline: 2px solid transparent;
-  outline-offset: -2px;
-  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1),
-              box-shadow 0.18s cubic-bezier(0.2, 0, 0, 1),
-              outline 0.18s cubic-bezier(0.2, 0, 0, 1),
-              filter 0.18s ease;
-  -webkit-tap-highlight-color: transparent !important;
-  min-width: 0;
-  box-sizing: border-box;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.16s ease,
+              border-color 0.16s ease,
+              color 0.16s ease,
+              transform 0.12s ease;
 }
 
-.fs-genre-spotify-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  filter: brightness(1.08);
+.fs-genre-chip:hover {
+  background-color: #2a2a2a;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
-.fs-genre-spotify-card:active {
-  transform: scale(0.98);
+.fs-genre-chip:active {
+  transform: scale(0.97);
 }
 
-.fs-genre-spotify-card.selected {
-  outline: 2.5px solid var(--color-primary);
-  box-shadow: 0 8px 28px rgba(0, 200, 83, 0.35);
-  transform: translateY(-2px) scale(1.01);
-}
-
-.fs-genre-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-}
-
-.fs-genre-spotify-name {
-  font-size: 1.02rem;
-  font-weight: 800;
-  color: #FFFFFF;
-  line-height: 1.25;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
-  max-width: 84%;
-  word-break: break-word;
-}
-
-.fs-genre-check-pill {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+.fs-genre-chip.selected {
   background-color: var(--color-primary);
+  border-color: var(--color-primary);
   color: #000000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  font-weight: 700;
+}
+
+.fs-genre-chip.selected:hover {
+  background-color: var(--color-primary-hover, #00e676);
+  border-color: var(--color-primary-hover, #00e676);
+}
+
+.fs-genre-chip svg {
   flex-shrink: 0;
-  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.fs-genre-card-bottom {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.fs-genre-icon-bubble {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transform: rotate(8deg);
-  transition: transform 0.2s ease;
-}
-
-.fs-genre-spotify-card:hover .fs-genre-icon-bubble {
-  transform: rotate(0deg) scale(1.1);
-}
-
-.fs-genre-spotify-svg {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -620,11 +569,6 @@
     max-width: 94vw;
   }
 
-  .fs-onboarding-genres-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-
   .fs-artists-circle-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 18px 10px;
@@ -716,31 +660,13 @@
     padding: 10px 16px 10px;
   }
 
-  .fs-onboarding-genres-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+  .fs-onboarding-genres-wrap {
+    gap: 8px;
   }
 
-  .fs-genre-spotify-card {
-    min-height: 86px;
-    padding: 10px 12px;
-    border-radius: 12px;
-  }
-
-  .fs-genre-spotify-name {
-    font-size: 0.88rem;
-    max-width: 80%;
-  }
-
-  .fs-genre-icon-bubble {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-  }
-
-  .fs-genre-icon-bubble svg {
-    width: 18px;
-    height: 18px;
+  .fs-genre-chip {
+    padding: 9px 15px;
+    font-size: 0.82rem;
   }
 
   .fs-artists-circle-grid {

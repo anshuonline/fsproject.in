@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { useAuth } from '../../context/AuthContext';
+import { usePlayer } from '../../context/PlayerContext';
 import { useToast } from '../../context/ContextMenuContext';
 import { GoogleIcon } from '../../components/Common/GoogleIcon';
 import { api } from '../../services/api';
@@ -15,6 +16,14 @@ import './Profile.css';
 export function Profile() {
   const { likedSongs = [], playlists = [], history = [] } = useLibrary() || {};
   const { user, isAuthenticated, logout, loginWithGoogle, isGoogleLoading } = useAuth();
+  const { audioQuality } = usePlayer();
+
+  const QUALITY_LABELS = {
+    high: 'High Fidelity (256kbps AAC / 1080p)',
+    normal: 'Normal (128kbps Standard)',
+    'data-saver': 'Data Saver (64kbps Low Bandwidth)'
+  };
+  const qualityLabel = QUALITY_LABELS[audioQuality] || QUALITY_LABELS.high;
   const { showToast } = useToast();
   const [imgError, setImgError] = useState(false);
   const [hasPasswordState, setHasPasswordState] = useState(Boolean(user?.hasPassword));
@@ -286,7 +295,7 @@ export function Profile() {
             <div className="fs-row-right">
               <span className="fs-meta-tag fs-tag-brand">
                 <CheckCircle2 size={13} />
-                <span>Hi-Fi Master (320kbps)</span>
+                <span>{qualityLabel}</span>
               </span>
             </div>
           </div>

@@ -43,13 +43,12 @@
   left: 8px;
   padding: 3px 9px;
   border-radius: var(--radius-full);
-  background-color: rgba(0, 0, 0, 0.78);
+  background-color: rgba(0, 0, 0, 0.82);
   border: 1px solid rgba(0, 200, 83, 0.55);
   color: var(--color-primary);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.02em;
-  backdrop-filter: blur(4px);
 }
 
 /* Hover play button */

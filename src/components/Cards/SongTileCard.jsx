@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play, Pause, Heart, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
@@ -6,7 +6,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import './SongTileCard.css';
 
-export function SongTileCard({ song, queueContext = [], rank = null }) {
+function SongTileCardBase({ song, queueContext = [], rank = null }) {
   const { currentSong, isPlaying, playSong, togglePlay } = usePlayer();
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu } = useContextMenu();
@@ -41,6 +41,7 @@ export function SongTileCard({ song, queueContext = [], rank = null }) {
           alt={song.title}
           className="fs-song-tile-img"
           loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={(e) => {
             const currentSrc = e.currentTarget.src || '';
@@ -97,3 +98,5 @@ export function SongTileCard({ song, queueContext = [], rank = null }) {
     </div>
   );
 }
+
+export const SongTileCard = memo(SongTileCardBase);

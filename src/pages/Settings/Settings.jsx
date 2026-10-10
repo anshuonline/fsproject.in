@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Volume2, Zap, Trash2, CheckCircle2, User, Shield, 
   MapPin, Calendar, Clock, AlertTriangle, Mail, Loader2, 
-  Search, LogIn, ExternalLink, RefreshCw, Lock, KeyRound, Eye, EyeOff, AlertCircle 
+  Search, LogIn, ExternalLink, RefreshCw, Lock, KeyRound, Eye, EyeOff, AlertCircle,
+  Keyboard, Play, Pause, SkipForward, SkipBack, Volume1
 } from 'lucide-react';
 import { storage } from '../../services/storage';
 import { api, isEasyPassword } from '../../services/api';
@@ -16,6 +17,15 @@ export function Settings() {
   const { user, setUser, updateUser, loginWithGoogle, setPassword } = useAuth();
   const { showToast } = useContextMenu();
   const { clearHistory: clearLibraryHistory } = useLibrary();
+
+  const KEYBOARD_SHORTCUTS = [
+    { keys: ['Space'], action: 'Play / Pause', icon: Play, desc: 'Toggle playback instantly from anywhere' },
+    { keys: ['→'], action: 'Next Song', icon: SkipForward, desc: 'Skip to the next track in queue' },
+    { keys: ['←'], action: 'Previous Song', icon: SkipBack, desc: 'Go back to the previous track' },
+    { keys: ['↑'], action: 'Volume Up', icon: Volume2, desc: 'Raise volume by 5% (also unmutes)' },
+    { keys: ['↓'], action: 'Volume Down', icon: Volume1, desc: 'Lower volume by 5% in smooth steps' },
+    { keys: ['Ctrl', 'K'], action: 'Focus Search', icon: Search, desc: 'Jump straight to the search bar' }
+  ];
   const { 
     audioQuality, 
     setAudioQuality, 
@@ -678,6 +688,40 @@ export function Settings() {
               />
               <span className="fs-slider" />
             </label>
+          </div>
+        </div>
+
+        {/* ================= SECTION: KEYBOARD SHORTCUTS ================= */}
+        <div className="fs-settings-section-card">
+          <div className="fs-settings-section-header">
+            <div className="fs-settings-section-icon-wrap">
+              <Keyboard size={20} className="text-brand" />
+            </div>
+            <div>
+              <h2 className="fs-settings-section-heading">Keyboard Shortcuts</h2>
+              <p className="fs-settings-section-sub">Control playback hands-free from anywhere in the app</p>
+            </div>
+          </div>
+
+          <div className="fs-shortcuts-grid">
+            {KEYBOARD_SHORTCUTS.map((sc) => (
+              <div key={sc.action} className="fs-shortcut-row">
+                <div className="fs-shortcut-action">
+                  <span className="fs-shortcut-action-icon">
+                    <sc.icon size={17} />
+                  </span>
+                  <div className="fs-shortcut-action-text">
+                    <span className="fs-shortcut-action-name">{sc.action}</span>
+                    <span className="fs-shortcut-action-desc">{sc.desc}</span>
+                  </div>
+                </div>
+                <div className="fs-shortcut-keys">
+                  {sc.keys.map((k) => (
+                    <kbd key={k} className="fs-kbd">{k}</kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

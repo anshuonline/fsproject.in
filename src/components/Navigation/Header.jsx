@@ -56,6 +56,20 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
     }
   }, [location]);
 
+  // Ctrl+K / Cmd+K global shortcut — focus the search bar from anywhere
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+      setShowSuggestions(true);
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    window.addEventListener('fs_focus_search', handleFocusSearch);
+    return () => window.removeEventListener('fs_focus_search', handleFocusSearch);
+  }, []);
+
   // Click outside listener to close suggestions
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -244,6 +258,12 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
             <div className="fs-search-loading-icon">
               <Loader2 size={15} className="spin text-brand" />
             </div>
+          )}
+          {!searchQuery && !isLoading && (
+            <span className="fs-search-kbd-hint" aria-hidden="true">
+              <kbd>Ctrl</kbd>
+              <kbd>K</kbd>
+            </span>
           )}
           {searchQuery && !isLoading && (
             <button

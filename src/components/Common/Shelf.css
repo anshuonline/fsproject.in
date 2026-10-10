@@ -83,6 +83,10 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 4px 4px 12px;
+  /* Scroll performance: isolate layout/paint scope + GPU compositing hints */
+  contain: content;
+  overscroll-behavior-x: contain;
+  will-change: scroll-position;
 }
 
 .fs-shelf-block-row::-webkit-scrollbar {

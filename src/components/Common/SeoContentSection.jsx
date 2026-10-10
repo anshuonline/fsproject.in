@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Sparkles,
@@ -89,7 +89,7 @@ const FAQS = [
   }
 ];
 
-export function SeoContentSection() {
+const SeoContentSectionBase = function SeoContentSection() {
   const [openFaq, setOpenFaq] = useState(0);
 
   const toggleFaq = (idx) => {
@@ -235,3 +235,5 @@ export function SeoContentSection() {
     </section>
   );
 }
+
+export const SeoContentSection = React.memo(SeoContentSectionBase);

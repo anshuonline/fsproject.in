@@ -17,14 +17,16 @@ import {
   BookmarkPlus,
   Moon,
   Sparkles,
-  ListPlus
+  ListPlus,
+  Search as SearchIcon
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { usePlayer } from '../../context/PlayerContext';
+import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
 import { getArtworkFallback } from '../../utils/imageFallback';
+import { PlayerSearch } from './PlayerSearch';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {
@@ -61,8 +63,6 @@ export function FullScreenPlayer() {
   const {
     currentSong,
     isPlaying,
-    currentTime,
-    duration,
     volume,
     isMuted,
     queue,
@@ -78,7 +78,6 @@ export function FullScreenPlayer() {
     togglePlay,
     nextSong,
     prevSong,
-    seekTo,
     setVolumeLevel,
     toggleMute,
     toggleShuffle,
@@ -86,6 +85,8 @@ export function FullScreenPlayer() {
     playSong,
     addToQueue
   } = usePlayer();
+
+  const { currentTime, duration, seekTo } = usePlayerProgress();
 
   const { isLiked, toggleLike } = useLibrary();
   const { openMenu, setView: setContextView, showToast } = useContextMenu();
@@ -309,6 +310,14 @@ export function FullScreenPlayer() {
             >
               Up Next {queue.length > 0 && `(${queue.length})`}
             </button>
+            <button
+              className={`fs-fs-seg-btn ${mobileMode === 'search' ? 'active' : ''}`}
+              onClick={() => setMobileMode('search')}
+              aria-label="Search"
+              title="Search songs"
+            >
+              <SearchIcon size={15} />
+            </button>
           </div>
         ) : (
           <div className="fs-fs-header-spacer" />
@@ -412,6 +421,12 @@ export function FullScreenPlayer() {
                   onClick={() => setActiveTab('related')}
                 >
                   RELATED
+                </button>
+                <button
+                  className={`fs-fs-tab-link ${activeTab === 'search' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('search')}
+                >
+                  SEARCH
                 </button>
               </div>
             )}
@@ -683,6 +698,16 @@ export function FullScreenPlayer() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* TAB 4: SEARCH */}
+              {((!isMobile && activeTab === 'search') || (isMobile && mobileMode === 'search')) && (
+                <PlayerSearch
+                  onPlayed={() => {
+                    if (isMobile) setMobileMode('upnext');
+                    else setActiveTab('upnext');
+                  }}
+                />
               )}
             </div>
           </div>

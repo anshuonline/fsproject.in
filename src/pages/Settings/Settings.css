@@ -158,6 +158,97 @@
   background-color: #202020;
 }
 
+/* ── Keyboard Shortcuts Guide (Spotify-style) ── */
+.fs-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fs-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background-color: #0d0d0d;
+  border: 1px solid #1e1e1e;
+  border-radius: 12px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.fs-shortcut-row:hover {
+  border-color: rgba(0, 200, 83, 0.35);
+  background-color: #101010;
+}
+
+.fs-shortcut-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.fs-shortcut-action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background-color: rgba(0, 200, 83, 0.1);
+  color: var(--color-primary, #00C853);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fs-shortcut-action-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fs-shortcut-action-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.fs-shortcut-action-desc {
+  font-size: 0.76rem;
+  color: var(--color-text-secondary, #afafaf);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-shortcut-keys {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.fs-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom-width: 2px;
+  background: linear-gradient(180deg, #232323, #191919);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 /* Action Button */
 .fs-action-btn {
   display: inline-flex;
@@ -621,6 +712,14 @@ input:checked + .fs-slider:before {
   .fs-settings-page {
     padding: 0 6px 40px;
     gap: 20px;
+  }
+
+  .fs-shortcuts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-shortcut-action-desc {
+    display: none;
   }
 
   .fs-settings-section-card {

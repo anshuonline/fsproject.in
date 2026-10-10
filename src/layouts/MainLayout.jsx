@@ -10,10 +10,12 @@ import { QueueDrawer } from '../components/Player/QueueDrawer';
 import { GlobalContextMenu } from '../components/Common/GlobalContextMenu';
 import { EditPlaylistModal } from '../components/Common/EditPlaylistModal';
 import { InactivityModal } from '../components/Common/InactivityModal';
+import { ShortcutIndicator } from '../components/Common/ShortcutIndicator';
 import { Toast } from '../components/Common/Toast';
 import { Footer } from '../components/Navigation/Footer';
 import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
 import './MainLayout.css';
 
@@ -30,6 +32,9 @@ export function MainLayout() {
     }
   });
   const { currentSong } = usePlayer();
+
+  // Global keyboard shortcuts (Space, arrows, Ctrl+K)
+  useKeyboardShortcuts();
 
   // Track desktop breakpoint to prevent mobile from ever getting stuck in collapsed rail
   useEffect(() => {
@@ -116,6 +121,7 @@ export function MainLayout() {
       <GlobalContextMenu />
       <EditPlaylistModal />
       <InactivityModal />
+      <ShortcutIndicator />
       <Toast />
     </div>
   );

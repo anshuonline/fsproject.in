@@ -55,6 +55,7 @@
 }
 
 .fs-player-artwork-wrap {
+  position: relative;
   width: 54px;
   height: 54px;
   border-radius: var(--radius-xs);
@@ -437,19 +438,28 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Mobile: compact mini-player ── */
+/* ── Mobile: floating rounded mini-player card (Spotify style) ── */
 @media (max-width: 768px) {
   .fs-global-player {
-    bottom: var(--mobile-nav-height);
-    height: 58px;
-    background-color: #0f0f0f;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    left: 10px;
+    right: 10px;
+    bottom: calc(var(--mobile-nav-height) + 10px);
+    height: 62px;
+    background-color: #161616;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
   }
 
   .fs-player-micro-progress {
     display: block;
+    height: 2px;
+    margin: 0 10px;
+    border-radius: 2px 2px 0 0;
   }
 
+  /* Hide desktop-only sections */
   .fs-player-center .fs-player-scrubber-row,
   .fs-player-center .fs-ctrl-btn,
   .fs-player-right {
@@ -458,22 +468,28 @@
 
   .fs-player-inner {
     display: flex;
-    padding: 0 12px;
-    gap: 10px;
+    align-items: center;
+    padding: 0 8px;
+    gap: 8px;
   }
 
   .fs-player-left {
     flex: 1;
     min-width: 0;
+    gap: 8px;
+  }
+
+  /* Meta grabs all leftover space so action buttons pack at the right edge */
+  .fs-player-meta {
+    flex: 1;
+    min-width: 0;
+    gap: 3px;
   }
 
   .fs-player-artwork-wrap {
-    width: 42px;
-    height: 42px;
-  }
-
-  .fs-player-meta {
-    gap: 1px;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
   }
 
   .fs-player-song-title {
@@ -488,14 +504,30 @@
     opacity: 1;
   }
 
+  /* Uniform circular action buttons — never squeezed or clipped */
+  .fs-player-like-btn,
+  .fs-player-more-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
   .fs-player-center {
-    flex: 0;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .fs-player-controls {
+    gap: 0;
   }
 
   .fs-main-play-btn {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     margin: 0;
+    flex-shrink: 0;
   }
 }
 

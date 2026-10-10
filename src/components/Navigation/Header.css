@@ -103,6 +103,37 @@
   transition: all var(--transition-fast);
 }
 
+/* Ctrl+K hint badge (desktop only, hidden once the user types) */
+.fs-search-kbd-hint {
+  position: absolute;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.fs-search-kbd-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.fs-search-form:focus-within .fs-search-kbd-hint {
+  display: none;
+}
+
 .fs-search-input::placeholder {
   color: var(--color-text-muted);
 }
@@ -382,6 +413,11 @@
     left: 12px;
     width: 16px;
     height: 16px;
+  }
+
+  /* No keyboard hints on touch devices */
+  .fs-search-kbd-hint {
+    display: none;
   }
 
   /* Hide entire brand (logo + text) on mobile: hamburger sidebar already shows the logo */

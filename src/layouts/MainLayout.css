@@ -73,6 +73,7 @@
   }
 
   .fs-app-layout.has-player .fs-main-content {
-    padding-bottom: calc(var(--player-height) + var(--mobile-nav-height) + 24px);
+    /* Floating mini-player card (60px) + 8px gap + mobile nav (60px) + breathing room */
+    padding-bottom: calc(60px + 8px + var(--mobile-nav-height) + 16px);
   }
 }

@@ -5,22 +5,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  Music,
-  Film,
-  Flame,
-  Activity,
-  Zap,
-  Heart,
-  Disc,
-  Volume2,
-  Coffee,
-  Mic,
-  Headphones,
-  Radio,
-  BookOpen,
-  Sliders,
-  Moon,
-  Compass,
   X
 } from 'lucide-react';
 import { TOP_100_ARTISTS, GENRES_LIST } from '../../data/artistsData';
@@ -29,31 +13,6 @@ import { api } from '../../services/api';
 import { useToast } from '../../context/ContextMenuContext';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
 import './OnboardingModal.css';
-
-const GENRE_ICON_COMPONENTS = {
-  Film,
-  Flame,
-  Activity,
-  Zap,
-  Heart,
-  Music,
-  Disc,
-  Volume2,
-  Coffee,
-  Mic,
-  Headphones,
-  Radio,
-  Sparkles,
-  BookOpen,
-  Sliders,
-  Moon,
-  Compass
-};
-
-function renderGenreIcon(iconName) {
-  const IconComp = GENRE_ICON_COMPONENTS[iconName] || Music;
-  return <IconComp size={24} className="fs-genre-spotify-svg" />;
-}
 
 export function OnboardingModal({ isOpen, onComplete, onClose }) {
   const { showToast } = useToast();
@@ -240,33 +199,21 @@ export function OnboardingModal({ isOpen, onComplete, onClose }) {
         {/* Modal Body */}
         <div className="fs-onboarding-body" ref={bodyRef}>
           {step === 1 ? (
-            /* ─── Step 1: Spotify-Style Vibrant Genre Tiles ───────────── */
-            <div className="fs-onboarding-genres-grid">
+            /* ─── Step 1: Spotify-Style Compact Genre Pills ───────────── */
+            <div className="fs-onboarding-genres-wrap">
               {GENRES_LIST.map((genre) => {
                 const isSelected = selectedGenres.includes(genre.id);
                 return (
-                  <div
+                  <button
                     key={genre.id}
-                    className={`fs-genre-spotify-card ${isSelected ? 'selected' : ''}`}
-                    style={{
-                      background: `linear-gradient(135deg, ${genre.color} 0%, rgba(18, 18, 18, 0.94) 115%)`
-                    }}
+                    type="button"
+                    className={`fs-genre-chip ${isSelected ? 'selected' : ''}`}
                     onClick={() => toggleGenre(genre.id)}
+                    aria-pressed={isSelected}
                   >
-                    <div className="fs-genre-card-top">
-                      <span className="fs-genre-spotify-name">{genre.name}</span>
-                      {isSelected && (
-                        <div className="fs-genre-check-pill">
-                          <Check size={12} strokeWidth={3} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="fs-genre-card-bottom">
-                      <div className="fs-genre-icon-bubble">
-                        {renderGenreIcon(genre.icon)}
-                      </div>
-                    </div>
-                  </div>
+                    {isSelected && <Check size={14} strokeWidth={3} />}
+                    <span>{genre.name}</span>
+                  </button>
                 );
               })}
             </div>

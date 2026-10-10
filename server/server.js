@@ -5,7 +5,9 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import YTMusic from 'ytmusic-api';
-import { buildAlgorithmicFeed, fetchOfficialChart, fetchOfficialNewAlbums, isSpamOrJunkSong, cleanSongTitle, OFFICIAL_CHARTS, EDITORIAL_NEW_RELEASES } from './recommendationEngine.js';
+import { buildAlgorithmicFeed, fetchOfficialChart, fetchOfficialNewAlbums, fetchLiveTrendingCharts, isSpamOrJunkSong, cleanSongTitle, OFFICIAL_CHARTS, EDITORIAL_NEW_RELEASES } from './recommendationEngine.js';
+import { cleanSearchQuery, rankSearchSongs, rankSearchArtists, rankSearchAlbums, rankSearchPlaylists } from './searchEngine.js';
+import { detectGenreMoodQuery, fetchGenreMoodSongs } from './genreSearch.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
@@ -46,7 +48,8 @@ async function getYTMusic() {
   if (!ytmusicInstance) {
     console.log('Initializing YTMusic...');
     const ytmusic = new YTMusic();
-    await ytmusic.initialize();
+    // India region: charts page (FEmusic_charts) & search relevance stay India-first
+    await ytmusic.initialize({ GL: 'IN', HL: 'en' });
     ytmusicInstance = ytmusic;
     console.log('YTMusic initialized successfully!');
   }
@@ -145,36 +148,65 @@ app.get('/api/search', async (req, res) => {
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
+  // Smart song search: raw query first, re-rank, retry with cleaned query when weak
+  async function smartSearchSongs(yt, rawQuery, maxResults) {
+    const cleaned = cleanSearchQuery(rawQuery);
+
+    // Genre/mood intent ("romantic love songs", "sufi", "punjabi hits"):
+    // plain title-match ranking actively promotes junk ("Romantic Love Mashup
+    // By DJ Dalal") — editorial playlist curation is the right result set.
+    if (detectGenreMoodQuery(cleaned || rawQuery)) {
+      const curated = await fetchGenreMoodSongs(yt, cleaned || rawQuery, maxResults, formatSong);
+      if (curated.length >= 5) return curated;
+    }
+
+    const raw = await yt.searchSongs(rawQuery).catch(() => []);
+    const formatted = (raw || []).map(formatSong).filter(Boolean);
+    let { ranked, topScore } = rankSearchSongs(formatted, rawQuery, { matchQuery: cleaned });
+
+    const weak = ranked.length < 5 || topScore < 10;
+    if (weak && cleaned && cleaned.toLowerCase() !== rawQuery.toLowerCase()) {
+      const alt = await yt.searchSongs(cleaned).catch(() => []);
+      const altFormatted = (alt || []).map(formatSong).filter(Boolean);
+      if (altFormatted.length > 0) {
+        const merged = rankSearchSongs([...formatted, ...altFormatted], rawQuery, { matchQuery: cleaned });
+        ranked = merged.ranked;
+      }
+    }
+
+    return ranked.slice(0, maxResults);
+  }
+
   try {
     const yt = await getYTMusic();
     let responseData = {};
 
     if (type === 'song') {
-      const songs = await yt.searchSongs(query);
-      responseData.songs = songs.slice(0, limit).map(formatSong);
+      responseData.songs = await smartSearchSongs(yt, query, limit);
     } else if (type === 'album') {
-      const albums = await yt.searchAlbums(query);
-      responseData.albums = albums.slice(0, limit).map(formatAlbum);
+      const albums = await yt.searchAlbums(query).catch(() => []);
+      responseData.albums = rankSearchAlbums((albums || []).map(formatAlbum).filter(Boolean), query).slice(0, limit);
     } else if (type === 'playlist') {
-      const playlists = await yt.searchPlaylists(query);
-      responseData.playlists = playlists.slice(0, limit).map(formatPlaylist);
+      const playlists = await yt.searchPlaylists(query).catch(() => []);
+      responseData.playlists = rankSearchPlaylists((playlists || []).map(formatPlaylist).filter(Boolean), query).slice(0, limit);
     } else if (type === 'artist') {
       const artists = await yt.searchArtists(query).catch(() => []);
-      responseData.artists = (artists || []).slice(0, limit).map(formatArtist);
+      responseData.artists = rankSearchArtists((artists || []).map(formatArtist).filter(Boolean), query).slice(0, limit);
     } else {
       // 'all': fetch songs, albums, playlists, artists concurrently
-      const [songs, albums, playlists, artists] = await Promise.all([
-        yt.searchSongs(query).catch(() => []),
+      const songsPromise = smartSearchSongs(yt, query, 12);
+      const [albums, playlists, artists] = await Promise.all([
         yt.searchAlbums(query).catch(() => []),
         yt.searchPlaylists(query).catch(() => []),
         yt.searchArtists(query).catch(() => [])
       ]);
+      const songs = await songsPromise;
 
       responseData = {
-        songs: songs.slice(0, 10).map(formatSong),
-        albums: albums.slice(0, 6).map(formatAlbum),
-        playlists: playlists.slice(0, 6).map(formatPlaylist),
-        artists: artists.slice(0, 6).map(formatArtist)
+        songs,
+        albums: rankSearchAlbums((albums || []).map(formatAlbum).filter(Boolean), query).slice(0, 6),
+        playlists: rankSearchPlaylists((playlists || []).map(formatPlaylist).filter(Boolean), query).slice(0, 6),
+        artists: rankSearchArtists((artists || []).map(formatArtist).filter(Boolean), query).slice(0, 6)
       };
     }
 
@@ -482,7 +514,7 @@ app.get('/api/related/:videoId', async (req, res) => {
 
 // Explore Feeds (Genres, Moods, Curated Picks)
 app.get('/api/explore', async (req, res) => {
-  const cacheKey = 'explore_feed_v2';
+  const cacheKey = 'explore_feed_v3';
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -520,10 +552,9 @@ app.get('/api/explore', async (req, res) => {
     };
 
     const [
-      trendingSongs, bollywoodSongs, punjabiSongs, indieSongs, hiphopSongs,
+      bollywoodSongs, punjabiSongs, indieSongs, hiphopSongs,
       freshDropSongs, albums, lofiSongs, romanticSongs, partySongs, workoutSongs
     ] = await Promise.all([
-      chartSongs('trending_india', 16),
       chartSongs('bollywood'),
       chartSongs('punjabi'),
       chartSongs('indie'),
@@ -535,6 +566,20 @@ app.get('/api/explore', async (req, res) => {
       searchSmart('bollywood party dance hits'),
       searchSmart('bollywood workout motivation songs')
     ]);
+
+    // Real-time daily trending: native charts page → editorial hitlists → smart search.
+    // FEmusic_charts rotates daily; editorial hitlists only update weekly.
+    let trendingSongs = await fetchLiveTrendingCharts(yt, getCached, setCache).catch(() => []);
+    if (trendingSongs.length < 8) {
+      const editorial = await chartSongs('trending_india', 16).catch(() => []);
+      const merged = [...trendingSongs, ...editorial];
+      const seen = new Set();
+      trendingSongs = merged.filter(s => s && s.videoId && !seen.has(s.videoId) && seen.add(s.videoId));
+    }
+    if (trendingSongs.length < 8) {
+      trendingSongs = await searchSmart('top trending songs india', 16);
+    }
+    trendingSongs = trendingSongs.slice(0, 16);
 
     const moodShelves = [
       { id: 'bollywood', title: 'Bollywood Bliss', eyebrow: 'BOLLYWOOD HITLIST • OFFICIAL CHART', icon: 'Film', color: '#E91E63', songs: bollywoodSongs },
@@ -3173,6 +3218,9 @@ Disallow: /register
 # Admin area
 Disallow: /ganalytics
 Disallow: /seo
+
+# Sitemap discovery
+Sitemap: https://freesong.in/sitemap.xml
 `;
 
 const SITEMAP_BASE = [
@@ -3413,6 +3461,7 @@ if (fs.existsSync(distPath)) {
       robots = buildRobotsTxt(rows || []);
     } catch {}
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=600');
     res.send(robots);
   });
 
@@ -3426,6 +3475,8 @@ if (fs.existsSync(distPath)) {
       xml = buildSitemapXml([]);
     }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.setHeader('X-Robots-Tag', 'noindex');
     res.send(xml);
   });
 
@@ -3472,16 +3523,6 @@ if (fs.existsSync(distPath)) {
     return html;
   };
 
-  // SEO files: hard-guaranteed serving with correct content-type (never HTML)
-  app.get('/sitemap.xml', (req, res) => {
-    res.type('application/xml');
-    res.sendFile(path.join(distPath, 'sitemap.xml'));
-  });
-  app.get('/robots.txt', (req, res) => {
-    res.type('text/plain');
-    res.sendFile(path.join(distPath, 'robots.txt'));
-  });
-
   // Extensionless paths (/, /explore, /seo...) get the SEO-injected document
   app.use(async (req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
@@ -3498,10 +3539,8 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 
   // SPA fallback: any non-API GET request serves index.html
-  // (sitemap.xml / robots.txt are never caught — real files must win)
   app.use((req, res, next) => {
-    const p = req.path.toLowerCase();
-    if (req.method === 'GET' && !p.startsWith('/api') && !p.endsWith('sitemap.xml') && !p.endsWith('robots.txt')) {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
       return res.sendFile(path.join(distPath, 'index.html'));
     }
     next();

@@ -8,7 +8,7 @@ import {
   Maximize2,
   Loader2
 } from 'lucide-react';
-import { usePlayer } from '../../context/PlayerContext';
+import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import './MiniPlayer.css';
 
 function formatTime(sec) {
@@ -42,17 +42,16 @@ export function MiniPlayer() {
   const {
     currentSong,
     isPlaying,
-    currentTime,
-    duration,
     isLoading,
     isMiniPlayer,
     togglePlay,
     nextSong,
     prevSong,
-    seekTo,
     setIsFullScreen,
     setIsMiniPlayer
   } = usePlayer();
+
+  const { currentTime, duration, seekTo } = usePlayerProgress();
 
   const [pipWindow, setPipWindow] = useState(null);
   const progressRef = useRef(null);
