@@ -3024,7 +3024,7 @@ app.post('/api/analytics/seo/config', async (req, res) => {
   const session = getAnalyticsSession(req.body?.token);
   if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
 
-  const gsc = (req.body?.gscVerification || '').trim().slice(0, 255);
+  const gsc = (req.body?.gscVerification || '').replace(/[<>"']/g, '').trim().slice(0, 255);
   const gaId = (req.body?.gaMeasurementId || '').trim().slice(0, 50);
 
   if (gaId && !GA_ID_PATTERN.test(gaId)) {
@@ -3069,6 +3069,38 @@ app.get('/api/seo-config', async (req, res) => {
 
 // Serve static frontend assets built by Vite in production
 if (fs.existsSync(distPath)) {
+  // Cached index.html + dynamic head injection (Google Search Console verification
+  // meta tag from DB). Search Console does NOT execute JavaScript, so the tag must
+  // exist in the raw served HTML — client-side injection alone fails verification.
+  let cachedIndexHtml = null;
+  const getIndexHtmlWithSeo = async () => {
+    if (!cachedIndexHtml) {
+      cachedIndexHtml = await fs.promises.readFile(path.join(distPath, 'index.html'), 'utf8');
+    }
+    let html = cachedIndexHtml;
+    try {
+      const rows = await query("SELECT config_value AS configValue FROM seo_config WHERE config_key = 'gscVerification' LIMIT 1");
+      const gsc = (rows && rows[0]?.configValue || '').replace(/[<>"']/g, '').trim();
+      if (gsc && !html.includes('google-site-verification')) {
+        html = html.replace('</head>', `    <meta name="google-site-verification" content="${gsc}" />\n  </head>`);
+      }
+    } catch {}
+    return html;
+  };
+
+  // SEO-injected HTML for document requests (extensionless paths like /, /explore, /seo)
+  app.use(async (req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+    if (path.extname(req.path)) return next(); // static files fall through to express.static
+    try {
+      const html = await getIndexHtmlWithSeo();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    } catch {
+      next();
+    }
+  });
+
   app.use(express.static(distPath));
 
   // SPA fallback: any non-API GET request serves index.html
