@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, User, X, History, TrendingUp, ArrowUpLeft, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { CastButton } from './CastButton';
 import './Header.css';
 
 const RECENT_SEARCHES_KEY = 'freesong_recent_searches';
@@ -411,6 +412,7 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
 
       {/* Right: Actions */}
       <div className="fs-header-right">
+        <CastButton />
         <Link
           to="/profile"
           className="fs-user-avatar"

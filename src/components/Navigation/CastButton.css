@@ -1,0 +1,50 @@
+/* Official cast icon — header placement (next to profile pic) */
+.fs-cast-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #AFAFAF;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fs-cast-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+.fs-cast-btn:active {
+  transform: scale(0.94);
+}
+
+/* Connected to a cast device — brand green with subtle glow */
+.fs-cast-btn.connected {
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 6px rgba(0, 200, 83, 0.45));
+}
+
+.fs-cast-btn.connected:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Header cast icon is desktop-only: on mobile the Cast action lives in the
+   player's context menu instead */
+@media (max-width: 900px) {
+  .fs-cast-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .fs-cast-btn {
+    width: 36px;
+    height: 36px;
+  }
+}

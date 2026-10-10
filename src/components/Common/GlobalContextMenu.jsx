@@ -15,7 +15,8 @@ import {
   X,
   Pencil,
   Trash2,
-  Bookmark
+  Bookmark,
+  Cast as CastIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -71,6 +72,39 @@ export function GlobalContextMenu() {
   );
   const [adjustedPos, setAdjustedPos] = useState({ x: 0, y: 0 });
   const menuRef = useRef(null);
+
+  // Google Cast availability (mobile: cast lives in this menu, not the header).
+  // iOS WebKit has no Cast sender support — hide there entirely.
+  const [castAvailable, setCastAvailable] = useState(false);
+  const [castConnected, setCastConnected] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) return undefined;
+
+    const checkReady = () => {
+      if (window.cast?.framework && window.chrome?.cast) setCastAvailable(true);
+    };
+    const onCastState = (e) => setCastConnected(Boolean(e.detail?.connected));
+
+    checkReady();
+    window.addEventListener('fs_cast_ready', checkReady);
+    window.addEventListener('fs_cast_state', onCastState);
+    return () => {
+      window.removeEventListener('fs_cast_ready', checkReady);
+      window.removeEventListener('fs_cast_state', onCastState);
+    };
+  }, []);
+
+  const handleCastOpen = () => {
+    try {
+      cast.framework.CastContext.getInstance().requestSession();
+    } catch (err) {
+      console.warn('Cast picker failed:', err);
+    }
+    closeMenu();
+  };
 
   // Responsive mobile listener
   useEffect(() => {
@@ -534,6 +568,21 @@ export function GlobalContextMenu() {
               </button>
 
               <div className="fs-context-divider" />
+
+              {/* Cast to device (mobile: cast lives here instead of the header) */}
+              {isMobile && castAvailable && (
+                <button className="fs-context-item" onClick={handleCastOpen}>
+                  <span className={`fs-context-item-icon ${castConnected ? 'text-brand' : ''}`}>
+                    <CastIcon size={18} />
+                  </span>
+                  <span className="fs-context-item-label">
+                    {castConnected ? 'Manage cast session' : 'Cast to device'}
+                  </span>
+                  {castConnected && (
+                    <span className="fs-context-badge">Live</span>
+                  )}
+                </button>
+              )}
 
               {song.artist && (
                 <button className="fs-context-item" onClick={handleGoToArtist}>

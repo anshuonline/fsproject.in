@@ -65,11 +65,19 @@ export function PlayerProvider({ children }) {
   // ── Dual playback engine ─────────────────────────────────────────
   // Primary: JioSaavn stream via HTML5 <audio> (true background playback,
   // lock-screen MediaSession controls). Fallback: YouTube IFrame player.
+  // Cast: Google Cast session (Default Media Receiver) — TV pe official
+  // receiver controls ke saath; Saavn stream hi cast hota hai.
   const audioRef = useRef(null);              // hidden HTML5 audio singleton
-  const activeEngineRef = useRef('yt');       // 'saavn' | 'yt'
+  const activeEngineRef = useRef('yt');       // 'saavn' | 'yt' | 'cast'
   const playTokenRef = useRef(0);             // races: async stream fetch vs user skip
   const saavnCacheRef = useRef(new Map());    // videoId -> { streamUrl, ... }
   const startYtFallbackRef = useRef(null);    // late-bound YT fallback starter
+
+  // ── Cast (Chromecast) refs ───────────────────────────────────────
+  const castPlayerRef = useRef(null);         // cast.framework.RemotePlayer
+  const castCtrlRef = useRef(null);           // RemotePlayerController
+  const castSessionRef = useRef(null);        // current CastSession
+  const transferToCastRef = useRef(null);     // late-bound cast transfer
 
   // Synchronized refs to prevent stale closures in YouTube Player callbacks
   const userRef = useRef(user);
@@ -126,7 +134,7 @@ export function PlayerProvider({ children }) {
     return effective;
   }, []);
 
-  // Apply volume to the active engine (YT + HTML5 audio) with stable-volume leveling
+  // Apply volume to the active engine (YT / audio / cast) with stable-volume leveling
   const applyPlayerVolume = useCallback((vol) => {
     const effective = computeEffectiveVolume(vol);
     const target = playerRef.current;
@@ -135,6 +143,12 @@ export function PlayerProvider({ children }) {
     }
     if (audioRef.current) {
       audioRef.current.volume = effective;
+    }
+    if (activeEngineRef.current === 'cast' && castPlayerRef.current && castCtrlRef.current) {
+      try {
+        castPlayerRef.current.volumeLevel = effective;
+        castCtrlRef.current.setVolumeLevel();
+      } catch (e) {}
     }
   }, [computeEffectiveVolume]);
 
@@ -485,6 +499,12 @@ export function PlayerProvider({ children }) {
   const pauseActiveEngine = useCallback(() => {
     if (activeEngineRef.current === 'saavn') {
       try { audioRef.current?.pause(); } catch (e) {}
+    } else if (activeEngineRef.current === 'cast') {
+      const rp = castPlayerRef.current;
+      const rc = castCtrlRef.current;
+      if (rp && rc && !rp.isPaused) {
+        try { rc.playOrPause(); } catch (e) {}
+      }
     } else if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
       try { playerRef.current.pauseVideo(); } catch (e) {}
     }
@@ -499,6 +519,12 @@ export function PlayerProvider({ children }) {
           const p = a.play();
           if (p && typeof p.catch === 'function') p.catch(() => {});
         } catch (e) {}
+      }
+    } else if (activeEngineRef.current === 'cast') {
+      const rp = castPlayerRef.current;
+      const rc = castCtrlRef.current;
+      if (rp && rc && rp.isPaused) {
+        try { rc.playOrPause(); } catch (e) {}
       }
     } else if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
       try { playerRef.current.playVideo(); } catch (e) {}
@@ -547,7 +573,8 @@ export function PlayerProvider({ children }) {
     return null;
   }, []);
 
-  // Start playback: JioSaavn HTML5 audio first, YouTube IFrame as fallback
+  // Start playback: JioSaavn HTML5 audio first, YouTube IFrame as fallback.
+  // When a Cast session is active, the Saavn stream is cast to the TV instead.
   const startPlayback = useCallback(async (song) => {
     if (!song) return;
     const token = ++playTokenRef.current;
@@ -556,6 +583,16 @@ export function PlayerProvider({ children }) {
 
     // A newer play request superseded this one while we were resolving
     if (token !== playTokenRef.current) return;
+
+    const castActive = Boolean(
+      castSessionRef.current && window.cast?.framework && window.chrome?.cast
+    );
+
+    if (match?.streamUrl && castActive) {
+      const ok = await transferToCastRef.current?.(song, match);
+      if (ok) return;
+      // Cast load failed — continue locally below
+    }
 
     if (match?.streamUrl) {
       activeEngineRef.current = 'saavn';
@@ -584,6 +621,189 @@ export function PlayerProvider({ children }) {
     }
   }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume]);
 
+  // ── Cast (Chromecast) core ───────────────────────────────────────
+  // Receiver: Google's Default Media Receiver — TV par official cast UI
+  // dikhta hai (artwork, title, artist, play/pause, seek bar, volume).
+  const transferToCast = useCallback(async (song, matchOverride = null) => {
+    const session = castSessionRef.current;
+    if (!session || !window.cast?.framework || !window.chrome?.cast) return false;
+
+    const match = matchOverride || await resolveSaavnStream(song);
+    if (!match?.streamUrl) return false;
+
+    activeEngineRef.current = 'cast';
+    // Silence local engines first
+    try { audioRef.current?.pause(); } catch (e) {}
+    try {
+      if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+        playerRef.current.stopVideo();
+      }
+    } catch (e) {}
+
+    try {
+      const mediaInfo = new window.chrome.cast.media.MediaInfo(match.streamUrl, 'audio/mp4');
+      mediaInfo.streamType = window.chrome.cast.media.StreamType.BUFFERED;
+
+      const art = song.thumbnail ||
+        (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+      const metadata = new window.chrome.cast.media.MusicTrackMediaMetadata();
+      metadata.title = song.title || 'FreeSong.in';
+      metadata.artist = song.artist || '';
+      metadata.albumName = song.album || 'FreeSong.in';
+      metadata.images = [new window.chrome.cast.Image(art)];
+      mediaInfo.metadata = metadata;
+      if (match.duration > 0) mediaInfo.duration = match.duration;
+
+      const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
+      await session.loadMedia(request);
+
+      setIsPlaying(true);
+      setIsLoading(false);
+      isTransitioningRef.current = false;
+      return true;
+    } catch (err) {
+      console.warn('Cast loadMedia failed:', err);
+      return false;
+    }
+  }, [resolveSaavnStream]);
+  transferToCastRef.current = transferToCast;
+
+  // After a cast session ends, seamlessly continue on the device at the
+  // same position (using the cached Saavn stream when available)
+  const resumeLocalAfterCast = useCallback(async (song, position = 0) => {
+    const match = await resolveSaavnStream(song);
+    if (!match?.streamUrl) {
+      startYtPlayback(song);
+      return;
+    }
+    activeEngineRef.current = 'saavn';
+    const a = audioRef.current;
+    if (!a) {
+      startYtPlayback(song);
+      return;
+    }
+    a.volume = computeEffectiveVolume(volumeRef.current);
+    a.src = match.streamUrl;
+    try {
+      const p = a.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+      const seekTarget = Number(position) || 0;
+      if (seekTarget > 1) {
+        const applySeek = () => {
+          try { a.currentTime = seekTarget; } catch (e) {}
+          a.removeEventListener('loadedmetadata', applySeek);
+        };
+        a.addEventListener('loadedmetadata', applySeek);
+      }
+    } catch (e) {
+      startYtPlayback(song);
+    }
+  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume]);
+
+  // Cast SDK bootstrap: script load + session/remote-player event wiring
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const initCast = () => {
+      if (!window.cast?.framework || !window.chrome?.cast) return;
+      if (castCtrlRef.current) return; // already initialized
+
+      try {
+        const ctx = cast.framework.CastContext.getInstance();
+        // CC1AD845 = Google's published Default Media Receiver sample app.
+        // TV pe default cast controls render hote hain (artwork/seek/volume).
+        // Apna registered receiver ID yahan replace kar sakte ho.
+        ctx.setOptions({
+          receiverApplicationId: 'CC1AD845',
+          autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+          language: 'en-IN'
+        });
+
+        const remotePlayer = new cast.framework.RemotePlayer();
+        const remoteCtrl = new cast.framework.RemotePlayerController(remotePlayer);
+        castPlayerRef.current = remotePlayer;
+        castCtrlRef.current = remoteCtrl;
+
+        // Play/pause state from the cast device drives the global UI state
+        remoteCtrl.addEventListener(
+          cast.framework.RemotePlayerEventType.IS_PAUSED_CHANGED,
+          () => {
+            if (activeEngineRef.current !== 'cast') return;
+            setIsPlaying(!remotePlayer.isPaused);
+            setIsLoading(false);
+            isTransitioningRef.current = false;
+          }
+        );
+        remoteCtrl.addEventListener(
+          cast.framework.RemotePlayerEventType.DURATION_CHANGED,
+          () => {
+            if (activeEngineRef.current !== 'cast') return;
+            const d = remotePlayer.duration || 0;
+            if (d > 0) setDuration(d);
+          }
+        );
+
+        ctx.addEventListener(
+          cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+          (event) => {
+            const { sessionState } = event;
+            if (
+              sessionState === cast.framework.SessionState.SESSION_STARTED ||
+              sessionState === cast.framework.SessionState.SESSION_RESUMED
+            ) {
+              castSessionRef.current = ctx.getCurrentSession();
+              try { window.dispatchEvent(new CustomEvent('fs_cast_state', { detail: { connected: true } })); } catch (e) {}
+              // Transfer whatever is currently loaded to the TV
+              const song = currentSongRef.current;
+              if (song) transferToCastRef.current?.(song);
+            } else if (
+              sessionState === cast.framework.SessionState.SESSION_ENDED ||
+              sessionState === cast.framework.SessionState.SESSION_INTERRUPTED
+            ) {
+              const resumeAt = castPlayerRef.current?.currentTime || 0;
+              castSessionRef.current = null;
+              try { window.dispatchEvent(new CustomEvent('fs_cast_state', { detail: { connected: false } })); } catch (e) {}
+              if (activeEngineRef.current === 'cast') {
+                const song = currentSongRef.current;
+                activeEngineRef.current = 'saavn';
+                setIsPlaying(false);
+                if (song) resumeLocalAfterCast(song, resumeAt);
+              }
+            }
+          }
+        );
+
+        window.dispatchEvent(new CustomEvent('fs_cast_ready'));
+      } catch (err) {
+        console.warn('Cast init failed:', err);
+      }
+    };
+
+    if (window.cast?.framework && window.chrome?.cast) {
+      initCast();
+      return undefined;
+    }
+
+    // Callback must be registered before the SDK script loads
+    const prevHandler = window.__onGCastApiAvailable;
+    window.__onGCastApiAvailable = (available) => {
+      if (typeof prevHandler === 'function') prevHandler(available);
+      if (available) initCast();
+      else console.warn('Google Cast framework not available on this browser');
+    };
+
+    if (!document.getElementById('fs-cast-sdk')) {
+      const script = document.createElement('script');
+      script.id = 'fs-cast-sdk';
+      script.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeLocalAfterCast]);
+
   // Track progress ticker + fallback threshold detector
   useEffect(() => {
     if (isPlaying) {
@@ -598,6 +818,15 @@ export function PlayerProvider({ children }) {
           d = (a.duration && isFinite(a.duration)) ? a.duration : 0;
           setCurrentTime(t);
           if (d > 0) setDuration(d);
+        } else if (activeEngineRef.current === 'cast') {
+          const rp = castPlayerRef.current;
+          if (!rp) return;
+          t = rp.currentTime || 0;
+          d = rp.duration || 0;
+          setCurrentTime(t);
+          if (d > 0) setDuration(d);
+          // Safety net: if the receiver reports paused but UI thinks playing
+          if (rp.isPaused && isPlayingRef.current) setIsPlaying(false);
         } else if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
           t = playerRef.current.getCurrentTime() || 0;
           d = playerRef.current.getDuration() || 0;
@@ -781,6 +1010,7 @@ export function PlayerProvider({ children }) {
     // Autoplay-block watchdog: if the browser silently blocked playback, stop
     // the infinite loading spinner so the play button becomes clearly tappable
     setTimeout(() => {
+      if (activeEngineRef.current === 'cast') return; // state driven by cast events
       if (activeEngineRef.current === 'saavn') {
         const a = audioRef.current;
         if (a && a.paused && !a.ended) {
@@ -821,6 +1051,13 @@ export function PlayerProvider({ children }) {
           const p = a.play();
           if (p && typeof p.catch === 'function') p.catch(() => {});
         } catch (e) {}
+      }
+      return;
+    }
+    if (activeEngineRef.current === 'cast') {
+      const rc = castCtrlRef.current;
+      if (rc) {
+        try { rc.playOrPause(); } catch (e) {}
       }
       return;
     }
@@ -929,6 +1166,10 @@ export function PlayerProvider({ children }) {
             if (p && typeof p.catch === 'function') p.catch(() => {});
           } catch (e) {}
         }
+      } else if (activeEngineRef.current === 'cast') {
+        // Receiver is idle after ended — reload the same track on the TV
+        const song = currentSongRef.current;
+        if (song) transferToCastRef.current?.(song);
       } else if (playerRef.current?.seekTo) {
         playerRef.current.seekTo(0);
         playerRef.current.playVideo();
@@ -1026,6 +1267,14 @@ export function PlayerProvider({ children }) {
         setCurrentTime(0);
         return;
       }
+      if (activeEngineRef.current === 'cast' && castPlayerRef.current && castCtrlRef.current) {
+        try {
+          castPlayerRef.current.currentTime = 0;
+          castCtrlRef.current.seek();
+          setCurrentTime(0);
+        } catch (e) {}
+        return;
+      }
       if (playerRef.current?.seekTo) {
         playerRef.current.seekTo(0);
         setCurrentTime(0);
@@ -1052,6 +1301,18 @@ export function PlayerProvider({ children }) {
       if (a) {
         try {
           a.currentTime = seconds;
+          setCurrentTime(seconds);
+        } catch (e) {}
+      }
+      return;
+    }
+    if (activeEngineRef.current === 'cast') {
+      const rp = castPlayerRef.current;
+      const rc = castCtrlRef.current;
+      if (rp && rc) {
+        try {
+          rp.currentTime = seconds;
+          rc.seek();
           setCurrentTime(seconds);
         } catch (e) {}
       }
@@ -1094,6 +1355,12 @@ export function PlayerProvider({ children }) {
       setVolumeLevel(volume || 1);
     } else {
       setIsMuted(true);
+      if (activeEngineRef.current === 'cast' && castPlayerRef.current && castCtrlRef.current) {
+        try {
+          castPlayerRef.current.isMuted = true;
+          castCtrlRef.current.muteOrUnmute();
+        } catch (e) {}
+      }
       if (audioRef.current) audioRef.current.volume = 0;
       if (playerRef.current?.setVolume) playerRef.current.setVolume(0);
     }
@@ -1400,4 +1667,12 @@ export function usePlayerProgress() {
     throw new Error('usePlayerProgress must be used within a PlayerProvider');
   }
   return context;
+}
+
+// Context modules must never be hot-swapped: re-running this file would create
+// a fresh PlayerContext object while the mounted tree still holds the old
+// provider, making usePlayer() read an empty context and crash. Declining HMR
+// makes Vite do a full page reload for any edit to this file instead.
+if (import.meta.hot) {
+  import.meta.hot.decline();
 }
