@@ -380,7 +380,7 @@ export function PlayerProvider({ children }) {
     return () => {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
-  }, [isPlaying, startEndFadeOut]);
+  }, [isPlaying]);
 
   // Auto-fetch related tracks and append to queue for infinite playback
   const fetchAndAppendRelated = useCallback(async (baseSong) => {
