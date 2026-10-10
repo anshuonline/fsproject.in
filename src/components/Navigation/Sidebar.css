@@ -193,14 +193,12 @@
 /* Playlists section */
 .fs-sidebar-playlists {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
   overflow-x: hidden;
-  contain: content;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 500px;
 }
 
 .fs-playlist-item {
@@ -294,7 +292,6 @@
   flex-direction: column;
   gap: 2px;
   margin-top: 6px;
-  contain: content;
 }
 
 /* Mobile Sidebar Backdrop */

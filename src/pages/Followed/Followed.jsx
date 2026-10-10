@@ -6,6 +6,7 @@ import { ArtistCard } from '../../components/Cards/ArtistCard';
 import { SongCard } from '../../components/Cards/SongCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
+import { Shelf } from '../../components/Common/Shelf';
 import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { getArtistAvatarFallback } from '../../utils/imageFallback';
@@ -205,21 +206,13 @@ export function Followed() {
 
       {/* ─── Playlists featuring followed artists ────────────────────── */}
       {playlists.length > 0 && (
-        <section className="fs-followed-shelf">
-          <div className="fs-followed-shelf-header">
-            <div className="fs-followed-title-wrap">
-              <span className="fs-followed-eyebrow">PLAYLISTS</span>
-              <h3 className="fs-followed-shelf-title">Playlists Featuring Your Artists</h3>
+        <Shelf eyebrow="PLAYLISTS" title="Playlists Featuring Your Artists" carousel>
+          {playlists.map(pl => (
+            <div key={pl.id} className="fs-followed-pl-col">
+              <CommunityCard item={pl} />
             </div>
-          </div>
-          <div className="fs-followed-playlist-row">
-            {playlists.map(pl => (
-              <div key={pl.id} className="fs-followed-pl-col">
-                <CommunityCard item={pl} />
-              </div>
-            ))}
-          </div>
-        </section>
+          ))}
+        </Shelf>
       )}
 
       {loading && (

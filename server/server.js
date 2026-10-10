@@ -839,6 +839,37 @@ app.get('/api/artist/:id', async (req, res) => {
         .filter(Boolean);
     }
 
+    // 4b. Patch missing durations: ytmusic artist topSongs often lack durationText.
+    // Map real durations from searchSongs results (which include durations) by videoId.
+    if (topSongs.length > 0 && topSongs.some(s => !s.duration || s.durationText === '0:00')) {
+      try {
+        const durResults = await yt.searchSongs(`${artistName} songs`).catch(() => []);
+        const durMap = new Map();
+        for (const s of (durResults || [])) {
+          if (!s?.videoId) continue;
+          const durSec = parseDuration(s.duration);
+          if (durSec > 0) {
+            durMap.set(s.videoId, {
+              durSec,
+              text: typeof s.duration === 'string' ? s.duration : `${Math.floor(durSec / 60)}:${(durSec % 60).toString().padStart(2, '0')}`
+            });
+          }
+        }
+        topSongs = topSongs.map(s => {
+          if (s.duration > 0 && s.durationText && s.durationText !== '0:00') return s;
+          const d = durMap.get(s.videoId);
+          if (!d) return s;
+          return { ...s, duration: d.durSec, durationText: d.text };
+        });
+        // Hide duration entirely when unknown instead of showing a fake 0:00
+        topSongs = topSongs.map(s =>
+          (!s.duration && (!s.durationText || s.durationText === '0:00')) ? { ...s, durationText: '' } : s
+        );
+      } catch (durErr) {
+        console.warn(`Duration patch failed for ${artistName}:`, durErr.message);
+      }
+    }
+
     // 5. Enrich top songs: ensure at least 15 popular songs
     if (topSongs.length < 15) {
       try {
