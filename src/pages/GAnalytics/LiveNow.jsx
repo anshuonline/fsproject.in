@@ -4,13 +4,17 @@ import {
 } from 'lucide-react';
 import { getLiveUsers } from '../../services/analyticsService';
 import { useGAnalytics } from './GAnalyticsLayout';
+import { Pagination } from './Pagination';
 import './LiveNow.css';
+
+const PAGE_SIZE = 8;
 
 export function LiveNow() {
   const { token, onSessionExpired, refreshTick } = useGAnalytics();
   const [live, setLive] = useState(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [listPage, setListPage] = useState(1);
 
   const loadLive = useCallback(async (authToken) => {
     if (!authToken) return;
@@ -57,6 +61,14 @@ export function LiveNow() {
   };
 
   const playingUsers = (live?.users || []).filter(u => u.currentSong);
+
+  // Live list pagination (keep current page stable across auto-refresh, clamp when list shrinks)
+  const liveUsers = live?.users || [];
+  const listPages = Math.max(1, Math.ceil(liveUsers.length / PAGE_SIZE));
+  useEffect(() => {
+    if (listPage > listPages) setListPage(listPages);
+  }, [listPages, listPage]);
+  const pageUsers = liveUsers.slice((listPage - 1) * PAGE_SIZE, listPage * PAGE_SIZE);
 
   const guestLabel = (visitorId) => {
     const short = (visitorId || '').replace('guest_', '').split('_')[0];
@@ -130,13 +142,13 @@ export function LiveNow() {
           <Radio size={18} className="fs-ga-section-icon" />
           <h2 className="fs-ga-section-title">Live Listeners</h2>
           <span className="fs-ga-section-sub">
-            {lastUpdated ? `Updated ${formatTimeIST(lastUpdated)} IST` : 'Active in last 5 minutes'}
+            {lastUpdated ? `Updated ${formatTimeIST(lastUpdated)} IST · ${liveUsers.length} online` : 'Active in last 5 minutes'}
           </span>
           {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
         </div>
 
         <div className="fs-ga-list-container">
-          {(live?.users || []).length === 0 ? (
+          {liveUsers.length === 0 ? (
             <p className="fs-ga-empty-text">No one is online right now — check back in a bit</p>
           ) : (
             <>
@@ -146,7 +158,7 @@ export function LiveNow() {
                 <span className="fs-ga-live-col-song">Now Playing</span>
                 <span className="fs-ga-live-col-seen">Last Seen</span>
               </div>
-              {live.users.map((u, i) => (
+              {pageUsers.map((u, i) => (
                 <div key={`${u.visitorId}-${i}`} className="fs-ga-live-row">
                   {/* User */}
                   <div className="fs-ga-live-col-user">
@@ -203,6 +215,15 @@ export function LiveNow() {
             </>
           )}
         </div>
+
+        <Pagination
+          page={listPage}
+          pages={listPages}
+          total={liveUsers.length}
+          label="online users"
+          pageSize={PAGE_SIZE}
+          onPage={setListPage}
+        />
       </div>
     </div>
   );

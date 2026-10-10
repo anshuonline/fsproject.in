@@ -12,7 +12,6 @@ const DEFAULT_SETTINGS = {
   inactivityTimeout: 60,
   locationTracking: true,
   autoplay: true,
-  crossfade: 0,
   volume: 1,
   stableVolume: false
 };

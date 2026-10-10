@@ -261,7 +261,7 @@ export function SeoManager() {
         title: override.title || route?.title,
         description: override.description || route?.description,
         keywords: override.keywords || route?.keywords,
-        noindex: override.noindex === true || route?.noindex === true,
+        noindex: override.noindex === true,
         path: pathname
       });
       return;

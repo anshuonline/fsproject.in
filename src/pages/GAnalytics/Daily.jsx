@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, LoaderCircle, Eye, User, UserCheck, Search, Headphones, Clock3 } from 'lucide-react';
 import { getDailyStats } from '../../services/analyticsService';
 import { useGAnalytics } from './GAnalyticsLayout';
+import { Pagination } from './Pagination';
 import './Daily.css';
+
+const PAGE_SIZE = 10;
 
 export function Daily() {
   const { token, onSessionExpired, refreshTick } = useGAnalytics();
@@ -10,6 +13,7 @@ export function Daily() {
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'guests' | 'registered'
+  const [tablePage, setTablePage] = useState(1);
 
   const loadDaily = useCallback(async (authToken) => {
     if (!authToken) return;
@@ -50,6 +54,16 @@ export function Daily() {
     if (typeFilter === 'registered') return d.registered > 0;
     return true;
   });
+
+  // Table pagination (newest first)
+  const tablePages = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
+  useEffect(() => {
+    setTablePage(1);
+  }, [typeFilter]);
+  useEffect(() => {
+    if (tablePage > tablePages) setTablePage(tablePages);
+  }, [tablePages, tablePage]);
+  const pageRows = visibleRows.slice().reverse().slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
 
   return (
     <div className="fs-ga-daily">
@@ -151,7 +165,7 @@ export function Daily() {
                 <span className="fs-ga-daily-col-plays">Streams</span>
                 <span className="fs-ga-daily-col-hours">Hours</span>
               </div>
-              {visibleRows.slice().reverse().map(d => (
+              {pageRows.map(d => (
                 <div
                   key={d.day}
                   className={`fs-ga-daily-row ${d.day === selectedDay ? 'selected' : ''}`}
@@ -169,6 +183,15 @@ export function Daily() {
             </>
           )}
         </div>
+
+        <Pagination
+          page={tablePage}
+          pages={tablePages}
+          total={visibleRows.length}
+          label="days"
+          pageSize={PAGE_SIZE}
+          onPage={setTablePage}
+        />
       </div>
     </div>
   );

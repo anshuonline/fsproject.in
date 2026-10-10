@@ -2,19 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FileClock, ShieldAlert, MapPin, LoaderCircle } from 'lucide-react';
 import { getAdminLogs } from '../../services/analyticsService';
 import { useGAnalytics } from './GAnalyticsLayout';
+import { Pagination } from './Pagination';
 import './AdminLogs.css';
+
+const PAGE_SIZE = 15;
 
 export function AdminLogs() {
   const { token, onSessionExpired, refreshTick } = useGAnalytics();
   const [logs, setLogs] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const loadLogs = useCallback(async (authToken) => {
+  const loadLogs = useCallback(async (authToken, targetPage = 1) => {
     if (!authToken) return;
     setLoading(true);
     try {
-      const data = await getAdminLogs(authToken);
-      setLogs(data);
+      const data = await getAdminLogs(authToken, targetPage, PAGE_SIZE);
+      setLogs(data.logs);
+      setTotal(data.total);
+      setPages(data.pages);
+      setPage(Math.min(data.page, data.pages));
     } catch (err) {
       if (err.status === 401) onSessionExpired();
     } finally {
@@ -23,12 +32,17 @@ export function AdminLogs() {
   }, [onSessionExpired]);
 
   useEffect(() => {
-    if (token) loadLogs(token);
+    if (token) loadLogs(token, 1);
   }, [token, loadLogs]);
 
   useEffect(() => {
-    if (refreshTick > 0 && token) loadLogs(token);
+    if (refreshTick > 0 && token) loadLogs(token, page);
   }, [refreshTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePage = (p) => {
+    setPage(p);
+    loadLogs(token, p);
+  };
 
   const formatLogDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -46,7 +60,7 @@ export function AdminLogs() {
         <div className="fs-ga-section-header">
           <FileClock size={18} className="fs-ga-section-icon" />
           <h2 className="fs-ga-section-title">Admin Login Logs</h2>
-          <span className="fs-ga-section-sub">Last 30 days · {logs.length} entries</span>
+          <span className="fs-ga-section-sub">Last 30 days · {total.toLocaleString('en-IN')} entries</span>
           {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
         </div>
 
@@ -87,6 +101,15 @@ export function AdminLogs() {
             </>
           )}
         </div>
+
+        <Pagination
+          page={page}
+          pages={pages}
+          total={total}
+          label="entries"
+          pageSize={PAGE_SIZE}
+          onPage={handlePage}
+        />
       </div>
     </div>
   );

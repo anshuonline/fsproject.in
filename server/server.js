@@ -2451,13 +2451,55 @@ app.get('/api/analytics/logs', async (req, res) => {
   if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
 
   try {
-    const logs = await query(
-      'SELECT admin_id AS adminId, ip_address AS ip, country, city, status, logged_in_at AS loggedInAt FROM analytics_admin_logs WHERE logged_in_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY logged_in_at DESC LIMIT 200'
-    );
-    res.json({ success: true, logs: logs || [] });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(5, parseInt(req.query.limit, 10) || 15));
+    const offset = (page - 1) * limit;
+
+    const [countRows, logs] = await Promise.all([
+      query('SELECT COUNT(*) AS c FROM analytics_admin_logs WHERE logged_in_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)'),
+      query(`SELECT admin_id AS adminId, ip_address AS ip, country, city, status, logged_in_at AS loggedInAt FROM analytics_admin_logs WHERE logged_in_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY logged_in_at DESC LIMIT ${limit} OFFSET ${offset}`)
+    ]);
+
+    const total = Number(countRows[0]?.c) || 0;
+    res.json({
+      success: true,
+      logs: logs || [],
+      total,
+      page,
+      pages: Math.max(1, Math.ceil(total / limit))
+    });
   } catch (err) {
     console.warn('Analytics logs error:', err.message);
     res.status(500).json({ error: 'Failed to fetch admin logs' });
+  }
+});
+
+// Registered Users (token protected): paginated, latest first
+app.get('/api/analytics/users', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(5, parseInt(req.query.limit, 10) || 10));
+    const offset = (page - 1) * limit;
+
+    const [countRows, users] = await Promise.all([
+      query('SELECT COUNT(*) AS c FROM users'),
+      query(`SELECT name, email, registered_city AS city, registered_country AS country, created_at AS joinedAt, last_login_at AS lastLoginAt FROM users ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
+    ]);
+
+    const total = Number(countRows[0]?.c) || 0;
+    res.json({
+      success: true,
+      users: users || [],
+      total,
+      page,
+      pages: Math.max(1, Math.ceil(total / limit))
+    });
+  } catch (err) {
+    console.error('Analytics users error:', err);
+    res.status(500).json({ error: 'Failed to fetch registered users' });
   }
 });
 
@@ -3250,6 +3292,7 @@ app.delete('/api/analytics/seo', async (req, res) => {
 // Public endpoint: site-wide SEO overrides applied by the SPA SeoManager
 app.get('/api/seo-overrides', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     const rows = await query(
       'SELECT page_path AS pagePath, title, description, keywords, noindex FROM seo_overrides LIMIT 200'
     );
@@ -3318,6 +3361,7 @@ app.post('/api/analytics/seo/config', async (req, res) => {
 // Public endpoint: tracking config applied site-wide by the SPA
 app.get('/api/seo-config', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     const rows = await query(
       "SELECT config_key AS configKey, config_value AS configValue FROM seo_config WHERE config_key IN ('gscVerification', 'gaMeasurementId')"
     );

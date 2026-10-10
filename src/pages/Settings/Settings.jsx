@@ -21,8 +21,6 @@ export function Settings() {
     setAudioQuality, 
     inactivityTimeout, 
     setInactivityTimeout,
-    crossfade,
-    setCrossfade,
     stableVolume,
     setStableVolume,
     isAutoplay,
@@ -616,29 +614,6 @@ export function Settings() {
               <option value="high">High Fidelity (256kbps AAC / 1080p)</option>
               <option value="normal">Normal (128kbps Standard)</option>
               <option value="data-saver">Data Saver (64kbps Low Bandwidth)</option>
-            </select>
-          </div>
-
-          {/* Crossfade Transition Setting */}
-          <div className="fs-setting-row">
-            <div className="fs-setting-info">
-              <span className="fs-setting-label">Crossfade Songs</span>
-              <span className="fs-setting-desc">
-                Smoothly fades out the current song while the next one blends in before it ends, just like Spotify
-              </span>
-            </div>
-            <select
-              className="fs-setting-select"
-              value={crossfade}
-              onChange={(e) => {
-                setCrossfade(Number(e.target.value));
-                notifySaved();
-              }}
-            >
-              <option value={0}>Off (Instant Switch)</option>
-              <option value={3}>3 Seconds (Recommended)</option>
-              <option value={5}>5 Seconds</option>
-              <option value={8}>8 Seconds (Max)</option>
             </select>
           </div>
 

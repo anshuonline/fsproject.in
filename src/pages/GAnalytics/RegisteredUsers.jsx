@@ -1,10 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, MapPin, LoaderCircle } from 'lucide-react';
+import { getRegisteredUsers } from '../../services/analyticsService';
 import { useGAnalytics } from './GAnalyticsLayout';
+import { Pagination } from './Pagination';
 import './RegisteredUsers.css';
 
+const PAGE_SIZE = 10;
+
 export function RegisteredUsers() {
-  const { overview, loadingOverview } = useGAnalytics();
+  const { token, onSessionExpired, refreshTick } = useGAnalytics();
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  const loadUsers = useCallback(async (authToken, targetPage = 1) => {
+    if (!authToken) return;
+    setLoading(true);
+    try {
+      const data = await getRegisteredUsers(authToken, targetPage, PAGE_SIZE);
+      setUsers(data.users);
+      setTotal(data.total);
+      setPages(data.pages);
+      setPage(Math.min(data.page, data.pages));
+    } catch (err) {
+      if (err.status === 401) onSessionExpired();
+    } finally {
+      setLoading(false);
+    }
+  }, [onSessionExpired]);
+
+  useEffect(() => {
+    if (token) loadUsers(token, 1);
+  }, [token, loadUsers]);
+
+  useEffect(() => {
+    if (refreshTick > 0 && token) loadUsers(token, page);
+  }, [refreshTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePage = (p) => {
+    setPage(p);
+    loadUsers(token, p);
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -21,28 +59,18 @@ export function RegisteredUsers() {
     });
   };
 
-  if (loadingOverview && !overview) {
-    return (
-      <div className="fs-ga-loading">
-        <LoaderCircle size={32} className="fs-ga-spin" />
-        <span>Loading users...</span>
-      </div>
-    );
-  }
-
-  const users = overview?.registeredUsers || [];
-
   return (
     <div className="fs-ga-users">
       <div className="fs-ga-section">
         <div className="fs-ga-section-header">
           <Users size={18} className="fs-ga-section-icon" />
           <h2 className="fs-ga-section-title">Registered Users</h2>
-          <span className="fs-ga-section-sub">{users.length} users · latest first</span>
+          <span className="fs-ga-section-sub">{total.toLocaleString('en-IN')} users · latest first</span>
+          {loading && <LoaderCircle size={14} className="fs-ga-spin" />}
         </div>
 
         <div className="fs-ga-list-container">
-          {users.length === 0 ? (
+          {!loading && users.length === 0 ? (
             <p className="fs-ga-empty-text">No registered users yet</p>
           ) : (
             <>
@@ -80,7 +108,18 @@ export function RegisteredUsers() {
             </>
           )}
         </div>
+
+        <Pagination
+          page={page}
+          pages={pages}
+          total={total}
+          label="users"
+          pageSize={PAGE_SIZE}
+          onPage={handlePage}
+        />
       </div>
     </div>
   );
 }
+
+export default RegisteredUsers;

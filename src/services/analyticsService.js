@@ -176,21 +176,49 @@ export async function getAnalyticsOverview(token) {
   }
 }
 
-// Fetch last 30 days admin login logs (token protected)
-export async function getAdminLogs(token) {
+// Fetch last 30 days admin login logs, paginated (token protected)
+export async function getAdminLogs(token, page = 1, limit = 15) {
   try {
-    const res = await fetch(`${API_BASE}/analytics/logs?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/analytics/logs?token=${encodeURIComponent(token)}&page=${page}&limit=${limit}`, { cache: 'no-store' });
     if (!res.ok) {
       const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch logs');
       err.status = res.status;
       throw err;
     }
     const data = await res.json();
-    return data?.logs || [];
+    return {
+      logs: data?.logs || [],
+      total: Number(data?.total) || 0,
+      page: Number(data?.page) || 1,
+      pages: Number(data?.pages) || 1
+    };
   } catch (err) {
     if (err.status === 401) throw err;
     console.warn('Admin logs error:', err);
-    return [];
+    return { logs: [], total: 0, page: 1, pages: 1 };
+  }
+}
+
+// Fetch registered users, paginated (token protected)
+export async function getRegisteredUsers(token, page = 1, limit = 10) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/users?token=${encodeURIComponent(token)}&page=${page}&limit=${limit}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch users');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return {
+      users: data?.users || [],
+      total: Number(data?.total) || 0,
+      page: Number(data?.page) || 1,
+      pages: Number(data?.pages) || 1
+    };
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('Registered users error:', err);
+    return { users: [], total: 0, page: 1, pages: 1 };
   }
 }
 

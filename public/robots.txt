@@ -18,6 +18,9 @@ Allow: /followed
 Allow: /login
 Allow: /history
 Allow: /register
+Allow: /library
+Allow: /favorites
+Allow: /profile
 
 # Private user & app pages (require session, no unique content)
 Disallow: /library
