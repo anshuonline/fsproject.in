@@ -77,6 +77,7 @@ export function PlayerProvider({ children }) {
   const handleSongEndedRef = useRef(null);
   const nextSongRef = useRef(null);
   const historyRecordedVideoIdRef = useRef(null);
+  const volumeSaveTimeoutRef = useRef(null);
 
   useEffect(() => {
     userRef.current = user;
@@ -1188,7 +1189,11 @@ export function PlayerProvider({ children }) {
     setVolume(clamped);
     setIsMuted(clamped === 0);
     applyPlayerVolume(clamped);
-    storage.saveSettings({ ...storage.getSettings(), volume: clamped });
+    // Debounce localStorage write — a write on every drag tick makes the slider feel laggy
+    if (volumeSaveTimeoutRef.current) clearTimeout(volumeSaveTimeoutRef.current);
+    volumeSaveTimeoutRef.current = setTimeout(() => {
+      storage.saveSettings({ ...storage.getSettings(), volume: clamped });
+    }, 400);
   }, [applyPlayerVolume]);
 
   const toggleMute = useCallback(() => {
