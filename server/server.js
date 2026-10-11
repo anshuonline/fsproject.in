@@ -3634,8 +3634,12 @@ const MANAGEADS_DEFAULT_SLOTS = [
 ];
 
 const MANAGEADS_DEFAULT_AFFILIATES = [
-  { name: 'Featured on Amazon', imageUrl: '', amazonUrl: 'https://link.amazon/B0iUcnzVV', priceLabel: '' },
-  { name: 'Amazon Deal', imageUrl: '', amazonUrl: 'https://link.amazon/B0fDtQald', priceLabel: '' }
+  {
+    name: 'ZEBRONICS Astra 35 Speaker',
+    imageUrl: 'https://m.media-amazon.com/images/I/319RaAZHSYL._SY300_SX300_QL70_ML2_.jpg',
+    amazonUrl: 'https://www.amazon.in/dp/B0DJ3FFC8R?linkCode=ll2&tag=ganatubexfree-21&linkId=4e2c7d65e0477a3caa89f1f736b0738d&ref_=as_li_ss_tl',
+    priceLabel: '₹699'
+  }
 ];
 
 let manageAdsTablesReady = false;
@@ -3698,20 +3702,22 @@ async function ensureManageAdsTables() {
     }
   }
 
-  // Seed default affiliate products once (only when table is empty)
-  if (!alreadySeeded) {
-    const affCount = await query('SELECT COUNT(*) AS c FROM manageads_affiliates');
-    if ((Number(affCount?.[0]?.c) || 0) === 0) {
-      let order = 0;
-      for (const aff of MANAGEADS_DEFAULT_AFFILIATES) {
-        await query(
-          'INSERT INTO manageads_affiliates (name, image_url, amazon_url, price_label, enabled, sort_order) VALUES (?, ?, ?, ?, 1, ?)',
-          [aff.name, aff.imageUrl, aff.amazonUrl, aff.priceLabel, order++]
-        );
-      }
+  // Seed default affiliate products — v2 flag ensures the earlier placeholder
+  // links (untagged) get replaced with real tagged products exactly once
+  const affFlagRows = await query(
+    "SELECT setting_value FROM manageads_settings WHERE setting_key = 'affiliates_seeded_v2'"
+  );
+  if ((affFlagRows?.[0]?.setting_value || '') !== '1') {
+    await query('DELETE FROM manageads_affiliates');
+    let order = 0;
+    for (const aff of MANAGEADS_DEFAULT_AFFILIATES) {
+      await query(
+        'INSERT INTO manageads_affiliates (name, image_url, amazon_url, price_label, enabled, sort_order) VALUES (?, ?, ?, ?, 1, ?)',
+        [aff.name, aff.imageUrl, aff.amazonUrl, aff.priceLabel, order++]
+      );
     }
     await query(
-      "INSERT IGNORE INTO manageads_settings (setting_key, setting_value) VALUES ('defaults_seeded', '1')"
+      "INSERT IGNORE INTO manageads_settings (setting_key, setting_value) VALUES ('affiliates_seeded_v2', '1')"
     );
   }
 
