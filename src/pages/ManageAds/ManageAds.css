@@ -1,0 +1,648 @@
+/* ═══ ManageAds Dashboard — Spotify-professional admin UI ═══════════════ */
+
+.mad-page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 24px 20px 120px;
+  animation: madFadeUp 0.35s ease;
+}
+
+@keyframes madFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Login ── */
+.mad-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 40px 16px;
+}
+
+.mad-login-card {
+  width: min(400px, 100%);
+  background: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: 20px;
+  padding: 34px 30px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+.mad-login-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 26px rgba(0, 200, 83, 0.3);
+}
+
+.mad-login-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.mad-login-sub {
+  margin: -10px 0 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.mad-login-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #ff5252;
+  font-weight: 600;
+}
+
+.mad-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 500px;
+  background: var(--color-primary);
+  color: #000;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mad-login-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 22px rgba(0, 200, 83, 0.4);
+}
+
+/* ── Header ── */
+.mad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.mad-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mad-header-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mad-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+.mad-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.mad-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 500px;
+  background: var(--color-primary);
+  color: #000;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.mad-save-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 200, 83, 0.35);
+}
+
+.mad-save-btn.saved {
+  background: var(--color-primary-hover);
+}
+
+/* ── Tabs ── */
+.mad-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.mad-tabs::-webkit-scrollbar { display: none; }
+
+.mad-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 500px;
+  background: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.mad-tab:hover {
+  color: var(--color-text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.mad-tab.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #000;
+}
+
+.mad-tab-count {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.mad-tab:not(.active) .mad-tab-count {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--color-text-muted);
+}
+
+/* ── Loading / empty ── */
+.mad-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: var(--color-text-muted);
+}
+
+.mad-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-card, #111111);
+  border: 1px dashed var(--color-border, #222222);
+  border-radius: 14px;
+  font-size: 0.88rem;
+}
+
+/* ── Slot cards ── */
+.mad-slot-list,
+.mad-settings-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mad-slot-card {
+  background: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: 16px;
+  padding: 18px 20px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mad-slot-card.enabled {
+  border-color: rgba(0, 200, 83, 0.35);
+  box-shadow: 0 0 0 1px rgba(0, 200, 83, 0.12), 0 8px 26px rgba(0, 0, 0, 0.35);
+}
+
+.mad-slot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.mad-slot-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mad-slot-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mad-slot-card.enabled .mad-slot-icon {
+  background: rgba(0, 200, 83, 0.12);
+  color: var(--color-primary);
+}
+
+.mad-slot-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.mad-slot-hint {
+  margin: 3px 0 0;
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.mad-slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mad-slot-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.mad-slot-id {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+/* ── Fields ── */
+.mad-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mad-field > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.mad-field input,
+.mad-field textarea,
+.mad-device-select select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.mad-field textarea {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 62px;
+}
+
+.mad-field input:focus,
+.mad-field textarea:focus,
+.mad-device-select select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.mad-device-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mad-device-select > span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.mad-device-select select {
+  width: auto;
+  min-width: 190px;
+  cursor: pointer;
+}
+
+/* ── Toggle switch ── */
+.mad-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.mad-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mad-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 500px;
+  transition: background 0.18s ease;
+}
+
+.mad-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.mad-switch input:checked + .mad-slider {
+  background: var(--color-primary);
+}
+
+.mad-switch input:checked + .mad-slider::before {
+  transform: translateX(20px);
+}
+
+/* ── Affiliate tab ── */
+.mad-affiliate-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mad-affiliate-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(0, 200, 83, 0.06);
+  border: 1px solid rgba(0, 200, 83, 0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
+  flex-wrap: wrap;
+}
+
+.mad-affiliate-note p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  max-width: 640px;
+}
+
+.mad-affiliate-note strong {
+  color: var(--color-text-primary);
+}
+
+.mad-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 500px;
+  background: var(--color-primary);
+  color: #000;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.mad-add-btn:hover { transform: scale(1.04); }
+
+.mad-affiliate-card {
+  background: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.mad-affiliate-card.enabled {
+  border-color: rgba(0, 200, 83, 0.35);
+}
+
+.mad-affiliate-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.mad-affiliate-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.mad-affiliate-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mad-affiliate-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mad-affiliate-grid {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+}
+
+.mad-affiliate-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.mad-delete-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  background: rgba(255, 82, 82, 0.08);
+  color: #ff5252;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.mad-delete-btn:hover {
+  background: rgba(255, 82, 82, 0.18);
+}
+
+.mad-affiliate-link-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: 0.72rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  max-width: 100%;
+}
+
+.mad-affiliate-link-preview:hover {
+  text-decoration: underline;
+}
+
+/* ── Settings tab ── */
+.mad-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mad-settings-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.mad-range-value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+/* ── Password eye ── */
+.mad-password-wrap {
+  position: relative;
+}
+
+.mad-password-wrap input {
+  padding-right: 40px;
+}
+
+.mad-eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  padding: 4px;
+}
+
+.mad-eye-btn:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .mad-page {
+    padding: 16px 14px 120px;
+  }
+
+  .mad-slot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mad-affiliate-row {
+    flex-direction: column;
+  }
+
+  .mad-affiliate-actions {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mad-affiliate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mad-range-value {
+    min-width: 0;
+    font-size: 0.72rem;
+  }
+}

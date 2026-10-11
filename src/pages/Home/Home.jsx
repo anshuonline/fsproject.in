@@ -8,6 +8,7 @@ import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
 import { SeoContentSection } from '../../components/Common/SeoContentSection';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
+import { AdSlot } from '../../components/Ads/AdSlot';
 import './Home.css';
 
 // ─── Memoized shelves ────────────────────────────────────────────────────────
@@ -186,13 +187,18 @@ export function Home() {
       />
 
       {/* ─── Dynamic Algorithmic Shelves (Up to 20 Sections) ─────────────── */}
-      {sections.map((section) =>
-        section.type === 'quickpicks' ? (
-          <QuickPicksShelf key={section.id} section={section} />
-        ) : (
-          <SectionShelf key={section.id} section={section} />
-        )
-      )}
+      {sections.map((section, idx) => (
+        <React.Fragment key={section.id}>
+          {section.type === 'quickpicks' ? (
+            <QuickPicksShelf section={section} />
+          ) : (
+            <SectionShelf section={section} />
+          )}
+          {/* In-feed ads: after 2nd and 5th shelves (load lazily, post-idle) */}
+          {idx === 1 && <AdSlot slotId="infeed_shelf_1" className="fs-ad-slot--infeed" />}
+          {idx === 4 && <AdSlot slotId="infeed_shelf_2" className="fs-ad-slot--infeed" />}
+        </React.Fragment>
+      ))}
 
       {/* ─── SEO Discovery & Why FreeSong Section ──────────────────────── */}
       <SeoContentSection />

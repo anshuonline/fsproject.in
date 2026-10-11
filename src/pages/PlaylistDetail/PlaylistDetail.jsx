@@ -7,6 +7,8 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
+import { AdSlot } from '../../components/Ads/AdSlot';
+import { getAdSetting } from '../../services/adsService';
 import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
 
@@ -21,6 +23,16 @@ export function PlaylistDetail() {
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [infeedEvery, setInfeedEvery] = useState(5);
+
+  // In-feed frequency from ManageAds settings (defaults to 5, loaded post-idle)
+  useEffect(() => {
+    let isCurrent = true;
+    getAdSetting('playlistInfeedEvery', 5).then(val => {
+      if (isCurrent && val >= 3) setInfeedEvery(val);
+    });
+    return () => { isCurrent = false; };
+  }, []);
 
   // Playlists are personalized content: keep them out of search indexes
   useSeo({
@@ -237,18 +249,26 @@ export function PlaylistDetail() {
             </div>
           ) : (
             playlist?.songs?.map((song, idx) => (
-              <SongCard
-                key={song.videoId || idx}
-                song={song}
-                queueContext={playlist.songs}
-                index={idx}
-                playlistId={isCustom ? playlist.id : null}
-                isUserPlaylist={isCustom}
-              />
+              <React.Fragment key={song.videoId || idx}>
+                <SongCard
+                  song={song}
+                  queueContext={playlist.songs}
+                  index={idx}
+                  playlistId={isCustom ? playlist.id : null}
+                  isUserPlaylist={isCustom}
+                />
+                {/* In-feed ad row after every N tracks (except after the last) */}
+                {(idx + 1) % infeedEvery === 0 && idx + 1 < playlist.songs.length && (
+                  <AdSlot slotId="playlist_infeed" className="fs-ad-slot--playlist-row" />
+                )}
+              </React.Fragment>
             ))
           )}
         </div>
       </div>
+
+      {/* Detail page rectangle (lazy, post-idle load) */}
+      <AdSlot slotId="detail_rectangle" className="fs-ad-slot--detail" />
     </div>
   );
 }

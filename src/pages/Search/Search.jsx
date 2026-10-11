@@ -7,6 +7,7 @@ import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
+import { AdSlot } from '../../components/Ads/AdSlot';
 import './Search.css';
 
 const FILTERS = [
@@ -100,6 +101,8 @@ export function Search() {
                   />
                 ))}
               </div>
+              {/* Native in-feed ad after search results (lazy, post-idle) */}
+              <AdSlot slotId="search_native" className="fs-ad-slot--infeed" />
             </section>
           )}
 

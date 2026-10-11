@@ -79,3 +79,32 @@
     padding-bottom: calc(60px + 8px + var(--mobile-nav-height) + 16px);
   }
 }
+
+/* ── ManageAds placements ─────────────────────────────────────────────── */
+
+/* Desktop sticky ad rail — only appears when slot enabled & >= 1400px */
+.fs-ad-rail {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .fs-layout-body.has-ad-rail {
+    padding-right: 0;
+  }
+
+  .fs-layout-body.has-ad-rail .fs-ad-rail {
+    display: block;
+    width: 180px;
+    flex-shrink: 0;
+    position: sticky;
+    top: calc(var(--header-height) + 12px);
+    height: calc(100vh - var(--header-height) - 120px);
+    padding: 12px 14px 12px 0;
+    box-sizing: border-box;
+  }
+
+  .fs-layout-body.has-ad-rail .fs-main-content {
+    flex: 1;
+    min-width: 0;
+  }
+}

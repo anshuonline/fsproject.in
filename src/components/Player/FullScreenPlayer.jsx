@@ -27,6 +27,9 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
+import { AdSlot } from '../Ads/AdSlot';
+import { AffiliateSticker } from '../Ads/AffiliateSticker';
+import { getAdSetting, getSlot as getAdSlot } from '../../services/adsService';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {
@@ -140,6 +143,67 @@ export function FullScreenPlayer() {
   const pauseLyricsAutoScroll = () => {
     lyricsScrollPauseUntilRef.current = Date.now() + 4000;
   };
+
+  // ── Cover Rotation Ad: artwork ↔ ad alternate (panel-configurable cadence) ──
+  const [coverAdEnabled, setCoverAdEnabled] = useState(false);
+  const [showCoverAd, setShowCoverAd] = useState(false);
+
+  // Check slot availability once (config fetch is idle-deferred)
+  useEffect(() => {
+    if (!isFullScreen) return undefined;
+    let isCurrent = true;
+    getAdSlot('player_cover_rotate').then(slot => {
+      if (isCurrent) setCoverAdEnabled(Boolean(slot));
+    });
+    return () => { isCurrent = false; };
+  }, [isFullScreen]);
+
+  // Rotation timer: 5s cover ↔ Ns ad (default 5s/5s), pauses when tab hidden
+  useEffect(() => {
+    if (!isFullScreen || !coverAdEnabled) return undefined;
+    let cancelled = false;
+    let intervalId = null;
+    let timeoutId = null;
+
+    (async () => {
+      const rotationSeconds = await getAdSetting('playerRotationSeconds', 5);
+      if (cancelled) return;
+      const adDurationMs = Math.max(3, rotationSeconds) * 1000;
+      const coverDurationMs = 5000;
+
+      const cycle = () => {
+        if (cancelled) return;
+        if (document.visibilityState !== 'visible') {
+          timeoutId = setTimeout(cycle, 2000); // re-check soon, no ad while hidden
+          return;
+        }
+        setShowCoverAd(true);
+        timeoutId = setTimeout(() => {
+          if (cancelled) return;
+          setShowCoverAd(false);
+          timeoutId = setTimeout(cycle, coverDurationMs);
+        }, adDurationMs);
+      };
+
+      // First ad appears after one cover period so the song art lands first
+      timeoutId = setTimeout(cycle, coverDurationMs);
+      // Safety: stop everything if the tab stays hidden long-term
+      intervalId = setInterval(() => {
+        if (document.visibilityState !== 'visible' && timeoutId) {
+          clearTimeout(timeoutId);
+          setShowCoverAd(false);
+          timeoutId = setTimeout(cycle, 5000);
+        }
+      }, 4000);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
+      setShowCoverAd(false);
+    };
+  }, [isFullScreen, coverAdEnabled, currentSong?.videoId]);
 
   // Automatically close fullscreen overlay when route/URL changes
   useEffect(() => {
@@ -389,7 +453,7 @@ export function FullScreenPlayer() {
         {/* Left Column: Big Album Artwork */}
         {(!isMobile || mobileMode === 'song') && (
           <div className="fs-fs-art-column">
-            <div className="fs-fs-art-wrapper">
+            <div className={`fs-fs-art-wrapper ${showCoverAd ? 'ad-showing' : ''}`}>
               <img
                 src={
                   currentSong.thumbnail ||
@@ -410,6 +474,15 @@ export function FullScreenPlayer() {
                   }
                 }}
               />
+
+              {/* Cover rotation ad — crossfades over the artwork (lazy, post-idle) */}
+              <div className={`fs-fs-art-ad-layer ${showCoverAd ? 'visible' : ''}`} aria-hidden={!showCoverAd}>
+                <AdSlot slotId="player_cover_rotate" className="fs-ad-slot--art" />
+                <span className="fs-fs-art-ad-badge">Ad</span>
+              </div>
+
+              {/* Amazon affiliate sticker (YT-Shorts style, rotates products) */}
+              <AffiliateSticker position="bottom-left" />
             </div>
 
             {/* Mobile metadata underneath art in 'song' mode */}

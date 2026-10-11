@@ -3572,6 +3572,182 @@ app.get('/api/seo-config', async (req, res) => {
   }
 });
 
+// ═══ ManageAds — Ad Slots & Amazon Affiliate Config (freesong.in/manageads) ═══
+
+const MANAGEADS_DEFAULT_SLOTS = [
+  ['header_banner', 'Header Banner', 'both', 'Banner 728x90 / 320x50 — below header, above first shelf'],
+  ['infeed_shelf_1', 'Home In-Feed', 'both', 'Banner 728x90 / 300x250 — after 2nd home shelf'],
+  ['infeed_shelf_2', 'Home Deep In-Feed', 'both', 'Native Banner — after 5th home shelf'],
+  ['sidebar_sticky', 'Desktop Sidebar Sticky', 'desktop', 'Banner 160x600 — right rail, sticky'],
+  ['detail_rectangle', 'Detail Page Rectangle', 'both', 'Banner 300x250 — after tracklist on detail pages'],
+  ['search_native', 'Search In-Feed', 'both', 'Native Banner — after search results'],
+  ['social_bar', 'Social Bar (floating)', 'both', 'Adsterra Social Bar — global script, no space needed'],
+  ['playlist_infeed', 'Playlist In-Feed', 'both', 'Banner 300x250 / 728x90 — every 5 playlist tracks'],
+  ['player_cover_rotate', 'Player Cover Rotation', 'both', 'Banner 300x250 — alternates with artwork in fullscreen player']
+];
+
+let manageAdsTablesReady = false;
+
+async function ensureManageAdsTables() {
+  if (manageAdsTablesReady) return;
+  await query(`CREATE TABLE IF NOT EXISTS manageads_slots (
+    slot_id VARCHAR(64) PRIMARY KEY,
+    label VARCHAR(128) NOT NULL DEFAULT '',
+    script_desktop MEDIUMTEXT NULL,
+    script_mobile MEDIUMTEXT NULL,
+    devices VARCHAR(16) NOT NULL DEFAULT 'both',
+    enabled TINYINT(1) NOT NULL DEFAULT 0,
+    description VARCHAR(255) NOT NULL DEFAULT ''
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  await query(`CREATE TABLE IF NOT EXISTS manageads_affiliates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(160) NOT NULL,
+    image_url VARCHAR(600) NOT NULL DEFAULT '',
+    amazon_url VARCHAR(900) NOT NULL DEFAULT '',
+    price_label VARCHAR(60) NOT NULL DEFAULT '',
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  await query(`CREATE TABLE IF NOT EXISTS manageads_settings (
+    setting_key VARCHAR(64) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL DEFAULT ''
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  // Seed the 9 default slots once (idempotent)
+  for (const [slotId, label, devices, description] of MANAGEADS_DEFAULT_SLOTS) {
+    await query(
+      'INSERT IGNORE INTO manageads_slots (slot_id, label, devices, description, enabled) VALUES (?, ?, ?, ?, 0)',
+      [slotId, label, devices, description]
+    );
+  }
+
+  manageAdsTablesReady = true;
+}
+
+let manageAdsCache = { data: null, time: 0 };
+const MANAGEADS_CACHE_TTL = 60 * 1000; // 60s
+
+function invalidateManageAdsCache() {
+  manageAdsCache = { data: null, time: 0 };
+}
+
+async function loadManageAdsConfig(includeDisabled) {
+  const [slots, affiliates, settingsRows] = await Promise.all([
+    query('SELECT slot_id AS slotId, label, script_desktop AS scriptDesktop, script_mobile AS scriptMobile, devices, enabled, description FROM manageads_slots ORDER BY slot_id'),
+    query('SELECT id, name, image_url AS imageUrl, amazon_url AS amazonUrl, price_label AS priceLabel, enabled, sort_order AS sortOrder FROM manageads_affiliates ORDER BY sort_order, id'),
+    query('SELECT setting_key AS settingKey, setting_value AS settingValue FROM manageads_settings')
+  ]);
+
+  const settings = {};
+  (settingsRows || []).forEach(r => { settings[r.settingKey] = r.settingValue; });
+
+  const payload = {
+    slots: (slots || []).filter(s => includeDisabled || Number(s.enabled) === 1),
+    affiliates: (affiliates || []).filter(a => includeDisabled || Number(a.enabled) === 1),
+    settings
+  };
+  return payload;
+}
+
+// Public config — consumed by the SPA AFTER app load (deferred, lag-free)
+app.get('/api/ads/config', async (req, res) => {
+  try {
+    if (manageAdsCache.data && Date.now() - manageAdsCache.time < MANAGEADS_CACHE_TTL) {
+      return res.json({ success: true, config: manageAdsCache.data });
+    }
+    await ensureManageAdsTables();
+    const config = await loadManageAdsConfig(false);
+    manageAdsCache = { data: config, time: Date.now() };
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.json({ success: true, config });
+  } catch (err) {
+    console.warn('Public ads config error:', err.message);
+    res.json({ success: true, config: { slots: [], affiliates: [], settings: {} } });
+  }
+});
+
+// Admin: full config (token protected — same analytics admin session)
+app.get('/api/manageads/config', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+  try {
+    await ensureManageAdsTables();
+    const config = await loadManageAdsConfig(true);
+    res.json({ success: true, config, admin: session.adminId });
+  } catch (err) {
+    console.warn('ManageAds config error:', err.message);
+    res.status(500).json({ error: 'Failed to load ad config' });
+  }
+});
+
+// Admin: save slots + affiliates + settings (token protected)
+app.post('/api/manageads/config', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  const body = req.body || {};
+  try {
+    await ensureManageAdsTables();
+
+    // Slots: replace-all within a transaction-safe loop
+    const slots = Array.isArray(body.slots) ? body.slots.slice(0, 32) : [];
+    for (const s of slots) {
+      const slotId = String(s.slotId || '').trim().slice(0, 64);
+      if (!slotId) continue;
+      const label = String(s.label || '').slice(0, 128);
+      const devices = ['desktop', 'mobile', 'both'].includes(s.devices) ? s.devices : 'both';
+      const enabled = Number(s.enabled) === 1 ? 1 : 0;
+      const scriptDesktop = String(s.scriptDesktop || '').slice(0, 60000) || null;
+      const scriptMobile = String(s.scriptMobile || '').slice(0, 60000) || null;
+      await query(
+        `INSERT INTO manageads_slots (slot_id, label, script_desktop, script_mobile, devices, enabled)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE label = VALUES(label), script_desktop = VALUES(script_desktop),
+         script_mobile = VALUES(script_mobile), devices = VALUES(devices), enabled = VALUES(enabled)`,
+        [slotId, label, scriptDesktop, scriptMobile, devices, enabled]
+      );
+    }
+
+    // Affiliates: full replace (simplest for add/remove UI)
+    const affiliates = Array.isArray(body.affiliates) ? body.affiliates.slice(0, 24) : [];
+    await query('DELETE FROM manageads_affiliates');
+    let order = 0;
+    for (const a of affiliates) {
+      const name = String(a.name || '').trim().slice(0, 160);
+      if (!name) continue;
+      const imageUrl = /^https?:\/\//.test(String(a.imageUrl || '')) ? String(a.imageUrl).slice(0, 600) : '';
+      const amazonUrl = /^https?:\/\//.test(String(a.amazonUrl || '')) ? String(a.amazonUrl).slice(0, 900) : '';
+      const priceLabel = String(a.priceLabel || '').trim().slice(0, 60);
+      const enabled = Number(a.enabled) === 1 ? 1 : 0;
+      await query(
+        'INSERT INTO manageads_affiliates (name, image_url, amazon_url, price_label, enabled, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, imageUrl, amazonUrl, priceLabel, enabled, order++]
+      );
+    }
+
+    // Settings: whitelist keys
+    const settings = body.settings && typeof body.settings === 'object' ? body.settings : {};
+    const allowedSettings = ['playerRotationSeconds', 'playlistInfeedEvery', 'affiliateRotateSeconds'];
+    for (const key of allowedSettings) {
+      if (settings[key] !== undefined) {
+        const val = String(parseInt(settings[key], 10) || 0).slice(0, 8);
+        await query(
+          'INSERT INTO manageads_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)',
+          [key, val]
+        );
+      }
+    }
+
+    invalidateManageAdsCache();
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('ManageAds save error:', err.message);
+    res.status(500).json({ error: 'Failed to save ad config' });
+  }
+});
+
 // Serve static frontend assets built by Vite in production
 if (fs.existsSync(distPath)) {
   function escapeHtml(s) {

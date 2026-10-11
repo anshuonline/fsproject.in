@@ -17,6 +17,8 @@ import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
+import { AdSlot } from '../components/Ads/AdSlot';
+import { loadAdConfig, getSlot, injectAdHtml } from '../services/adsService';
 import './MainLayout.css';
 
 export function MainLayout() {
@@ -82,6 +84,53 @@ export function MainLayout() {
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 
+  // Ads are hidden on admin/dashboard pages
+  const isAdminArea = location.pathname.startsWith('/manageads') || location.pathname.startsWith('/ganalytics');
+
+  // Sidebar sticky rail — only when the slot is enabled (config loads after app idle)
+  const [hasAdRail, setHasAdRail] = useState(false);
+  useEffect(() => {
+    if (isAdminArea) {
+      setHasAdRail(false);
+      return undefined;
+    }
+    let isCurrent = true;
+    loadAdConfig().then(config => {
+      if (!isCurrent) return;
+      const s = (config.slots || []).find(x => x.slotId === 'sidebar_sticky');
+      setHasAdRail(Boolean(s) && window.innerWidth >= 1400);
+    });
+    const onResize = () => setHasAdRail(prev => prev && window.innerWidth >= 1400);
+    window.addEventListener('resize', onResize);
+    return () => {
+      isCurrent = false;
+      window.removeEventListener('resize', onResize);
+    };
+  }, [isAdminArea]);
+
+  // Social Bar — global floating script, injected once AFTER app load (lag-free)
+  useEffect(() => {
+    if (isAdminArea) return undefined;
+    let cleanup = null;
+    let cancelled = false;
+    (async () => {
+      const slot = await getSlot('social_bar');
+      if (!slot || cancelled) return undefined;
+      const html = slot.scriptDesktop || slot.scriptMobile;
+      if (!html) return undefined;
+      const host = document.createElement('div');
+      host.id = 'fs-social-bar-host';
+      host.style.display = 'none';
+      document.body.appendChild(host);
+      cleanup = injectAdHtml(host, html);
+    })();
+    return () => {
+      cancelled = true;
+      if (cleanup) cleanup();
+      document.getElementById('fs-social-bar-host')?.remove();
+    };
+  }, [isAdminArea]);
+
   const handleCloseSidebar = React.useCallback(() => {
     setSidebarOpen(false);
   }, []);
@@ -109,8 +158,11 @@ export function MainLayout() {
       {/* Header */}
       <Header onToggleSidebar={handleToggleSidebar} />
 
+      {/* Header banner strip (hidden on admin areas, loads after app idle) */}
+      {!isAdminArea && <AdSlot slotId="header_banner" className="fs-ad-slot--header" />}
+
       {/* Main Body */}
-      <div className="fs-layout-body">
+      <div className={`fs-layout-body ${hasAdRail ? 'has-ad-rail' : ''}`}>
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -123,6 +175,13 @@ export function MainLayout() {
           <Outlet />
           <Footer />
         </main>
+
+        {/* Desktop sticky ad rail (≥1400px, only when enabled) */}
+        {hasAdRail && (
+          <aside className="fs-ad-rail" aria-hidden="true">
+            <AdSlot slotId="sidebar_sticky" className="fs-ad-slot--sidebar" />
+          </aside>
+        )}
       </div>
 
       {/* Global Overlays & Players */}
