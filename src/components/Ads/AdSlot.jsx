@@ -56,10 +56,14 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
     if (devices !== 'both' && devices !== device) return undefined;
 
     const html = isMobile ? (slot.scriptMobile || slot.scriptDesktop) : (slot.scriptDesktop || slot.scriptMobile);
-    if (!html) return undefined;
+    if (!html) {
+      console.info(`[ManageAds] slot "${slotId}" has no script for ${device} — nothing to render`);
+      return undefined;
+    }
 
     // atOptions units go through the sequential queue (prevents the global
     // atOptions clash between multiple Adsterra units); others inject directly
+    console.info(`[ManageAds] injecting "${slotId}" (${device}, ${html.includes('atOptions') ? 'atOptions-unit' : 'direct'})`);
     if (html.includes('atOptions')) {
       cleanupRef.current = queueAdUnitInjection(hostRef.current, html);
     } else {

@@ -3613,6 +3613,21 @@ function invalidateManageAdsCache() {
   manageAdsCache = { data: null, time: 0 };
 }
 
+// Mirror the public ad config to a static JSON file so the SPA can fetch it
+// even when Hostinger's WAF rate-limits the client IP on /api routes
+async function writeAdsConfigStatic() {
+  try {
+    if (!fs.existsSync(distPath)) return;
+    const config = await loadManageAdsConfig(false);
+    fs.writeFileSync(
+      path.join(distPath, 'ads-config.json'),
+      JSON.stringify({ success: true, generatedAt: new Date().toISOString(), config })
+    );
+  } catch (err) {
+    console.warn('Static ads-config write failed:', err.message);
+  }
+}
+
 async function loadManageAdsConfig(includeDisabled) {
   const [slots, affiliates, settingsRows] = await Promise.all([
     query('SELECT slot_id AS slotId, label, script_desktop AS scriptDesktop, script_mobile AS scriptMobile, devices, enabled, description FROM manageads_slots ORDER BY slot_id'),
@@ -3738,6 +3753,7 @@ app.post('/api/manageads/config', async (req, res) => {
     }
 
     invalidateManageAdsCache();
+    await writeAdsConfigStatic();
     res.json({ success: true });
   } catch (err) {
     console.warn('ManageAds save error:', err.message);
@@ -3853,5 +3869,11 @@ if (fs.existsSync(distPath)) {
 
 app.listen(PORT, () => {
   console.log(`FreeSong.in API server running on port ${PORT}`);
-  testDbConnection().then(() => regenerateStaticSeoFiles());
+  testDbConnection()
+    .then(() => {
+      regenerateStaticSeoFiles();
+      // Mirror the ad config to a static file for WAF-resilient delivery
+      return ensureManageAdsTables().then(() => writeAdsConfigStatic());
+    })
+    .catch((err) => console.warn('Startup ads-config mirror failed:', err.message));
 });

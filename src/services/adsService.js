@@ -18,20 +18,52 @@ function whenAppIdle(fn) {
   }
 }
 
-// Fetch the enabled ad slots + affiliate products once, after app load
+// Fetch the enabled ad slots + affiliate products once, after app load.
+// Primary: /api/ads/config — Fallback: /ads-config.json static mirror
+// (serves even when the client IP is WAF rate-limited on /api routes).
 export function loadAdConfig(force = false) {
   if (cachedConfig && !force) return Promise.resolve(cachedConfig);
   if (configPromise && !force) return configPromise;
 
   configPromise = new Promise((resolve) => {
     whenAppIdle(async () => {
+      let config = null;
+      let source = 'none';
+
+      // 1. Primary API
       try {
         const res = await fetch(`${API_BASE}/ads/config`, { cache: 'no-store' });
-        const data = await res.json();
-        cachedConfig = data?.config || { slots: [], affiliates: [], settings: {} };
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.config) {
+            config = data.config;
+            source = 'api';
+          }
+        } else {
+          console.warn(`[ManageAds] /api/ads/config → HTTP ${res.status}${res.status === 403 ? ' (WAF rate-limit on this IP — trying static mirror)' : ''}`);
+        }
       } catch {
-        cachedConfig = { slots: [], affiliates: [], settings: {} };
+        console.warn('[ManageAds] /api/ads/config network error — trying static mirror');
       }
+
+      // 2. Static mirror fallback
+      if (!config) {
+        try {
+          const res = await fetch(`/ads-config.json?t=${Date.now()}`, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.config) {
+              config = data.config;
+              source = 'static-mirror';
+            }
+          }
+        } catch {}
+      }
+
+      cachedConfig = config || { slots: [], affiliates: [], settings: {} };
+      console.info(
+        `[ManageAds] config loaded via ${source}: ${cachedConfig.slots.length} slots, ${cachedConfig.affiliates.length} affiliate products`
+      );
       resolve(cachedConfig);
     });
   });
