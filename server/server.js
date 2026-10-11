@@ -3673,14 +3673,31 @@ app.post('/api/manageads/config', async (req, res) => {
 
     // Slots: replace-all within a transaction-safe loop
     const slots = Array.isArray(body.slots) ? body.slots.slice(0, 32) : [];
+
+    // Hostinger's WAF (ModSecurity/Asteria) blocks POST bodies containing raw
+    // <script> tags / ad-network URLs with 403. The panel therefore sends
+    // scripts base64-encoded; decode here before storing.
+    const decodeMaybeBase64 = (str) => {
+      const raw = String(str || '');
+      if (!raw) return '';
+      if (!/^[A-Za-z0-9+/=\r\n]+$/.test(raw)) return raw; // not base64 — store as-is
+      try {
+        const decoded = Buffer.from(raw, 'base64').toString('utf8');
+        if (!decoded || /[\u0000-\u0008\u000E-\u001F]/.test(decoded)) return raw; // garbage guard
+        return decoded;
+      } catch {
+        return raw;
+      }
+    };
+
     for (const s of slots) {
       const slotId = String(s.slotId || '').trim().slice(0, 64);
       if (!slotId) continue;
       const label = String(s.label || '').slice(0, 128);
       const devices = ['desktop', 'mobile', 'both'].includes(s.devices) ? s.devices : 'both';
       const enabled = Number(s.enabled) === 1 ? 1 : 0;
-      const scriptDesktop = String(s.scriptDesktop || '').slice(0, 60000) || null;
-      const scriptMobile = String(s.scriptMobile || '').slice(0, 60000) || null;
+      const scriptDesktop = decodeMaybeBase64(String(s.scriptDesktop || '')).slice(0, 60000) || null;
+      const scriptMobile = decodeMaybeBase64(String(s.scriptMobile || '')).slice(0, 60000) || null;
       await query(
         `INSERT INTO manageads_slots (slot_id, label, script_desktop, script_mobile, devices, enabled)
          VALUES (?, ?, ?, ?, ?, ?)

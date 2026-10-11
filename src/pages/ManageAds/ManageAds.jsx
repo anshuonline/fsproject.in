@@ -103,10 +103,18 @@ export function ManageAds() {
   const saveAll = async () => {
     setSaving(true);
     try {
+      // Encode scripts to base64 — Hostinger's WAF blocks raw <script> tags
+      // in POST bodies with 403; base64 sails through and the server decodes.
+      const b64 = (t) => (t ? btoa(unescape(encodeURIComponent(t))) : '');
+      const payloadSlots = slots.map(s => ({
+        ...s,
+        scriptDesktop: b64(s.scriptDesktop || ''),
+        scriptMobile: b64(s.scriptMobile || '')
+      }));
       const res = await fetch(`${API_BASE}/manageads/config?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slots, affiliates, settings })
+        body: JSON.stringify({ slots: payloadSlots, affiliates, settings })
       });
       if (res.status === 401) {
         clearAdminToken();
