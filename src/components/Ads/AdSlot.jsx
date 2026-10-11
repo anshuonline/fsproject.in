@@ -3,6 +3,31 @@ import { loadAdConfig, injectAdHtml, currentDevice } from '../../services/adsSer
 import './AdSlot.css';
 
 /**
+ * Adsterra "IFRAME SYNC" units share a global `atOptions` variable — placing
+ * two of them on one page makes them overwrite each other (only the last ad
+ * renders, and with the wrong size). Fix: each atOptions unit renders inside
+ * its own srcdoc iframe, fully isolating globals.
+ */
+function renderIsolated(container, html) {
+  const width = (html.match(/width['"]?\s*:\s*['"]?(\d+)/) || [])[1] || 300;
+  const height = (html.match(/height['"]?\s*:\s*['"]?(\d+)/) || [])[1] || 250;
+
+  const iframe = document.createElement('iframe');
+  iframe.width = String(width);
+  iframe.height = String(height);
+  iframe.setAttribute('scrolling', 'no');
+  iframe.setAttribute('frameborder', '0');
+  iframe.setAttribute('loading', 'lazy');
+  iframe.title = 'advertisement';
+  iframe.style.border = '0';
+  iframe.style.display = 'block';
+  iframe.style.maxWidth = '100%';
+  iframe.srcdoc = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent}</style></head><body>${html}</body></html>`;
+  container.appendChild(iframe);
+  return () => iframe.remove();
+}
+
+/**
  * Generic ad placeholder. Renders NOTHING (zero space, zero requests) unless:
  *   1. The slot exists + is enabled in the ManageAds panel
  *   2. The device matches the slot's target
@@ -58,7 +83,12 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
     const html = isMobile ? (slot.scriptMobile || slot.scriptDesktop) : (slot.scriptDesktop || slot.scriptMobile);
     if (!html) return undefined;
 
-    cleanupRef.current = injectAdHtml(hostRef.current, html);
+    // atOptions units get an isolated iframe; native/social scripts inject directly
+    if (html.includes('atOptions')) {
+      cleanupRef.current = renderIsolated(hostRef.current, html);
+    } else {
+      cleanupRef.current = injectAdHtml(hostRef.current, html);
+    }
     return () => {
       if (cleanupRef.current) cleanupRef.current();
       cleanupRef.current = null;
