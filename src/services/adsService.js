@@ -100,3 +100,45 @@ export function injectAdHtml(container, html) {
     if (container) container.innerHTML = '';
   };
 }
+
+// ── Sequential injection queue ───────────────────────────────────────────────
+// Adsterra "IFRAME SYNC" units share a global `atOptions` variable. If two
+// units initialize simultaneously they overwrite each other and only one ad
+// renders (with the wrong size). Queueing makes every unit's invoke.js read
+// the correct atOptions before the next unit loads — no srcdoc hacks needed.
+
+let adInjectionQueue = Promise.resolve();
+
+async function runUnitInjection(container, html) {
+  const tpl = document.createElement('div');
+  tpl.innerHTML = html;
+  const nodes = Array.from(tpl.childNodes);
+  for (const node of nodes) {
+    if (node.nodeName === 'SCRIPT' && node.src) {
+      await new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = node.src;
+        script.onload = resolve;
+        script.onerror = resolve;
+        container.appendChild(script);
+        // Safety valve: never let a hung ad network block the queue
+        setTimeout(resolve, 8000);
+      });
+    } else {
+      container.appendChild(node);
+    }
+  }
+}
+
+/**
+ * Queue an Adsterra atOptions unit. Returns a cleanup function.
+ */
+export function queueAdUnitInjection(container, html) {
+  if (!container || !html) return () => {};
+  adInjectionQueue = adInjectionQueue
+    .then(() => runUnitInjection(container, html))
+    .catch((e) => console.warn('Ad unit inject failed:', e));
+  return () => {
+    try { container.innerHTML = ''; } catch {}
+  };
+}
