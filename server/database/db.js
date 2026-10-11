@@ -75,6 +75,10 @@ export async function testDbConnection() {
       // Lightweight cleanup: purge stale presence rows (>7 days not seen) so table stays tiny
       await connection.query('DELETE FROM analytics_presence WHERE last_seen_at < DATE_SUB(NOW(), INTERVAL 7 DAY)');
     } catch {}
+    try {
+      // Retention: streaming analytics older than 30 days is dead weight — purge
+      await connection.query('DELETE FROM analytics_plays WHERE played_at < DATE_SUB(NOW(), INTERVAL 30 DAY)');
+    } catch {}
     // Safe auto-migration: ensure GAnalytics tables exist
     try {
       await connection.query(`
@@ -217,5 +221,19 @@ export async function testDbConnection() {
     return false;
   }
 }
+
+// ─── Analytics Retention (daily housekeeping) ───────────────────────────────
+// Keeps the DB lean: streaming plays older than 30 days and stale presence
+// rows older than 7 days are purged every 24 hours (plus once at startup).
+setInterval(() => {
+  if (!pool) return;
+  pool
+    .query('DELETE FROM analytics_plays WHERE played_at < DATE_SUB(NOW(), INTERVAL 30 DAY)')
+    .then(() => pool.query('DELETE FROM analytics_presence WHERE last_seen_at < DATE_SUB(NOW(), INTERVAL 7 DAY)'))
+    .then(([r2]) => {
+      if (r2?.affectedRows) console.log(`[Retention] Purged ${r2.affectedRows} stale analytics rows`);
+    })
+    .catch(() => {});
+}, 24 * 60 * 60 * 1000).unref();
 
 export default { pool, query, testDbConnection };

@@ -2754,6 +2754,80 @@ app.get('/api/analytics/live', async (req, res) => {
   }
 });
 
+// Streaming Analytics (token protected): song plays today / 7 days / 30 days
+// with guest+registered split, unique listeners, listening hours and a 30-day
+// daily series for the chart. Data older than 30 days is auto-purged from DB.
+app.get('/api/analytics/streaming', async (req, res) => {
+  const session = getAnalyticsSession(req.query.token);
+  if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
+
+  try {
+    const rangeSelect = (where) => `
+      SELECT COUNT(*) AS plays,
+             COUNT(DISTINCT visitor_id) AS listeners,
+             COALESCE(SUM(duration), 0) AS seconds,
+             COALESCE(SUM(CASE WHEN is_registered = 0 THEN 1 ELSE 0 END), 0) AS guestPlays,
+             COALESCE(SUM(CASE WHEN is_registered = 1 THEN 1 ELSE 0 END), 0) AS registeredPlays
+      FROM analytics_plays WHERE ${where}`;
+
+    const [todayRows, weekRows, monthRows, dailyRows] = await Promise.all([
+      query(rangeSelect('played_at >= CURDATE()')),
+      query(rangeSelect('played_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)')),
+      query(rangeSelect('played_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)')),
+      query(`SELECT DATE(played_at) AS day, COUNT(*) AS plays,
+                    COUNT(DISTINCT visitor_id) AS listeners,
+                    COALESCE(SUM(duration), 0) AS seconds
+             FROM analytics_plays
+             WHERE played_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+             GROUP BY DATE(played_at)`)
+    ]);
+
+    const toHours = (seconds) => Math.round(((Number(seconds) || 0) / 3600) * 10) / 10;
+    const shapeRange = (r) => ({
+      plays: Number(r?.plays) || 0,
+      listeners: Number(r?.listeners) || 0,
+      guestPlays: Number(r?.guestPlays) || 0,
+      registeredPlays: Number(r?.registeredPlays) || 0,
+      hours: toHours(r?.seconds)
+    });
+
+    // Complete 30-day series (fill missing days with zeros)
+    const isoDay = (val) => new Date(val).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const dailyMap = new Map();
+    for (const r of dailyRows || []) {
+      dailyMap.set(isoDay(r.day), r);
+    }
+    const daily = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const row = dailyMap.get(key);
+      daily.push({
+        day: key,
+        label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+        plays: Number(row?.plays) || 0,
+        listeners: Number(row?.listeners) || 0,
+        hours: toHours(row?.seconds)
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        today: shapeRange(todayRows[0]),
+        last7Days: shapeRange(weekRows[0]),
+        last30Days: shapeRange(monthRows[0]),
+        daily,
+        retentionDays: 30
+      }
+    });
+  } catch (err) {
+    console.error('Streaming analytics error:', err);
+    res.status(500).json({ error: 'Failed to fetch streaming analytics' });
+  }
+});
+
 // Track Visit (deduped: 1 unique visit per visitor per day; guests upgrade to registered on login)
 app.post('/api/analytics/track/visit', async (req, res) => {
   const { visitorId, guestId, isRegistered } = req.body;

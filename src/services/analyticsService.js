@@ -294,6 +294,24 @@ export async function getUserActivity(token) {
   }
 }
 
+// Fetch streaming analytics (plays today/7d/30d + 30-day series) (token protected)
+export async function getStreamingStats(token) {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/streaming?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch streaming analytics');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data?.data || null;
+  } catch (err) {
+    if (err.status === 401) throw err;
+    console.warn('Streaming analytics error:', err);
+    return null;
+  }
+}
+
 // ── SEO Manager (Admin-managed per-page SEO overrides) ───────────────────────
 
 // List all SEO overrides (token protected)

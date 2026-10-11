@@ -7,6 +7,7 @@ export { RegisteredUsers } from './RegisteredUsers';
 export { Daily } from './Daily';
 export { ListeningHours } from './ListeningHours';
 export { UserActivity } from './UserActivity';
+export { Streaming } from './Streaming';
 export { TopSearches } from './TopSearches';
 export { TopSongs } from './TopSongs';
 export { AdminLogs } from './AdminLogs';
