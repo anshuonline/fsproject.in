@@ -1,33 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { getAffiliates, getAdSetting } from '../../services/adsService';
+import { AFFILIATE_PRODUCTS } from './AdSlot';
 import './AffiliateSticker.css';
 
 /**
- * YouTube-Shorts-style Amazon product sticker.
- * Floating pill: product image + name + "Sponsored" tag + external arrow.
- * Rotates through configured products with a soft crossfade, only after
- * the app has loaded (config fetch is idle-deferred).
+ * YouTube-Shorts-style Amazon product sticker (hardcoded products).
+ * Rotates through AFFILIATE_PRODUCTS with a soft crossfade.
  */
 export const AffiliateSticker = React.memo(function AffiliateSticker({ position = 'bottom-left', className = '' }) {
-  const [products, setProducts] = useState([]);
   const [index, setIndex] = useState(0);
   const [fading, setFading] = useState(false);
-  const rotateSecondsRef = useRef(18);
 
-  useEffect(() => {
-    let isCurrent = true;
-    (async () => {
-      const [items, rotateSeconds] = await Promise.all([
-        getAffiliates(),
-        getAdSetting('affiliateRotateSeconds', 18)
-      ]);
-      if (!isCurrent) return;
-      rotateSecondsRef.current = Math.max(8, rotateSeconds);
-      setProducts(items);
-    })();
-    return () => { isCurrent = false; };
-  }, []);
+  const products = AFFILIATE_PRODUCTS.filter(p => p.amazonUrl);
 
   // Rotate only when there is something to rotate and the tab is visible
   useEffect(() => {
@@ -39,7 +23,7 @@ export const AffiliateSticker = React.memo(function AffiliateSticker({ position 
         setIndex(prev => (prev + 1) % products.length);
         setFading(false);
       }, 320);
-    }, rotateSecondsRef.current * 1000);
+    }, 18000);
     return () => clearInterval(interval);
   }, [products.length]);
 

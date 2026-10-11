@@ -14,11 +14,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 0;
-}
-
-.fs-ad-slot-inner:empty {
-  display: none; /* zero footprint until a script renders inside */
+  /* NEVER display:none when empty — the IntersectionObserver must see a real
+     box or the lazy injection deadlocks (empty -> hidden -> never intersects
+     -> never injects -> stays empty forever) */
+  min-height: 1px;
 }
 
 .fs-ad-slot-inner iframe,

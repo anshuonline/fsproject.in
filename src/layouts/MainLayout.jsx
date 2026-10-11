@@ -17,8 +17,8 @@ import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
-import { AdSlot } from '../components/Ads/AdSlot';
-import { loadAdConfig, getSlot, injectAdHtml } from '../services/adsService';
+import { AdSlot, SOCIAL_BAR_SCRIPT } from '../components/Ads/AdSlot';
+import { injectAdHtml } from '../services/adsService';
 import './MainLayout.css';
 
 export function MainLayout() {
@@ -87,46 +87,31 @@ export function MainLayout() {
   // Ads are hidden on admin/dashboard pages
   const isAdminArea = location.pathname.startsWith('/manageads') || location.pathname.startsWith('/ganalytics');
 
-  // Sidebar sticky rail — only when the slot is enabled (config loads after app idle)
-  const [hasAdRail, setHasAdRail] = useState(false);
+  // Sidebar sticky rail — desktop >= 1400px only (hardcoded slot always on)
+  const [hasAdRail, setHasAdRail] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1400 : false
+  );
   useEffect(() => {
     if (isAdminArea) {
       setHasAdRail(false);
       return undefined;
     }
-    let isCurrent = true;
-    loadAdConfig().then(config => {
-      if (!isCurrent) return;
-      const s = (config.slots || []).find(x => x.slotId === 'sidebar_sticky');
-      setHasAdRail(Boolean(s) && window.innerWidth >= 1400);
-    });
-    const onResize = () => setHasAdRail(prev => prev && window.innerWidth >= 1400);
+    const onResize = () => setHasAdRail(window.innerWidth >= 1400);
+    onResize();
     window.addEventListener('resize', onResize);
-    return () => {
-      isCurrent = false;
-      window.removeEventListener('resize', onResize);
-    };
+    return () => window.removeEventListener('resize', onResize);
   }, [isAdminArea]);
 
-  // Social Bar — global floating script, injected once AFTER app load (lag-free)
+  // Social Bar — global floating script, injected once on mount (hardcoded)
   useEffect(() => {
     if (isAdminArea) return undefined;
-    let cleanup = null;
-    let cancelled = false;
-    (async () => {
-      const slot = await getSlot('social_bar');
-      if (!slot || cancelled) return undefined;
-      const html = slot.scriptDesktop || slot.scriptMobile;
-      if (!html) return undefined;
-      const host = document.createElement('div');
-      host.id = 'fs-social-bar-host';
-      host.style.display = 'none';
-      document.body.appendChild(host);
-      cleanup = injectAdHtml(host, html);
-    })();
+    const host = document.createElement('div');
+    host.id = 'fs-social-bar-host';
+    host.style.display = 'none';
+    document.body.appendChild(host);
+    const cleanup = injectAdHtml(host, SOCIAL_BAR_SCRIPT);
     return () => {
-      cancelled = true;
-      if (cleanup) cleanup();
+      cleanup();
       document.getElementById('fs-social-bar-host')?.remove();
     };
   }, [isAdminArea]);

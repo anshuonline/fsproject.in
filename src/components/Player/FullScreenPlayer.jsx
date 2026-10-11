@@ -27,9 +27,8 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
-import { AdSlot } from '../Ads/AdSlot';
+import { AdSlot, PLAYER_ROTATION_SECONDS } from '../Ads/AdSlot';
 import { AffiliateSticker } from '../Ads/AffiliateSticker';
-import { getAdSetting, getSlot as getAdSlot } from '../../services/adsService';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {
@@ -144,62 +143,37 @@ export function FullScreenPlayer() {
     lyricsScrollPauseUntilRef.current = Date.now() + 4000;
   };
 
-  // ── Cover Rotation Ad: artwork ↔ ad alternate (panel-configurable cadence) ──
-  const [coverAdEnabled, setCoverAdEnabled] = useState(false);
+  // ── Cover Rotation Ad: artwork ↔ ad alternate (hardcoded 5s cadence) ──
+  const coverAdEnabled = true;
   const [showCoverAd, setShowCoverAd] = useState(false);
 
-  // Check slot availability once (config fetch is idle-deferred)
-  useEffect(() => {
-    if (!isFullScreen) return undefined;
-    let isCurrent = true;
-    getAdSlot('player_cover_rotate').then(slot => {
-      if (isCurrent) setCoverAdEnabled(Boolean(slot));
-    });
-    return () => { isCurrent = false; };
-  }, [isFullScreen]);
-
-  // Rotation timer: 5s cover ↔ Ns ad (default 5s/5s), pauses when tab hidden
+  // Rotation timer: 5s cover ↔ 5s ad, pauses when tab hidden
   useEffect(() => {
     if (!isFullScreen || !coverAdEnabled) return undefined;
     let cancelled = false;
-    let intervalId = null;
     let timeoutId = null;
+    const adDurationMs = Math.max(3, PLAYER_ROTATION_SECONDS) * 1000;
+    const coverDurationMs = 5000;
 
-    (async () => {
-      const rotationSeconds = await getAdSetting('playerRotationSeconds', 5);
+    const cycle = () => {
       if (cancelled) return;
-      const adDurationMs = Math.max(3, rotationSeconds) * 1000;
-      const coverDurationMs = 5000;
-
-      const cycle = () => {
+      if (document.visibilityState !== 'visible') {
+        timeoutId = setTimeout(cycle, 2000); // re-check soon, no ad while hidden
+        return;
+      }
+      setShowCoverAd(true);
+      timeoutId = setTimeout(() => {
         if (cancelled) return;
-        if (document.visibilityState !== 'visible') {
-          timeoutId = setTimeout(cycle, 2000); // re-check soon, no ad while hidden
-          return;
-        }
-        setShowCoverAd(true);
-        timeoutId = setTimeout(() => {
-          if (cancelled) return;
-          setShowCoverAd(false);
-          timeoutId = setTimeout(cycle, coverDurationMs);
-        }, adDurationMs);
-      };
+        setShowCoverAd(false);
+        timeoutId = setTimeout(cycle, coverDurationMs);
+      }, adDurationMs);
+    };
 
-      // First ad appears after one cover period so the song art lands first
-      timeoutId = setTimeout(cycle, coverDurationMs);
-      // Safety: stop everything if the tab stays hidden long-term
-      intervalId = setInterval(() => {
-        if (document.visibilityState !== 'visible' && timeoutId) {
-          clearTimeout(timeoutId);
-          setShowCoverAd(false);
-          timeoutId = setTimeout(cycle, 5000);
-        }
-      }, 4000);
-    })();
+    // First ad appears after one cover period so the song art lands first
+    timeoutId = setTimeout(cycle, coverDurationMs);
 
     return () => {
       cancelled = true;
-      if (intervalId) clearInterval(intervalId);
       if (timeoutId) clearTimeout(timeoutId);
       setShowCoverAd(false);
     };

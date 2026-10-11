@@ -7,8 +7,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
-import { AdSlot } from '../../components/Ads/AdSlot';
-import { getAdSetting } from '../../services/adsService';
+import { AdSlot, PLAYLIST_INFEED_EVERY } from '../../components/Ads/AdSlot';
 import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
 
@@ -23,16 +22,7 @@ export function PlaylistDetail() {
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [infeedEvery, setInfeedEvery] = useState(5);
-
-  // In-feed frequency from ManageAds settings (defaults to 5, loaded post-idle)
-  useEffect(() => {
-    let isCurrent = true;
-    getAdSetting('playlistInfeedEvery', 5).then(val => {
-      if (isCurrent && val >= 3) setInfeedEvery(val);
-    });
-    return () => { isCurrent = false; };
-  }, []);
+  const infeedEvery = PLAYLIST_INFEED_EVERY;
 
   // Playlists are personalized content: keep them out of search indexes
   useSeo({

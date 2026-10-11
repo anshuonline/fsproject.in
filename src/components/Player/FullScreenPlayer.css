@@ -808,10 +808,11 @@
   flex-shrink: 0;
 }
 
+/* Volume: icon + hover-reveal slider (YouTube style) */
 .fs-fs-bar-volume {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
 }
 
 .fs-fs-vol-icon-btn {
@@ -824,13 +825,28 @@
   color: #FFFFFF;
 }
 
+/* Slider collapsed by default — expands when hovering the icon/slider area */
 .fs-fs-bar-vol-slider {
-  width: 86px;
+  width: 0;
+  opacity: 0;
+  margin-left: 0;
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
   border-radius: 2px;
   cursor: pointer;
+  pointer-events: none;
+  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.3, 1),
+              opacity 0.18s ease,
+              margin-left 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.fs-fs-bar-volume:hover .fs-fs-bar-vol-slider,
+.fs-fs-bar-vol-slider:focus-visible {
+  width: 86px;
+  opacity: 1;
+  margin-left: 6px;
+  pointer-events: auto;
 }
 
 .fs-fs-bar-vol-slider::-webkit-slider-thumb {
