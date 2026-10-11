@@ -3574,74 +3574,6 @@ app.get('/api/seo-config', async (req, res) => {
 
 // ═══ ManageAds — Ad Slots & Amazon Affiliate Config (freesong.in/manageads) ═══
 
-// Adsterra unit scripts (seeded once; editable later via the ManageAds panel)
-const A = {
-  w728h90: `<script>
-  atOptions = {
-    'key' : '4a50ee1eee52c95c476154cd4848efe0',
-    'format' : 'iframe',
-    'height' : 90,
-    'width' : 728,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highrevenueformat.com/4a50ee1eee52c95c476154cd4848efe0/invoke.js"></script>`,
-  w320h50: `<script>
-  atOptions = {
-    'key' : 'd41b950b9ce839eb2f788b9e25a3f970',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highrevenueformat.com/d41b950b9ce839eb2f788b9e25a3f970/invoke.js"></script>`,
-  w300h250: `<script>
-  atOptions = {
-    'key' : 'e6ecff65fcc25cd4064b4ff7af8bc342',
-    'format' : 'iframe',
-    'height' : 250,
-    'width' : 300,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highrevenueformat.com/e6ecff65fcc25cd4064b4ff7af8bc342/invoke.js"></script>`,
-  w160h600: `<script>
-  atOptions = {
-    'key' : 'f53f12d8edfa281f43e7276c7070aa4f',
-    'format' : 'iframe',
-    'height' : 600,
-    'width' : 160,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highrevenueformat.com/f53f12d8edfa281f43e7276c7070aa4f/invoke.js"></script>`,
-  native: `<script async="async" data-cfasync="false" src="https://pl31781023.profitableratecpmnetwork.com/d4ad762d4e64e13cc862cec4e707fc44/invoke.js"></script>
-<div id="container-d4ad762d4e64e13cc862cec4e707fc44"></div>`,
-  socialBar: `<script src="https://pl31781024.profitableratecpmnetwork.com/8f/2a/43/8f2a43bcad420c2d0d24fe4a00b3c484.js"></script>`
-};
-
-const MANAGEADS_DEFAULT_SLOTS = [
-  ['header_banner', 'Header Banner', 'both', 'Banner 728x90 / 320x50 — below header, above first shelf', A.w728h90, A.w320h50],
-  ['infeed_shelf_1', 'Home In-Feed', 'both', 'Banner 728x90 / 300x250 — after 2nd home shelf', A.w728h90, A.w300h250],
-  ['infeed_shelf_2', 'Home Deep In-Feed', 'both', 'Native Banner — after 5th home shelf', A.native, A.native],
-  ['sidebar_sticky', 'Desktop Sidebar Sticky', 'desktop', 'Banner 160x600 — right rail, sticky', A.w160h600, ''],
-  ['detail_rectangle', 'Detail Page Rectangle', 'both', 'Banner 300x250 — after tracklist on detail pages', A.w300h250, ''],
-  ['search_native', 'Search In-Feed', 'both', 'Native Banner — after search results', A.native, A.native],
-  ['social_bar', 'Social Bar (floating)', 'both', 'Adsterra Social Bar — global script, no space needed', A.socialBar, ''],
-  ['playlist_infeed', 'Playlist In-Feed', 'both', 'Banner 300x250 / 728x90 — every 5 playlist tracks', A.w728h90, A.w300h250],
-  ['player_cover_rotate', 'Player Cover Rotation', 'both', 'Banner 300x250 — alternates with artwork in fullscreen player', A.w300h250, '']
-];
-
-const MANAGEADS_DEFAULT_AFFILIATES = [
-  {
-    name: 'ZEBRONICS Astra 35 Speaker',
-    imageUrl: 'https://m.media-amazon.com/images/I/319RaAZHSYL._SY300_SX300_QL70_ML2_.jpg',
-    amazonUrl: 'https://www.amazon.in/dp/B0DJ3FFC8R?linkCode=ll2&tag=ganatubexfree-21&linkId=4e2c7d65e0477a3caa89f1f736b0738d&ref_=as_li_ss_tl',
-    priceLabel: '₹699'
-  }
-];
-
 let manageAdsTablesReady = false;
 
 async function ensureManageAdsTables() {
@@ -3670,56 +3602,6 @@ async function ensureManageAdsTables() {
     setting_key VARCHAR(64) PRIMARY KEY,
     setting_value VARCHAR(255) NOT NULL DEFAULT ''
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-
-  // Seed default slots (first run: force scripts + enable; later runs: only
-  // backfill empty scripts so admin panel edits are never overwritten)
-  const flagRows = await query(
-    "SELECT setting_value FROM manageads_settings WHERE setting_key = 'defaults_seeded'"
-  );
-  const alreadySeeded = (flagRows?.[0]?.setting_value || '') === '1';
-
-  for (const [slotId, label, devices, description, scriptDesktop, scriptMobile] of MANAGEADS_DEFAULT_SLOTS) {
-    if (!alreadySeeded) {
-      await query(
-        `INSERT INTO manageads_slots (slot_id, label, script_desktop, script_mobile, devices, enabled, description)
-         VALUES (?, ?, ?, ?, ?, 1, ?)
-         ON DUPLICATE KEY UPDATE
-           script_desktop = VALUES(script_desktop),
-           script_mobile = VALUES(script_mobile),
-           devices = VALUES(devices),
-           enabled = 1`,
-        [slotId, label, scriptDesktop || null, scriptMobile || null, devices, description]
-      );
-    } else {
-      await query(
-        `INSERT INTO manageads_slots (slot_id, label, script_desktop, script_mobile, devices, enabled, description)
-         VALUES (?, ?, ?, ?, ?, 0, ?)
-         ON DUPLICATE KEY UPDATE
-           script_desktop = IF(script_desktop IS NULL OR script_desktop = '', VALUES(script_desktop), script_desktop),
-           script_mobile = IF(script_mobile IS NULL OR script_mobile = '', VALUES(script_mobile), script_mobile)`,
-        [slotId, label, scriptDesktop || null, scriptMobile || null, devices, description]
-      );
-    }
-  }
-
-  // Seed default affiliate products — v2 flag ensures the earlier placeholder
-  // links (untagged) get replaced with real tagged products exactly once
-  const affFlagRows = await query(
-    "SELECT setting_value FROM manageads_settings WHERE setting_key = 'affiliates_seeded_v2'"
-  );
-  if ((affFlagRows?.[0]?.setting_value || '') !== '1') {
-    await query('DELETE FROM manageads_affiliates');
-    let order = 0;
-    for (const aff of MANAGEADS_DEFAULT_AFFILIATES) {
-      await query(
-        'INSERT INTO manageads_affiliates (name, image_url, amazon_url, price_label, enabled, sort_order) VALUES (?, ?, ?, ?, 1, ?)',
-        [aff.name, aff.imageUrl, aff.amazonUrl, aff.priceLabel, order++]
-      );
-    }
-    await query(
-      "INSERT IGNORE INTO manageads_settings (setting_key, setting_value) VALUES ('affiliates_seeded_v2', '1')"
-    );
-  }
 
   manageAdsTablesReady = true;
 }
