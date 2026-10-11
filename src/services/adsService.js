@@ -146,16 +146,25 @@ async function runUnitInjection(container, html) {
   tpl.innerHTML = html;
   const nodes = Array.from(tpl.childNodes);
   for (const node of nodes) {
-    if (node.nodeName === 'SCRIPT' && node.src) {
-      await new Promise((resolve) => {
-        const script = document.createElement('script');
+    if (node.nodeName === 'SCRIPT') {
+      // CRITICAL: never re-append a script node parsed from innerHTML — it
+      // will NOT execute (already-started semantics), leaving `atOptions`
+      // unset. Always create a FRESH script element.
+      const script = document.createElement('script');
+      Array.from(node.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
+      if (node.src) {
         script.src = node.src;
-        script.onload = resolve;
-        script.onerror = resolve;
-        container.appendChild(script);
-        // Safety valve: never let a hung ad network block the queue
-        setTimeout(resolve, 8000);
-      });
+        await new Promise((resolve) => {
+          script.onload = resolve;
+          script.onerror = resolve;
+          container.appendChild(script);
+          // Safety valve: never let a hung ad network block the queue
+          setTimeout(resolve, 8000);
+        });
+      } else {
+        script.textContent = node.textContent;
+        container.appendChild(script); // executes synchronously, sets atOptions
+      }
     } else {
       container.appendChild(node);
     }
