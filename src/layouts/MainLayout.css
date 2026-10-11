@@ -4,7 +4,9 @@
   min-height: 100vh;
   background-color: var(--color-bg-main);
   position: relative;
-  overflow-x: hidden;
+  /* clip (not hidden): hidden would turn this into a scroll container and
+     break position: sticky for descendant sidebars (GAnalytics nav) */
+  overflow-x: clip;
 }
 
 .fs-layout-body {
@@ -24,11 +26,11 @@
   width: 100%;
   padding: 12px 10px 120px 10px;
   background-color: var(--color-bg-main);
-  /* No margin transition: animating layout properties forces full-page reflow
-     every frame (severe jank on content-heavy pages like Home) */
-  box-sizing: border-box;
-  overflow-x: hidden;
+  /* clip (not hidden): keeps horizontal overflow in check without becoming a
+     scroll container, so position: sticky sidebars keep working */
+  overflow-x: clip;
   overflow-anchor: none;
+  box-sizing: border-box;
 }
 
 .fs-app-layout.has-player .fs-main-content {

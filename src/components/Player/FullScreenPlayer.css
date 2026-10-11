@@ -476,6 +476,8 @@
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
+  overscroll-behavior: contain;
+  will-change: scroll-position;
 }
 
 .fs-lyrics-loading {

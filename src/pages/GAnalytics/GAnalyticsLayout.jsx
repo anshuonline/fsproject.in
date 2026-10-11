@@ -169,52 +169,71 @@ export function GAnalyticsLayout() {
           </div>
         </div>
 
-        {/* Section Nav */}
-        <nav className="fs-ga-nav">
-          <NavLink to="/ganalytics" end className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <LayoutDashboard size={16} />
-            <span>Overview</span>
-          </NavLink>
-          <NavLink to="/ganalytics/live" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active live' : ''}`}>
-            <Radio size={16} />
-            <span>Live Now</span>
-          </NavLink>
-          <NavLink to="/ganalytics/users" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Users size={16} />
-            <span>Users</span>
-          </NavLink>
-          <NavLink to="/ganalytics/daily" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <CalendarDays size={16} />
-            <span>Daily</span>
-          </NavLink>
-          <NavLink to="/ganalytics/hours" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Clock3 size={16} />
-            <span>Hours</span>
-          </NavLink>
-          <NavLink to="/ganalytics/activity" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Activity size={16} />
-            <span>User Activity</span>
-          </NavLink>
-          <NavLink to="/ganalytics/streaming" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Headphones size={16} />
-            <span>Streaming</span>
-          </NavLink>
-          <NavLink to="/ganalytics/searches" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Search size={16} />
-            <span>Searches</span>
-          </NavLink>
-          <NavLink to="/ganalytics/songs" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <Music size={16} />
-            <span>Top Songs</span>
-          </NavLink>
-          <NavLink to="/ganalytics/logs" className={({ isActive }) => `fs-ga-nav-item ${isActive ? 'active' : ''}`}>
-            <FileClock size={16} />
-            <span>Logs</span>
-          </NavLink>
-        </nav>
+        {/* Structured Sidebar Nav (Google Analytics style) */}
+        <div className="fs-ga-layout">
+          <aside className="fs-ga-sidebar">
+            <div className="fs-ga-side-group">
+              <span className="fs-ga-side-group-label">Reports</span>
+              <NavLink to="/ganalytics" end className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <LayoutDashboard size={17} />
+                <span>Overview</span>
+              </NavLink>
+              <NavLink to="/ganalytics/live" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active live' : ''}`}>
+                <Radio size={17} />
+                <span>Live Now</span>
+              </NavLink>
+            </div>
 
-        {/* Page Content */}
-        <Outlet />
+            <div className="fs-ga-side-group">
+              <span className="fs-ga-side-group-label">Audience</span>
+              <NavLink to="/ganalytics/users" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Users size={17} />
+                <span>Users</span>
+              </NavLink>
+              <NavLink to="/ganalytics/daily" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <CalendarDays size={17} />
+                <span>Daily</span>
+              </NavLink>
+              <NavLink to="/ganalytics/activity" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Activity size={17} />
+                <span>User Activity</span>
+              </NavLink>
+            </div>
+
+            <div className="fs-ga-side-group">
+              <span className="fs-ga-side-group-label">Streaming & Content</span>
+              <NavLink to="/ganalytics/streaming" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Headphones size={17} />
+                <span>Streaming</span>
+              </NavLink>
+              <NavLink to="/ganalytics/hours" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Clock3 size={17} />
+                <span>Hours</span>
+              </NavLink>
+              <NavLink to="/ganalytics/searches" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Search size={17} />
+                <span>Searches</span>
+              </NavLink>
+              <NavLink to="/ganalytics/songs" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <Music size={17} />
+                <span>Top Songs</span>
+              </NavLink>
+            </div>
+
+            <div className="fs-ga-side-group">
+              <span className="fs-ga-side-group-label">System</span>
+              <NavLink to="/ganalytics/logs" className={({ isActive }) => `fs-ga-side-item ${isActive ? 'active' : ''}`}>
+                <FileClock size={17} />
+                <span>Logs</span>
+              </NavLink>
+            </div>
+          </aside>
+
+          {/* Page Content */}
+          <main className="fs-ga-content">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </GAnalyticsContext.Provider>
   );

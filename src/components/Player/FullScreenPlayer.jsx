@@ -59,6 +59,28 @@ function parseLrc(lrc) {
   return result;
 }
 
+// Memoized synced lyrics list — re-renders ONLY when the active line index
+// changes, never on the 500ms progress ticks (kills scroll lag)
+const SyncedLyricsView = React.memo(function SyncedLyricsView({ lines, activeIndex, onSeek }) {
+  return (
+    <div className="fs-synced-lyrics-text">
+      {lines.map((line, idx) => {
+        const isActive = idx === activeIndex;
+        const isPassed = idx < activeIndex;
+        return (
+          <p
+            key={idx}
+            className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
+            onClick={() => onSeek(line.time)}
+          >
+            {line.text}
+          </p>
+        );
+      })}
+    </div>
+  );
+});
+
 export function FullScreenPlayer() {
   const {
     currentSong,
@@ -113,6 +135,11 @@ export function FullScreenPlayer() {
   const [loadingRelated, setLoadingRelated] = useState(false);
 
   const lyricsContainerRef = useRef(null);
+  // Auto-scroll pauses for 4s while the user scrolls lyrics manually
+  const lyricsScrollPauseUntilRef = useRef(0);
+  const pauseLyricsAutoScroll = () => {
+    lyricsScrollPauseUntilRef.current = Date.now() + 4000;
+  };
 
   // Automatically close fullscreen overlay when route/URL changes
   useEffect(() => {
@@ -237,15 +264,27 @@ export function FullScreenPlayer() {
     }
   }
 
-  // Auto-scroll to active lyric line
+  // Auto-scroll to active lyric line — smooth, container-scoped, and
+  // skipped entirely while the user is manually scrolling (4s pause)
   useEffect(() => {
     const showLyrics = (!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics');
-    if (showLyrics && activeLyricIndex !== -1 && lyricsContainerRef.current) {
-      const activeEl = lyricsContainerRef.current.querySelector('.fs-lyric-line.active');
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+    if (!showLyrics || activeLyricIndex === -1 || !lyricsContainerRef.current) return;
+    if (Date.now() < lyricsScrollPauseUntilRef.current) return;
+
+    const container = lyricsContainerRef.current;
+    const activeEl = container.querySelector('.fs-lyric-line.active');
+    if (!activeEl) return;
+
+    // Center the active line inside THIS container only (never ancestors)
+    const delta = activeEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    const targetTop = container.scrollTop + delta - container.clientHeight / 2 + activeEl.offsetHeight / 2;
+    const maxTop = container.scrollHeight - container.clientHeight;
+    const clamped = Math.max(0, Math.min(targetTop, Math.max(0, maxTop)));
+
+    // Already in position — don't restart a smooth-scroll animation
+    if (Math.abs(container.scrollTop - clamped) < 4) return;
+
+    container.scrollTo({ top: clamped, behavior: 'smooth' });
   }, [activeLyricIndex, activeTab, mobileMode, isMobile]);
 
   if (!isFullScreen || !currentSong) return null;
@@ -556,7 +595,12 @@ export function FullScreenPlayer() {
 
               {/* TAB 2: LYRICS */}
               {((!isMobile && activeTab === 'lyrics') || (isMobile && mobileMode === 'lyrics')) && (
-                <div className="fs-fs-lyrics-panel" ref={lyricsContainerRef}>
+                <div
+                  className="fs-fs-lyrics-panel"
+                  ref={lyricsContainerRef}
+                  onWheel={pauseLyricsAutoScroll}
+                  onTouchMove={pauseLyricsAutoScroll}
+                >
                   {lyricsData.loading && (
                     <div className="fs-lyrics-loading">
                       <Loader2 size={32} className="spin text-brand" />
@@ -565,21 +609,11 @@ export function FullScreenPlayer() {
                   )}
 
                   {!lyricsData.loading && lyricsData.syncedLyrics.length > 0 && (
-                    <div className="fs-synced-lyrics-text">
-                      {lyricsData.syncedLyrics.map((line, idx) => {
-                        const isActive = idx === activeLyricIndex;
-                        const isPassed = idx < activeLyricIndex;
-                        return (
-                          <p
-                            key={idx}
-                            className={`fs-lyric-line ${isActive ? 'active' : ''} ${isPassed ? 'passed' : ''}`}
-                            onClick={() => seekTo(line.time)}
-                          >
-                            {line.text}
-                          </p>
-                        );
-                      })}
-                    </div>
+                    <SyncedLyricsView
+                      lines={lyricsData.syncedLyrics}
+                      activeIndex={activeLyricIndex}
+                      onSeek={seekTo}
+                    />
                   )}
 
                   {!lyricsData.loading && lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics && (
