@@ -132,6 +132,147 @@ export function FullScreenPlayer() {
     typeof window !== 'undefined' ? window.innerWidth <= 850 : false
   );
 
+  // ── Ultra-Optimized Swipe Animation & Gestures (Zero-Lag) ──
+  const [slideAnimClass, setSlideAnimClass] = useState('');
+  const prevSongIdRef = useRef(currentSong?.videoId);
+  const prevQueueIndexRef = useRef(queueIndex);
+  const swipeDirectionRef = useRef(null); // 'next' | 'prev' | null
+  const artWrapperRef = useRef(null);
+
+  // Touch tracking refs (direct DOM manipulation for 120fps smoothness without React re-renders)
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const isSwipingRef = useRef(false);
+  const isVerticalScrollRef = useRef(false);
+  const deltaXRef = useRef(0);
+
+  // Auto trigger smooth slide animation when song changes
+  useEffect(() => {
+    if (!currentSong?.videoId) return;
+
+    if (prevSongIdRef.current && prevSongIdRef.current !== currentSong.videoId) {
+      let direction = swipeDirectionRef.current;
+      if (!direction) {
+        if (typeof queueIndex === 'number' && typeof prevQueueIndexRef.current === 'number') {
+          direction = queueIndex >= prevQueueIndexRef.current ? 'next' : 'prev';
+        } else {
+          direction = 'next';
+        }
+      }
+
+      setSlideAnimClass(direction === 'next' ? 'fs-art-slide-in-next' : 'fs-art-slide-in-prev');
+
+      if (artWrapperRef.current) {
+        artWrapperRef.current.style.transform = '';
+        artWrapperRef.current.style.transition = '';
+        artWrapperRef.current.style.opacity = '';
+      }
+
+      const timer = setTimeout(() => {
+        setSlideAnimClass('');
+        swipeDirectionRef.current = null;
+      }, 260);
+
+      prevSongIdRef.current = currentSong.videoId;
+      prevQueueIndexRef.current = queueIndex;
+      return () => clearTimeout(timer);
+    }
+
+    prevSongIdRef.current = currentSong.videoId;
+    prevQueueIndexRef.current = queueIndex;
+  }, [currentSong?.videoId, queueIndex]);
+
+  // Touch handlers for fluid mobile swipe
+  const handleArtTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isSwipingRef.current = false;
+    isVerticalScrollRef.current = false;
+    deltaXRef.current = 0;
+  };
+
+  const handleArtTouchMove = (e) => {
+    if (isVerticalScrollRef.current || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartXRef.current;
+    const diffY = currentY - touchStartYRef.current;
+
+    // Detect direction intent early
+    if (!isSwipingRef.current && !isVerticalScrollRef.current) {
+      if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 8) {
+        isVerticalScrollRef.current = true;
+        return;
+      }
+      if (Math.abs(diffX) > 8) {
+        isSwipingRef.current = true;
+      }
+    }
+
+    if (isSwipingRef.current) {
+      // Natural damping resistance
+      const damped = diffX * 0.78;
+      deltaXRef.current = damped;
+      if (artWrapperRef.current) {
+        artWrapperRef.current.style.transition = 'none';
+        artWrapperRef.current.style.transform = `translate3d(${damped}px, 0, 0)`;
+        const opacity = Math.max(0.65, 1 - Math.abs(damped) / 380);
+        artWrapperRef.current.style.opacity = opacity;
+      }
+    }
+  };
+
+  const handleArtTouchEnd = () => {
+    if (!isSwipingRef.current) return;
+    isSwipingRef.current = false;
+
+    const delta = deltaXRef.current;
+    const threshold = 45;
+
+    if (delta < -threshold) {
+      // Swiped Left -> Skip to Next Track
+      swipeDirectionRef.current = 'next';
+      if (artWrapperRef.current) {
+        artWrapperRef.current.style.transition = 'transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.16s ease';
+        artWrapperRef.current.style.transform = 'translate3d(-90px, 0, 0)';
+        artWrapperRef.current.style.opacity = '0.35';
+      }
+      setTimeout(() => {
+        nextSong();
+      }, 70);
+    } else if (delta > threshold) {
+      // Swiped Right -> Skip to Previous Track
+      swipeDirectionRef.current = 'prev';
+      if (artWrapperRef.current) {
+        artWrapperRef.current.style.transition = 'transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.16s ease';
+        artWrapperRef.current.style.transform = 'translate3d(90px, 0, 0)';
+        artWrapperRef.current.style.opacity = '0.35';
+      }
+      setTimeout(() => {
+        prevSong();
+      }, 70);
+    } else {
+      // Cancelled -> Smooth spring back
+      if (artWrapperRef.current) {
+        artWrapperRef.current.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.18s ease';
+        artWrapperRef.current.style.transform = 'translate3d(0, 0, 0)';
+        artWrapperRef.current.style.opacity = '1';
+      }
+    }
+    deltaXRef.current = 0;
+  };
+
+  const handleNextClick = () => {
+    swipeDirectionRef.current = 'next';
+    nextSong();
+  };
+
+  const handlePrevClick = () => {
+    swipeDirectionRef.current = 'prev';
+    prevSong();
+  };
+
   const [lyricsData, setLyricsData] = useState({
     loading: false,
     syncedLyrics: [],
@@ -430,10 +571,19 @@ export function FullScreenPlayer() {
 
       {/* ── Main 2-Column Stage (YouTube Music style) ── */}
       <div className={`fs-fs-stage ${isMobile ? `mobile-${mobileMode}` : ''}`}>
-        {/* Left Column: Big Album Artwork */}
+        {/* Left Column: Big Album Artwork (with fluid touch swipe) */}
         {(!isMobile || mobileMode === 'song') && (
-          <div className="fs-fs-art-column">
-            <div className={`fs-fs-art-wrapper ${showCoverAd ? 'ad-showing' : ''}`}>
+          <div
+            className="fs-fs-art-column"
+            onTouchStart={handleArtTouchStart}
+            onTouchMove={handleArtTouchMove}
+            onTouchEnd={handleArtTouchEnd}
+            onTouchCancel={handleArtTouchEnd}
+          >
+            <div
+              ref={artWrapperRef}
+              className={`fs-fs-art-wrapper ${showCoverAd ? 'ad-showing' : ''} ${slideAnimClass}`}
+            >
               <img
                 src={
                   currentSong.thumbnail ||
@@ -462,7 +612,15 @@ export function FullScreenPlayer() {
 
             {/* Mobile metadata underneath art in 'song' mode */}
             {isMobile && (
-              <div className="fs-fs-mobile-art-meta">
+              <div
+                className={`fs-fs-mobile-art-meta ${
+                  slideAnimClass === 'fs-art-slide-in-next'
+                    ? 'fs-meta-slide-in-next'
+                    : slideAnimClass === 'fs-art-slide-in-prev'
+                    ? 'fs-meta-slide-in-prev'
+                    : ''
+                }`}
+              >
                 <div className="fs-fs-mobile-meta-text">
                   <h2 className="fs-fs-mobile-title truncate">{currentSong.title}</h2>
                   <ArtistLinks
@@ -802,7 +960,7 @@ export function FullScreenPlayer() {
           <div className="fs-fs-bar-left">
             <button
               className="btn-icon fs-fs-bar-btn"
-              onClick={prevSong}
+              onClick={handlePrevClick}
               title="Previous Track"
               aria-label="Previous Track"
             >
@@ -826,7 +984,7 @@ export function FullScreenPlayer() {
 
             <button
               className="btn-icon fs-fs-bar-btn"
-              onClick={nextSong}
+              onClick={handleNextClick}
               title="Next Track"
               aria-label="Next Track"
             >

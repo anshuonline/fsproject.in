@@ -134,6 +134,9 @@
   align-items: center;
   justify-content: center;
   padding: 24px 48px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .fs-fs-art-wrapper {
@@ -146,6 +149,73 @@
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #080808;
+  touch-action: pan-y;
+}
+
+/* ─── GPU-Accelerated Song Change Swipe Animations (Zero Lag) ─── */
+@keyframes fsArtSlideInNext {
+  0% {
+    opacity: 0.55;
+    transform: translate3d(48px, 0, 0) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes fsArtSlideInPrev {
+  0% {
+    opacity: 0.55;
+    transform: translate3d(-48px, 0, 0) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.fs-art-slide-in-next {
+  animation: fsArtSlideInNext 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.fs-art-slide-in-prev {
+  animation: fsArtSlideInPrev 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Mobile Metadata Text Slide */
+@keyframes fsMetaSlideInNext {
+  0% {
+    opacity: 0.55;
+    transform: translate3d(24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fsMetaSlideInPrev {
+  0% {
+    opacity: 0.55;
+    transform: translate3d(-24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.fs-meta-slide-in-next {
+  animation: fsMetaSlideInNext 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.fs-meta-slide-in-prev {
+  animation: fsMetaSlideInPrev 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* ── Cover rotation ad layer (crossfades over the artwork) ── */

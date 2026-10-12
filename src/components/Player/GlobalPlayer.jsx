@@ -37,6 +37,7 @@ export function GlobalPlayer() {
     volume,
     isMuted,
     queue,
+    queueIndex,
     isShuffle,
     repeatMode,
     isLoading,
@@ -88,6 +89,133 @@ export function GlobalPlayer() {
     });
   };
 
+  // ── Ultra-Optimized Swipe Animation & Gestures for Mini Bar (Zero-Lag) ──
+  const [miniSlideClass, setMiniSlideClass] = useState('');
+  const prevSongIdRef = useRef(currentSong?.videoId);
+  const prevQueueIndexRef = useRef(queueIndex);
+  const swipeDirectionRef = useRef(null);
+  const miniLeftRef = useRef(null);
+
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const isSwipingRef = useRef(false);
+  const isVerticalScrollRef = useRef(false);
+  const deltaXRef = useRef(0);
+
+  useEffect(() => {
+    if (!currentSong?.videoId) return;
+
+    if (prevSongIdRef.current && prevSongIdRef.current !== currentSong.videoId) {
+      let direction = swipeDirectionRef.current;
+      if (!direction) {
+        if (typeof queueIndex === 'number' && typeof prevQueueIndexRef.current === 'number') {
+          direction = queueIndex >= prevQueueIndexRef.current ? 'next' : 'prev';
+        } else {
+          direction = 'next';
+        }
+      }
+
+      setMiniSlideClass(direction === 'next' ? 'fs-mini-slide-next' : 'fs-mini-slide-prev');
+
+      if (miniLeftRef.current) {
+        miniLeftRef.current.style.transform = '';
+        miniLeftRef.current.style.transition = '';
+        miniLeftRef.current.style.opacity = '';
+      }
+
+      const timer = setTimeout(() => {
+        setMiniSlideClass('');
+        swipeDirectionRef.current = null;
+      }, 240);
+
+      prevSongIdRef.current = currentSong.videoId;
+      prevQueueIndexRef.current = queueIndex;
+      return () => clearTimeout(timer);
+    }
+
+    prevSongIdRef.current = currentSong.videoId;
+    prevQueueIndexRef.current = queueIndex;
+  }, [currentSong?.videoId, queueIndex]);
+
+  const handleMiniTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isSwipingRef.current = false;
+    isVerticalScrollRef.current = false;
+    deltaXRef.current = 0;
+  };
+
+  const handleMiniTouchMove = (e) => {
+    if (isVerticalScrollRef.current || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartXRef.current;
+    const diffY = currentY - touchStartYRef.current;
+
+    if (!isSwipingRef.current && !isVerticalScrollRef.current) {
+      if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 8) {
+        isVerticalScrollRef.current = true;
+        return;
+      }
+      if (Math.abs(diffX) > 8) {
+        isSwipingRef.current = true;
+      }
+    }
+
+    if (isSwipingRef.current) {
+      const damped = diffX * 0.72;
+      deltaXRef.current = damped;
+      if (miniLeftRef.current) {
+        miniLeftRef.current.style.transition = 'none';
+        miniLeftRef.current.style.transform = `translate3d(${damped}px, 0, 0)`;
+        miniLeftRef.current.style.opacity = Math.max(0.65, 1 - Math.abs(damped) / 320);
+      }
+    }
+  };
+
+  const handleMiniTouchEnd = () => {
+    if (!isSwipingRef.current) return;
+    isSwipingRef.current = false;
+
+    const delta = deltaXRef.current;
+    const threshold = 40;
+
+    if (delta < -threshold) {
+      swipeDirectionRef.current = 'next';
+      if (miniLeftRef.current) {
+        miniLeftRef.current.style.transition = 'transform 0.16s ease, opacity 0.16s ease';
+        miniLeftRef.current.style.transform = 'translate3d(-60px, 0, 0)';
+        miniLeftRef.current.style.opacity = '0.4';
+      }
+      setTimeout(() => {
+        nextSong();
+      }, 60);
+    } else if (delta > threshold) {
+      swipeDirectionRef.current = 'prev';
+      if (miniLeftRef.current) {
+        miniLeftRef.current.style.transition = 'transform 0.16s ease, opacity 0.16s ease';
+        miniLeftRef.current.style.transform = 'translate3d(60px, 0, 0)';
+        miniLeftRef.current.style.opacity = '0.4';
+      }
+      setTimeout(() => {
+        prevSong();
+      }, 60);
+    } else {
+      if (miniLeftRef.current) {
+        miniLeftRef.current.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+        miniLeftRef.current.style.transform = 'translate3d(0, 0, 0)';
+        miniLeftRef.current.style.opacity = '1';
+      }
+    }
+    deltaXRef.current = 0;
+  };
+
+  const handleMiniClick = () => {
+    if (Math.abs(deltaXRef.current) > 8 || isSwipingRef.current) return;
+    setIsFullScreen(true);
+  };
+
   if (!currentSong || isMiniPlayer) return null;
 
   const handleSeekChange = (e) => {
@@ -121,8 +249,13 @@ export function GlobalPlayer() {
       <div className="fs-player-inner">
         {/* Left: Song Meta & Artwork */}
         <div
-          className="fs-player-left"
-          onClick={() => setIsFullScreen(true)}
+          ref={miniLeftRef}
+          className={`fs-player-left ${miniSlideClass}`}
+          onClick={handleMiniClick}
+          onTouchStart={handleMiniTouchStart}
+          onTouchMove={handleMiniTouchMove}
+          onTouchEnd={handleMiniTouchEnd}
+          onTouchCancel={handleMiniTouchEnd}
           role="button"
           tabIndex={0}
         >
@@ -186,7 +319,10 @@ export function GlobalPlayer() {
 
             <button
               className="btn-icon fs-ctrl-btn"
-              onClick={prevSong}
+              onClick={() => {
+                swipeDirectionRef.current = 'prev';
+                prevSong();
+              }}
               title="Previous"
               aria-label="Previous"
             >
@@ -210,7 +346,10 @@ export function GlobalPlayer() {
 
             <button
               className="btn-icon fs-ctrl-btn"
-              onClick={nextSong}
+              onClick={() => {
+                swipeDirectionRef.current = 'next';
+                nextSong();
+              }}
               title="Next"
               aria-label="Next"
             >

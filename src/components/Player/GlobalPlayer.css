@@ -540,7 +540,42 @@
 /* ── Reduced motion: disable decorative animations ── */
 @media (prefers-reduced-motion: reduce) {
   .fs-global-player,
-  .fs-artwork-eq span {
+  .fs-artwork-eq span,
+  .fs-mini-slide-next,
+  .fs-mini-slide-prev {
     animation: none;
   }
+}
+
+/* ─── GPU-Accelerated Mini Player Slide Animations ─── */
+@keyframes fsMiniSlideInNext {
+  0% {
+    opacity: 0.6;
+    transform: translate3d(24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fsMiniSlideInPrev {
+  0% {
+    opacity: 0.6;
+    transform: translate3d(-24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.fs-mini-slide-next {
+  animation: fsMiniSlideInNext 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.fs-mini-slide-prev {
+  animation: fsMiniSlideInPrev 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
