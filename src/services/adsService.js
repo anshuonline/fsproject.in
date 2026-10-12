@@ -79,15 +79,65 @@ async function runUnitInjection(container, html) {
   }
 }
 
+// ── Prewarm: DNS/TLS warm-up for ad network hosts ────────────────────────────
+// Runs after the app is idle. Pure <link rel="preconnect"> hints — no fetches,
+// no main-thread work, zero perf impact. Slotted units then load their
+// invoke.js over an already-open connection (much faster first fill).
+
+function whenAppIdle(fn) {
+  if (typeof window === 'undefined') return;
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(fn, { timeout: 4000 });
+  } else {
+    setTimeout(fn, 2500);
+  }
+}
+
+export function prewarmAdConnections(unitHtmlList) {
+  if (typeof document === 'undefined') return;
+  whenAppIdle(() => {
+    try {
+      const origins = new Set();
+      (unitHtmlList || []).forEach((html) => {
+        if (!html) return;
+        const re = /(?:src|href)\s*=\s*["'](https?:\/\/[^/"'\s]+)/g;
+        let m;
+        while ((m = re.exec(html)) !== null) origins.add(m[1]);
+      });
+      origins.forEach((origin) => {
+        if (document.querySelector(`link[rel="preconnect"][href="${origin}"]`)) return;
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = origin;
+        document.head.appendChild(link);
+        const dns = document.createElement('link');
+        dns.rel = 'dns-prefetch';
+        dns.href = origin;
+        document.head.appendChild(dns);
+      });
+    } catch {}
+  });
+}
+
 /**
  * Queue an Adsterra atOptions unit. Returns a cleanup function.
+ * `onSettled` fires once the unit's scripts finished loading (or gave up) —
+ * used by AdSlot to verify an actual render and retry empty slots once.
  */
-export function queueAdUnitInjection(container, html) {
-  if (!container || !html) return () => {};
+export function queueAdUnitInjection(container, html, onSettled) {
+  if (!container || !html) {
+    if (onSettled) onSettled();
+    return () => {};
+  }
+  let cleaned = false;
   adInjectionQueue = adInjectionQueue
     .then(() => runUnitInjection(container, html))
-    .catch((e) => console.warn('Ad unit inject failed:', e));
+    .catch((e) => console.warn('Ad unit inject failed:', e))
+    .then(() => {
+      if (!cleaned && onSettled) onSettled();
+    });
   return () => {
+    cleaned = true;
     try { container.innerHTML = ''; } catch {}
   };
 }

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { AFFILIATE_PRODUCTS } from './AdSlot';
+import { AFFILIATE_PRODUCTS } from './config';
 import './AffiliateSticker.css';
 
 /**
- * YouTube-Shorts-style Amazon product sticker (hardcoded products).
- * Rotates through AFFILIATE_PRODUCTS with a soft crossfade.
+ * YouTube-Shorts-style Amazon product sticker.
+ * Products: src/ads/config.js (AFFILIATE_PRODUCTS) — rotates with a soft crossfade.
  */
 export const AffiliateSticker = React.memo(function AffiliateSticker({ position = 'bottom-left', className = '' }) {
   const [index, setIndex] = useState(0);

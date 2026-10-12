@@ -17,8 +17,8 @@ import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
-import { AdSlot, SOCIAL_BAR_SCRIPT } from '../components/Ads/AdSlot';
-import { injectAdHtml } from '../services/adsService';
+import { AdSlot, StickyBottomAd, SOCIAL_BAR_SCRIPT, ALL_AD_UNITS_HTML } from '../ads';
+import { injectAdHtml, prewarmAdConnections } from '../services/adsService';
 import './MainLayout.css';
 
 export function MainLayout() {
@@ -114,6 +114,14 @@ export function MainLayout() {
       cleanup();
       document.getElementById('fs-social-bar-host')?.remove();
     };
+  }, [isAdminArea]);
+
+  // Prewarm ad-network connections (DNS/TLS) after idle — faster ad fill with
+  // zero perf cost (link hints only, no fetches, never blocks the app)
+  useEffect(() => {
+    if (isAdminArea) return undefined;
+    prewarmAdConnections(ALL_AD_UNITS_HTML);
+    return undefined;
   }, [isAdminArea]);
 
   const handleCloseSidebar = React.useCallback(() => {

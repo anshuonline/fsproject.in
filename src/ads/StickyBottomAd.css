@@ -1,0 +1,63 @@
+/* ── Mobile sticky bottom ad banner (MELBET-style footer ad) ──
+   Sits above MobileNav; when a song loads it lifts above the floating
+   player card (GlobalPlayer mobile: bottom nav+10px, height 62px). */
+
+.fs-sticky-bottom-ad {
+  display: none;
+}
+
+@media (max-width: 850px) {
+  .fs-sticky-bottom-ad {
+    display: block;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: var(--mobile-nav-height);
+    z-index: calc(var(--z-player) - 2); /* below MobileNav(−1) and player(200) */
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    background: #161616;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    transition: bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  }
+
+  /* Lift above the player card while a song is loaded/playing */
+  .fs-sticky-bottom-ad.lifted {
+    /* nav(60) + 10 gap + 62 player + 2 border + 6 gap */
+    bottom: calc(var(--mobile-nav-height) + 80px);
+  }
+
+  /* Invisible until the ad network actually injects content — no empty box */
+  .fs-sticky-bottom-ad:not(:has(iframe, img, ins, embed, video)) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* "Sponsored" pill straddling the top edge — same disclosure everywhere */
+  .fs-sticky-bottom-ad::before {
+    content: 'Sponsored';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-text-muted, #a7a7a7);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* Injected 320x50 unit hugs the rounded box */
+  .fs-sticky-bottom-ad .fs-ad-slot-inner iframe {
+    border-radius: 8px;
+  }
+}

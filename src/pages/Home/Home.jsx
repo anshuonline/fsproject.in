@@ -8,7 +8,7 @@ import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
 import { SeoContentSection } from '../../components/Common/SeoContentSection';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
-import { AdSlot } from '../../components/Ads/AdSlot';
+import { AdSlot } from '../../ads';
 import './Home.css';
 
 // ─── Memoized shelves ────────────────────────────────────────────────────────

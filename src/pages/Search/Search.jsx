@@ -7,7 +7,7 @@ import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
-import { AdSlot } from '../../components/Ads/AdSlot';
+import { AdSlot } from '../../ads';
 import './Search.css';
 
 const FILTERS = [

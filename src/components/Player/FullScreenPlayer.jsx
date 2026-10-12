@@ -27,8 +27,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
-import { AdSlot, PLAYER_ROTATION_SECONDS } from '../Ads/AdSlot';
-import { AffiliateSticker } from '../Ads/AffiliateSticker';
+import { AdSlot, AffiliateSticker, PLAYER_ROTATION_SECONDS } from '../../ads';
 import './FullScreenPlayer.css';
 
 function formatTime(sec) {

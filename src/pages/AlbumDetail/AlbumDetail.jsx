@@ -4,7 +4,7 @@ import { Play, Shuffle, Disc, Loader2, ArrowLeft, RefreshCw, Clock } from 'lucid
 import { api } from '../../services/api';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
-import { AdSlot } from '../../components/Ads/AdSlot';
+import { AdSlot } from '../../ads';
 import { useSeo } from '../../services/seo';
 import './AlbumDetail.css';
 

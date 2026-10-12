@@ -7,7 +7,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
-import { AdSlot, PLAYLIST_INFEED_EVERY } from '../../components/Ads/AdSlot';
+import { AdSlot, PLAYLIST_INFEED_EVERY } from '../../ads';
 import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
 
