@@ -183,6 +183,8 @@ export function MainLayout() {
       <FullScreenPlayer />
       <QueueDrawer />
       <MobileNav />
+      {/* Mobile sticky bottom ad — lifts above the player card while playing */}
+      {!isAdminArea && <StickyBottomAd />}
       <GlobalContextMenu />
       <EditPlaylistModal />
       <InactivityModal />
