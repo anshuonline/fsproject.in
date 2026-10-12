@@ -31,6 +31,7 @@ import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } fro
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
 import { SeoManager } from './components/Common/SeoManager';
+import { ErrorBoundary } from './components/Common/ErrorBoundary';
 
 export default function App() {
   // Suppress native browser context menu app-wide (custom GlobalContextMenu
@@ -48,15 +49,16 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <SeoManager />
-      <ContextMenuProvider>
-        <AuthProvider>
-          <LibraryProvider>
-            <PlayerProvider>
-              <SharedSongHandler />
-              <PWAProvider>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ScrollToTop />
+        <SeoManager />
+        <ContextMenuProvider>
+          <AuthProvider>
+            <LibraryProvider>
+              <PlayerProvider>
+                <SharedSongHandler />
+                <PWAProvider>
                 <Routes>
                   {/* Main Application with Sidebar, Header, and Player */}
                   <Route element={<MainLayout />}>
@@ -118,5 +120,6 @@ export default function App() {
         </AuthProvider>
       </ContextMenuProvider>
     </BrowserRouter>
-  );
+  </ErrorBoundary>
+);
 }

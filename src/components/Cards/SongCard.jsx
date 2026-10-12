@@ -4,7 +4,7 @@ import { Play, Pause, Heart, MoreVertical, Trash2 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
-import { getArtworkFallback } from '../../utils/imageFallback';
+import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import { ArtistLinks } from '../Common/ArtistLinks';
 import './SongCard.css';
 
