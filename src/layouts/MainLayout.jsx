@@ -84,8 +84,8 @@ export function MainLayout() {
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 
-  // Ads are hidden on admin/dashboard pages
-  const isAdminArea = location.pathname.startsWith('/manageads') || location.pathname.startsWith('/ganalytics');
+  // Ads are hidden on the analytics admin area
+  const isAdminArea = location.pathname.startsWith('/ganalytics');
 
   // Sidebar sticky rail — desktop >= 1400px only (hardcoded slot always on)
   const [hasAdRail, setHasAdRail] = useState(() =>
@@ -143,11 +143,11 @@ export function MainLayout() {
       {/* Header */}
       <Header onToggleSidebar={handleToggleSidebar} />
 
-      {/* Header banner strip (hidden on admin areas, loads after app idle) */}
+      {/* Header banner strip (hidden on the analytics admin area) */}
       {!isAdminArea && <AdSlot slotId="header_banner" className="fs-ad-slot--header" />}
 
       {/* Main Body */}
-      <div className={`fs-layout-body ${hasAdRail ? 'has-ad-rail' : ''}`}>
+      <div className={`fs-layout-body ${hasAdRail ? 'has-ad-rail' : ''} ${!isAdminArea ? 'has-header-ad' : ''}`}>
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}

@@ -1,4 +1,4 @@
-/* ── ManageAds: generic ad slot placeholder (Spotify-professional look) ── */
+/* ── Generic ad slot placeholder (Spotify-professional look) ── */
 
 .fs-ad-slot {
   width: 100%;
@@ -30,9 +30,13 @@
 
 /* ── Header strip variant ── */
 .fs-ad-slot--header {
+  /* The site header is position:fixed — push the banner below it or its top
+     portion hides behind the header */
+  margin-top: var(--header-height, 64px);
   padding: 10px 16px 2px;
   max-width: 980px;
-  margin: 0 auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ── In-feed (between shelves) variant ── */
@@ -102,6 +106,7 @@
 
 @media (max-width: 850px) {
   .fs-ad-slot--header {
+    margin-top: var(--header-height, 64px);
     padding: 8px 10px 0;
   }
 

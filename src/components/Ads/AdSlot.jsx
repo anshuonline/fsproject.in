@@ -126,7 +126,7 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
     const html = isMobile ? (slot.scriptMobile || slot.scriptDesktop) : (slot.scriptDesktop || slot.scriptMobile);
     if (!html) return undefined;
 
-    console.info(`[ManageAds] injecting "${slotId}" (${device}, ${html.includes('atOptions') ? 'atOptions-unit' : 'direct'})`);
+    console.info(`[AdSlot] injecting "${slotId}" (${device}, ${html.includes('atOptions') ? 'atOptions-unit' : 'direct'})`);
     if (html.includes('atOptions')) {
       cleanupRef.current = queueAdUnitInjection(hostRef.current, html);
     } else {

@@ -23,7 +23,6 @@ import { Profile } from './pages/Profile/Profile';
 import { Settings } from './pages/Settings/Settings';
 import { GAnalyticsLayout, Dashboard, LiveNow, RegisteredUsers, TopSearches, TopSongs, AdminLogs, Daily, ListeningHours, UserActivity, Streaming } from './pages/GAnalytics';
 import { SeoAdmin } from './pages/SeoAdmin/SeoAdmin';
-import { ManageAds } from './pages/ManageAds/ManageAds';
 import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
@@ -76,7 +75,6 @@ export default function App() {
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="/manageads" element={<ManageAds />} />
                     {/* GAnalytics (Admin only, hidden from navigation) */}
                     <Route path="/ganalytics" element={<GAnalyticsLayout />}>
                       <Route index element={<Dashboard />} />

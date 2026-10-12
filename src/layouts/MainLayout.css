@@ -19,6 +19,13 @@
   box-sizing: border-box;
 }
 
+/* Header banner strip renders in flow above the body and already carries the
+   fixed-header offset (margin-top) — body must not add it again or a second
+   64px dead gap appears between the ad and the page content */
+.fs-layout-body.has-header-ad {
+  padding-top: 0;
+}
+
 .fs-main-content {
   flex: 1;
   margin-left: 0;
@@ -80,7 +87,7 @@
   }
 }
 
-/* ── ManageAds placements ─────────────────────────────────────────────── */
+/* ── Ad placements ────────────────────────────────────────────────────── */
 
 /* Desktop sticky ad rail — only appears when slot enabled & >= 1400px */
 .fs-ad-rail {
