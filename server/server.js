@@ -1573,7 +1573,22 @@ app.post('/api/user/register-password', async (req, res) => {
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const cleanName = ((name || '').trim().slice(0, 25)) || cleanEmail.split('@')[0].slice(0, 25) || 'FreeSong Listener';
+  const trimmedName = (name || '').trim();
+
+  if (trimmedName && (trimmedName.length < 3 || trimmedName.length > 25)) {
+    return res.status(400).json({
+      error: 'Username must be between 3 and 25 characters long',
+      code: 'USERNAME_INVALID_LENGTH'
+    });
+  }
+  if (trimmedName && !/^[a-zA-Z0-9_.\s]+$/.test(trimmedName)) {
+    return res.status(400).json({
+      error: 'Username can only contain letters, numbers, spaces, dots, and underscores',
+      code: 'USERNAME_INVALID_CHARS'
+    });
+  }
+
+  const cleanName = trimmedName || cleanEmail.split('@')[0].slice(0, 25) || 'FreeSong Listener';
   const rawIp = getClientIp(req);
   const userAgent = req.headers['user-agent'] || '';
 
@@ -1651,7 +1666,7 @@ app.post('/api/user/register-password', async (req, res) => {
   }
 });
 
-// Request Password Reset Link (Sends 24-Hour Token via Hostinger SMTP, Max 1 Request Per 24 Hours)
+// Request Password Reset Link (Sends 24-Hour Token via Hostinger SMTP, Max 2 Requests Per 24 Hours)
 app.post('/api/user/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email || !email.includes('@')) {
@@ -1662,7 +1677,7 @@ app.post('/api/user/forgot-password', async (req, res) => {
 
   try {
     const users = await query(
-      'SELECT id, email, name, last_reset_request_at FROM users WHERE LOWER(email) = ?',
+      'SELECT id, email, name, last_reset_request_at, reset_request_count, last_reset_window_start FROM users WHERE LOWER(email) = ?',
       [cleanEmail]
     );
     if (!users || users.length === 0) {
@@ -1673,30 +1688,51 @@ app.post('/api/user/forgot-password', async (req, res) => {
     }
 
     const user = users[0];
+    const now = Date.now();
+    const windowStart = user.last_reset_window_start
+      ? new Date(user.last_reset_window_start).getTime()
+      : (user.last_reset_request_at ? new Date(user.last_reset_request_at).getTime() : 0);
 
-    // Enforce 1 reset per 24 hours rate limit
-    if (user.last_reset_request_at) {
-      const lastRequestTime = new Date(user.last_reset_request_at).getTime();
-      const now = Date.now();
-      const diffHours = (now - lastRequestTime) / (1000 * 60 * 60);
+    const diffHours = windowStart > 0 ? (now - windowStart) / (1000 * 60 * 60) : 999;
+    let newCount = 1;
+    let isSameWindow = false;
 
-      if (diffHours < 24) {
+    if (diffHours < 24) {
+      const currentCount = user.reset_request_count || 1;
+      if (currentCount >= 2) {
         const hoursRemaining = Math.max(1, Math.ceil(24 - diffHours));
         return res.status(429).json({
-          error: `A password reset link was already sent today. For security, you can only request 1 reset link per 24 hours. Please check your inbox (including spam) or try again in ${hoursRemaining} hour${hoursRemaining > 1 ? 's' : ''}.`,
+          error: `You have reached the limit of 2 password reset links per 24 hours. Please check your inbox (including spam) or try again in ${hoursRemaining} hour${hoursRemaining > 1 ? 's' : ''}.`,
           code: 'RATE_LIMIT_EXCEEDED',
-          hoursRemaining
+          hoursRemaining,
+          requestsUsed: 2,
+          requestsRemaining: 0,
+          maxRequests: 2
         });
       }
+      // This is the 2nd attempt within the 24h window
+      newCount = currentCount + 1; // 2
+      isSameWindow = true;
+    } else {
+      // New 24-hour window starts now (1st attempt)
+      newCount = 1;
+      isSameWindow = false;
     }
 
     const token = crypto.randomBytes(32).toString('hex');
+    const requestsRemaining = Math.max(0, 2 - newCount);
 
-    // Token expires in 24 hours, update last_reset_request_at
-    await query(
-      'UPDATE users SET reset_token = ?, reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR), last_reset_request_at = NOW() WHERE id = ?',
-      [token, user.id]
-    );
+    if (isSameWindow) {
+      await query(
+        'UPDATE users SET reset_token = ?, reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR), last_reset_request_at = NOW(), reset_request_count = ? WHERE id = ?',
+        [token, newCount, user.id]
+      );
+    } else {
+      await query(
+        'UPDATE users SET reset_token = ?, reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR), last_reset_request_at = NOW(), reset_request_count = 1, last_reset_window_start = NOW() WHERE id = ?',
+        [token, user.id]
+      );
+    }
 
     const mailResult = await sendPasswordResetEmail({
       email: user.email,
@@ -1704,9 +1740,16 @@ app.post('/api/user/forgot-password', async (req, res) => {
       token
     });
 
+    const infoNotice = requestsRemaining === 1
+      ? 'Password reset link sent to your email! (1 of 2 requests used today. You have 1 request remaining in the next 24 hours.)'
+      : 'Password reset link sent to your email! (2 of 2 requests used. You have reached your limit of 2 requests per 24 hours.)';
+
     res.json({
       success: true,
-      message: 'Password reset link sent to your email! Please check your inbox within 24 hours.',
+      message: infoNotice,
+      requestsUsed: newCount,
+      requestsRemaining,
+      maxRequests: 2,
       mailResult
     });
   } catch (err) {
@@ -1788,20 +1831,71 @@ app.post('/api/user/reset-password', async (req, res) => {
   }
 });
 
-// Update User Profile (Name, Date of Birth, City, Location Tracking)
+// Update User Profile (Name, Date of Birth, City, Location Tracking - No Username Change Limit)
 app.put('/api/user/profile', async (req, res) => {
   const { userId, email, name, dob, city, locationTracking } = req.body;
   try {
     const resolvedUserId = await resolveUserId(userId, email);
     if (!resolvedUserId) return res.status(404).json({ error: 'User not found' });
 
+    // Fetch existing user to compare name
+    const existingUsers = await query(
+      'SELECT id, name FROM users WHERE id = ?',
+      [resolvedUserId]
+    );
+    if (!existingUsers || existingUsers.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const currentUser = existingUsers[0];
+
     const updates = [];
     const params = [];
+    let nameChanged = false;
 
     if (name !== undefined) {
-      updates.push('name = ?');
-      params.push((name || '').trim().slice(0, 25) || 'FreeSong Listener');
+      const cleanName = (name || '').trim();
+      const currentName = (currentUser.name || '').trim();
+
+      // Check if user is actually changing the name
+      if (cleanName.toLowerCase() !== currentName.toLowerCase()) {
+        // Validation: length
+        if (cleanName.length < 3) {
+          return res.status(400).json({
+            error: 'Username must be at least 3 characters long',
+            code: 'USERNAME_TOO_SHORT'
+          });
+        }
+        if (cleanName.length > 25) {
+          return res.status(400).json({
+            error: 'Username cannot exceed 25 characters',
+            code: 'USERNAME_TOO_LONG'
+          });
+        }
+
+        // Validation: allowed characters
+        if (!/^[a-zA-Z0-9_.\s]+$/.test(cleanName)) {
+          return res.status(400).json({
+            error: 'Username can only contain letters, numbers, spaces, dots, and underscores',
+            code: 'USERNAME_INVALID_CHARS'
+          });
+        }
+
+        // Validation: reserved names
+        const RESERVED = ['admin', 'administrator', 'root', 'freesong', 'support', 'official', 'null', 'undefined', 'system', 'moderator'];
+        if (RESERVED.includes(cleanName.toLowerCase())) {
+          return res.status(400).json({
+            error: 'This username is reserved. Please choose another name.',
+            code: 'USERNAME_RESERVED'
+          });
+        }
+
+        // No rate limiting: user can freely change their username anytime
+        updates.push('name = ?', 'last_name_change_at = NOW()');
+        params.push(cleanName);
+        nameChanged = true;
+      }
     }
+
     if (dob !== undefined) {
       updates.push('dob = ?');
       params.push(dob || null);
@@ -1829,7 +1923,12 @@ app.put('/api/user/profile', async (req, res) => {
       updatedUser.dob = updatedUser.dob_str || null;
       delete updatedUser.password_hash;
     }
-    res.json({ success: true, user: updatedUser });
+
+    res.json({
+      success: true,
+      user: updatedUser,
+      nameChanged
+    });
   } catch (err) {
     console.warn('Update profile error:', err.message);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -2659,7 +2758,7 @@ app.get('/api/analytics/logs', async (req, res) => {
   }
 });
 
-// Registered Users (token protected): paginated, latest first
+// Registered Users (token protected): paginated, latest first, searchable
 app.get('/api/analytics/users', async (req, res) => {
   const session = getAnalyticsSession(req.query.token);
   if (!session) return res.status(401).json({ error: 'Session expired. Please login again.' });
@@ -2668,10 +2767,21 @@ app.get('/api/analytics/users', async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(50, Math.max(5, parseInt(req.query.limit, 10) || 10));
     const offset = (page - 1) * limit;
+    const search = (req.query.search || '').trim();
+
+    let whereSql = '';
+    const queryParams = [];
+    if (search) {
+      whereSql = 'WHERE name LIKE ? OR email LIKE ?';
+      queryParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    const countSql = `SELECT COUNT(*) AS c FROM users ${whereSql}`;
+    const usersSql = `SELECT name, email, avatar_url AS avatarUrl, registered_city AS city, registered_country AS country, created_at AS joinedAt, last_login_at AS lastLoginAt FROM users ${whereSql} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
     const [countRows, users] = await Promise.all([
-      query('SELECT COUNT(*) AS c FROM users'),
-      query(`SELECT name, email, registered_city AS city, registered_country AS country, created_at AS joinedAt, last_login_at AS lastLoginAt FROM users ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
+      query(countSql, queryParams),
+      query(usersSql, queryParams)
     ]);
 
     const total = Number(countRows[0]?.c) || 0;

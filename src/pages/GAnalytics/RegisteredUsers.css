@@ -106,3 +106,233 @@
     font-size: 0.78rem;
   }
 }
+
+/* ── Section Header Left & Search ── */
+.fs-ga-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.fs-ga-section-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fs-ga-search-box {
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-secondary, #080808);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: var(--radius-full, 9999px);
+  padding: 6px 14px;
+  gap: 8px;
+  min-width: 240px;
+  transition: border-color var(--transition-fast);
+}
+
+.fs-ga-search-box:focus-within {
+  border-color: var(--color-primary, #00C853);
+}
+
+.fs-ga-search-icon {
+  color: var(--color-text-muted, #707070);
+  flex-shrink: 0;
+}
+
+.fs-ga-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.fs-ga-search-input::placeholder {
+  color: var(--color-text-muted, #707070);
+}
+
+.fs-ga-search-clear {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #707070);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+
+.fs-ga-search-clear:hover {
+  color: #fff;
+}
+
+/* ── Avatar Image & Zoom Overlay ── */
+.fs-ga-avatar.has-img {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  background: #000;
+  box-shadow: 0 2px 8px rgba(0, 200, 83, 0.2);
+}
+
+.fs-ga-avatar.has-img:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(0, 200, 83, 0.45);
+}
+
+.fs-ga-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-ga-avatar-zoom {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: #fff;
+  transition: opacity var(--transition-fast);
+}
+
+.fs-ga-avatar.has-img:hover .fs-ga-avatar-zoom {
+  opacity: 1;
+}
+
+/* ── Full Picture Lightbox Modal (FreeSong AMOLED + Green Design System) ── */
+.fs-ga-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000000;
+  padding: 16px;
+  animation: fsLightboxFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fsLightboxFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fs-ga-lightbox-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #080808;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 32px 24px 24px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(0, 200, 83, 0.15);
+  animation: fsLightboxScaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+@keyframes fsLightboxScaleUp {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.fs-ga-lightbox-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.fs-ga-lightbox-close:hover {
+  background: rgba(0, 200, 83, 0.2);
+  border-color: #00C853;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.fs-ga-lightbox-image-wrap {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #000;
+  border: 3px solid rgba(0, 200, 83, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 200, 83, 0.3), 0 0 24px rgba(118, 255, 3, 0.15);
+  overflow: hidden;
+}
+
+.fs-ga-lightbox-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-ga-lightbox-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-ga-lightbox-name {
+  margin: 0;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.fs-ga-lightbox-email {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 4px 14px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  font-family: monospace;
+}
+
+.fs-ga-lightbox-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.fs-ga-lightbox-meta svg {
+  color: rgba(0, 200, 83, 0.7);
+}

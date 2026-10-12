@@ -45,14 +45,27 @@ export function Register() {
     e.preventDefault();
     setErrorInfo(null);
 
-    if (!name.trim() || !email.trim() || !password) {
+    const trimmedName = name.trim();
+    if (!trimmedName || !email.trim() || !password) {
       showToast('Please fill in all fields', 'error');
       return;
     }
 
-    if (name.trim().length > 25) {
+    if (trimmedName.length < 3) {
+      setErrorInfo({ code: 'NAME_TOO_SHORT', message: 'Name must be at least 3 characters long' });
+      showToast('Name must be at least 3 characters long', 'error');
+      return;
+    }
+
+    if (trimmedName.length > 25) {
       setErrorInfo({ code: 'NAME_TOO_LONG', message: 'Name cannot exceed 25 characters' });
       showToast('Name cannot exceed 25 characters', 'error');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_.\s]+$/.test(trimmedName)) {
+      setErrorInfo({ code: 'NAME_INVALID_CHARS', message: 'Name can only contain letters, numbers, spaces, dots, and underscores' });
+      showToast('Name can only contain letters, numbers, spaces, dots, and underscores', 'error');
       return;
     }
 
@@ -145,13 +158,14 @@ export function Register() {
             <input
               type="text"
               className="fs-input-field"
-              placeholder="Your Name (max 25 characters)"
+              placeholder="Your Name (3–25 characters)"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (errorInfo) setErrorInfo(null);
               }}
               disabled={isRegistering}
+              minLength={3}
               maxLength={25}
               required
             />

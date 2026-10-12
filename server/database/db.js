@@ -57,6 +57,9 @@ export async function testDbConnection() {
     console.log(` MySQL Database Connected: ${dbConfig.database} on ${dbConfig.host}:${dbConfig.port}`);
     // Safe auto-migration: ensure password_hash, reset_token, reset_token_expires_at exist
     try {
+      await connection.query('ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL');
+    } catch {}
+    try {
       await connection.query('ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL');
     } catch {}
     try {
@@ -67,6 +70,21 @@ export async function testDbConnection() {
     } catch {}
     try {
       await connection.query('ALTER TABLE users ADD COLUMN last_reset_request_at DATETIME NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN reset_request_count INT UNSIGNED NOT NULL DEFAULT 0');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN last_reset_window_start DATETIME NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN last_name_change_at DATETIME NULL');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN name_change_count INT UNSIGNED NOT NULL DEFAULT 0');
+    } catch {}
+    try {
+      await connection.query('ALTER TABLE users ADD COLUMN last_name_window_start DATETIME NULL');
     } catch {}
     try {
       await connection.query('ALTER TABLE analytics_plays ADD COLUMN duration INT UNSIGNED NOT NULL DEFAULT 0');

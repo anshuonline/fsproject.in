@@ -40,6 +40,7 @@ export function Login() {
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotRateLimit, setForgotRateLimit] = useState(null);
   const [forgotError, setForgotError] = useState(null);
+  const [forgotResult, setForgotResult] = useState(null);
 
   // Redirect to profile if already logged in
   useEffect(() => {
@@ -93,6 +94,7 @@ export function Login() {
     e.preventDefault();
     setForgotRateLimit(null);
     setForgotError(null);
+    setForgotResult(null);
 
     if (!forgotEmail || !forgotEmail.includes('@')) {
       showToast('Please enter a valid email address', 'error');
@@ -101,9 +103,10 @@ export function Login() {
 
     setIsForgotLoading(true);
     try {
-      await api.requestPasswordReset(forgotEmail.trim());
+      const res = await api.requestPasswordReset(forgotEmail.trim());
+      setForgotResult(res);
       setForgotSuccess(true);
-      showToast('Password reset link sent! Check your inbox.', 'success');
+      showToast(res.message || 'Password reset link sent! Check your inbox.', 'success');
     } catch (err) {
       if (err.code === 'RATE_LIMIT_EXCEEDED') {
         setForgotRateLimit({
@@ -132,6 +135,7 @@ export function Login() {
     setForgotSuccess(false);
     setForgotRateLimit(null);
     setForgotError(null);
+    setForgotResult(null);
     setIsForgotOpen(true);
   };
 
@@ -357,6 +361,20 @@ export function Login() {
                     Please click the link in your email within <strong>24 hours</strong> to set a new password. If you don't see it, check your spam/junk folder.
                   </p>
                 </div>
+                {/* 24-Hour Reset Limit Notification */}
+                <div className={`fs-forgot-limit-banner ${forgotResult?.requestsRemaining === 0 ? 'limit-reached' : ''}`}>
+                  <Clock size={16} className={forgotResult?.requestsRemaining === 0 ? 'text-warning' : 'text-brand'} />
+                  <div>
+                    <strong>24-Hour Security Limit:</strong>
+                    <span>
+                      {forgotResult?.requestsRemaining !== undefined
+                        ? (forgotResult.requestsRemaining > 0
+                            ? `1 of 2 reset links sent today. You have ${forgotResult.requestsRemaining} attempt remaining in the next 24 hours.`
+                            : `2 of 2 reset links sent today. You have reached your limit of 2 requests for the next 24 hours.`)
+                        : '1 of 2 reset links sent today. You have 1 attempt remaining in the next 24 hours.'}
+                    </span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -374,7 +392,7 @@ export function Login() {
 
                 <div className="fs-forgot-security-tag">
                   <ShieldCheck size={14} className="text-brand" />
-                  <span>Security policy: Max 1 reset link per 24 hours</span>
+                  <span>Security policy: Max 2 reset links per 24 hours</span>
                 </div>
 
                 {/* 24h Rate Limit Alert */}
@@ -384,9 +402,9 @@ export function Login() {
                       <Clock size={20} />
                     </div>
                     <div className="fs-auth-alert-body">
-                      <h4 className="fs-auth-alert-title">Daily Limit Reached (1 per 24 hrs)</h4>
+                      <h4 className="fs-auth-alert-title">Daily Limit Reached (2 per 24 hrs)</h4>
                       <p className="fs-auth-alert-text">
-                        A reset link was already sent today. For security, only 1 link per 24 hours is permitted.
+                        You have already requested 2 password reset links in the last 24 hours. For security, only 2 links per 24 hours are permitted.
                       </p>
                       <p className="fs-auth-alert-subtext">
                         Please check your inbox & spam folder, or try again in{' '}

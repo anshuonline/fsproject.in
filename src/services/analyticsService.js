@@ -200,9 +200,13 @@ export async function getAdminLogs(token, page = 1, limit = 15) {
 }
 
 // Fetch registered users, paginated (token protected)
-export async function getRegisteredUsers(token, page = 1, limit = 10) {
+export async function getRegisteredUsers(token, page = 1, limit = 10, search = '') {
   try {
-    const res = await fetch(`${API_BASE}/analytics/users?token=${encodeURIComponent(token)}&page=${page}&limit=${limit}`, { cache: 'no-store' });
+    let url = `${API_BASE}/analytics/users?token=${encodeURIComponent(token)}&page=${page}&limit=${limit}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
       const err = new Error(res.status === 401 ? 'Session expired' : 'Failed to fetch users');
       err.status = res.status;

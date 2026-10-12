@@ -308,6 +308,34 @@
   margin-top: 4px;
 }
 
+.fs-forgot-limit-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: rgba(0, 200, 83, 0.08);
+  border: 1px solid rgba(0, 200, 83, 0.22);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 0.8125rem;
+  color: #d1d5db;
+  text-align: left;
+  line-height: 1.45;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.fs-forgot-limit-banner strong {
+  color: #ffffff;
+  display: block;
+  font-size: 0.825rem;
+  margin-bottom: 2px;
+}
+
+.fs-forgot-limit-banner.limit-reached {
+  background-color: rgba(255, 171, 0, 0.08);
+  border-color: rgba(255, 171, 0, 0.3);
+}
+
 /* Smart Auth Alert Cards (Spotify AMOLED Style) */
 .fs-auth-smart-alert {
   display: flex;

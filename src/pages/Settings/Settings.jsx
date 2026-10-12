@@ -192,8 +192,16 @@ export function Settings() {
       showToast('Display name cannot be empty', 'error');
       return;
     }
+    if (trimmedName.length < 3) {
+      showToast('Display name must be at least 3 characters long', 'error');
+      return;
+    }
     if (trimmedName.length > 25) {
       showToast('Display name cannot exceed 25 characters', 'error');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_.\s]+$/.test(trimmedName)) {
+      showToast('Username can only contain letters, numbers, spaces, dots, and underscores', 'error');
       return;
     }
 
@@ -222,14 +230,19 @@ export function Settings() {
           setUser(updatedUser);
         }
         storage.saveUser(updatedUser);
-        showToast('Profile updated successfully!', 'success');
+
+        if (res.nameChanged) {
+          showToast('Username updated successfully!', 'success');
+        } else {
+          showToast('Profile updated successfully!', 'success');
+        }
         notifySaved();
       } else {
         showToast('Profile saved successfully', 'success');
         notifySaved();
       }
     } catch (err) {
-      showToast('Failed to save profile: ' + (err.message || 'Unknown error'), 'error');
+      showToast(err.message || 'Failed to save profile', 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -345,10 +358,14 @@ export function Settings() {
                     className="fs-field-input"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    placeholder="Your name (max 25 characters)"
+                    placeholder="Your name (3–25 characters)"
+                    minLength={3}
                     maxLength={25}
                     required
                   />
+                  <div className="fs-username-policy-row">
+                    <span className="fs-field-helper">Allowed: letters, numbers, spaces, dots, underscores</span>
+                  </div>
                 </div>
 
                 {/* Date of Birth */}

@@ -520,18 +520,19 @@ export const api = {
   },
 
   async updateUserProfile({ userId, email, name, dob, city, locationTracking }) {
-    try {
-      const res = await fetch(`${API_BASE}/user/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email, name, dob, city, locationTracking })
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      console.warn('updateUserProfile API error:', err);
-      return null;
+    const res = await fetch(`${API_BASE}/user/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email, name, dob, city, locationTracking })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || `HTTP error ${res.status}`);
+      err.code = data.code;
+      err.daysRemaining = data.daysRemaining;
+      throw err;
     }
+    return data;
   },
 
   async requestAccountDeletion(userId, email) {
@@ -651,6 +652,8 @@ export const api = {
       const err = new Error(data.error || 'Failed to dispatch password reset email');
       err.code = data.code;
       err.hoursRemaining = data.hoursRemaining;
+      err.requestsUsed = data.requestsUsed;
+      err.requestsRemaining = data.requestsRemaining;
       throw err;
     }
     return data;
