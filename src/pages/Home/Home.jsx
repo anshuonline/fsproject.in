@@ -267,9 +267,13 @@ export function Home() {
           ) : (
             <SectionShelf section={section} />
           )}
-          {/* In-feed ads: after 2nd and 5th shelves (load lazily, post-idle) */}
+          {/* Responsive in-feed ads: spaced evenly across dynamic shelves (Desktop: 728x90, Mobile: 300x250) */}
           {idx === 1 && <AdSlot slotId="infeed_shelf_1" className="fs-ad-slot--infeed" />}
           {idx === 4 && <AdSlot slotId="infeed_shelf_2" className="fs-ad-slot--infeed" />}
+          {idx === 8 && <AdSlot slotId="infeed_shelf_3" className="fs-ad-slot--infeed" />}
+          {idx === 12 && <AdSlot slotId="infeed_shelf_4" className="fs-ad-slot--infeed" />}
+          {idx === 16 && <AdSlot slotId="infeed_shelf_5" className="fs-ad-slot--infeed" />}
+          {idx === 20 && <AdSlot slotId="infeed_shelf_6" className="fs-ad-slot--infeed" />}
         </React.Fragment>
       ))}
 

@@ -239,6 +239,13 @@
   pointer-events: auto;
 }
 
+/* Guard: never obscure artwork if ad unit produced no content */
+.fs-fs-art-ad-layer.visible:not(:has(iframe, img, ins, embed, video)):not(:has(.has-ad)) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .fs-ad-slot--art .fs-ad-slot-inner {
   background: #ffffff;
   border-radius: 6px;

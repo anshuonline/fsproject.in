@@ -62,12 +62,20 @@ async function runUnitInjection(container, html) {
       Array.from(node.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
       if (node.src) {
         script.src = node.src;
+        script.async = false;
         await new Promise((resolve) => {
-          script.onload = resolve;
-          script.onerror = resolve;
+          let settled = false;
+          const done = () => {
+            if (settled) return;
+            settled = true;
+            // Short pause so invoke.js finishes building its iframe before next queue item touches window.atOptions
+            setTimeout(resolve, 120);
+          };
+          script.onload = done;
+          script.onerror = done;
           container.appendChild(script);
           // Safety valve: never let a hung ad network block the queue
-          setTimeout(resolve, 8000);
+          setTimeout(done, 6000);
         });
       } else {
         script.textContent = node.textContent;
@@ -131,7 +139,10 @@ export function queueAdUnitInjection(container, html, onSettled) {
   }
   let cleaned = false;
   adInjectionQueue = adInjectionQueue
-    .then(() => runUnitInjection(container, html))
+    .then(() => {
+      if (cleaned) return;
+      return runUnitInjection(container, html);
+    })
     .catch((e) => console.warn('Ad unit inject failed:', e))
     .then(() => {
       if (!cleaned && onSettled) onSettled();

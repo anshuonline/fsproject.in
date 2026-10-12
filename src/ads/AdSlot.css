@@ -33,29 +33,53 @@
   /* The site header is position:fixed — push the banner below it or its top
      portion hides behind the header */
   margin-top: var(--header-height, 64px);
-  padding: 10px 16px 2px;
+  padding: 0 16px;
   max-width: 980px;
   margin-left: auto;
   margin-right: auto;
+  transition: padding 0.2s ease;
+}
+
+.fs-ad-slot--header.has-ad,
+.fs-ad-slot--header:has(iframe, img, ins, embed, video) {
+  padding: 10px 16px 2px;
 }
 
 /* ── In-feed (between shelves) variant ── */
 .fs-ad-slot--infeed {
+  padding: 0;
+  margin: 0 auto;
+  max-width: 980px;
+  transition: padding 0.2s ease, margin 0.2s ease;
+}
+
+.fs-ad-slot--infeed.has-ad,
+.fs-ad-slot--infeed:has(iframe, img, ins, embed, video) {
   padding: 14px 0;
   margin: 6px auto;
-  max-width: 980px;
 }
 
 .fs-ad-slot--infeed .fs-ad-slot-inner {
-  background: var(--color-card, #181818);
-  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 14px;
-  padding: 10px 14px;
+  padding: 0;
   position: relative;
+  transition: background-color 0.2s ease, border-color 0.2s ease, padding 0.2s ease;
 }
 
-/* Tiny "Sponsored" tag — professional disclosure, bottom-right */
-.fs-ad-slot--infeed .fs-ad-slot-inner::after {
+.fs-ad-slot--infeed.has-ad .fs-ad-slot-inner,
+.fs-ad-slot--infeed .fs-ad-slot-inner.has-ad,
+.fs-ad-slot--infeed .fs-ad-slot-inner:has(iframe, img, ins, embed, video) {
+  background: var(--color-card, #181818);
+  border-color: var(--color-border, rgba(255, 255, 255, 0.08));
+  padding: 10px 14px;
+}
+
+/* Tiny "Sponsored" tag — ONLY when an ad is actually present */
+.fs-ad-slot--infeed.has-ad .fs-ad-slot-inner::after,
+.fs-ad-slot--infeed .fs-ad-slot-inner.has-ad::after,
+.fs-ad-slot--infeed .fs-ad-slot-inner:has(iframe, img, ins, embed, video)::after {
   content: 'Sponsored';
   position: absolute;
   right: 10px;
@@ -78,19 +102,34 @@
 
 /* ── Detail rectangle variant ── */
 .fs-ad-slot--detail {
+  padding: 0;
+  transition: padding 0.2s ease;
+}
+
+.fs-ad-slot--detail.has-ad,
+.fs-ad-slot--detail:has(iframe, img, ins, embed, video) {
   padding: 18px 0 6px;
 }
 
 /* ── Playlist in-feed row variant ── */
 .fs-ad-slot--playlist-row {
   border-radius: 10px;
+  margin: 0;
+  background: transparent;
+  position: relative;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.fs-ad-slot--playlist-row.has-ad,
+.fs-ad-slot--playlist-row:has(iframe, img, ins, embed, video) {
   margin: 4px 0;
   background: var(--color-card-hover, #1f1f1f);
-  position: relative;
   padding: 12px 0;
 }
 
-.fs-ad-slot--playlist-row::after {
+.fs-ad-slot--playlist-row.has-ad::after,
+.fs-ad-slot--playlist-row:has(iframe, img, ins, embed, video)::after {
   content: 'Sponsored';
   position: absolute;
   right: 12px;
@@ -105,12 +144,15 @@
 }
 
 @media (max-width: 850px) {
-  .fs-ad-slot--header {
+  .fs-ad-slot--header.has-ad,
+  .fs-ad-slot--header:has(iframe, img, ins, embed, video) {
     margin-top: var(--header-height, 64px);
     padding: 8px 10px 0;
   }
 
-  .fs-ad-slot--infeed .fs-ad-slot-inner {
+  .fs-ad-slot--infeed.has-ad .fs-ad-slot-inner,
+  .fs-ad-slot--infeed .fs-ad-slot-inner.has-ad,
+  .fs-ad-slot--infeed .fs-ad-slot-inner:has(iframe, img, ins, embed, video) {
     padding: 6px 8px;
     border-radius: 10px;
   }

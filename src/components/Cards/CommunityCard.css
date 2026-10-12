@@ -78,7 +78,9 @@
   z-index: 3;
 }
 
-.fs-comm-card:hover .fs-comm-play-btn {
+.fs-comm-card:hover .fs-comm-play-btn,
+.fs-comm-card.active .fs-comm-play-btn,
+.fs-comm-play-btn.active {
   opacity: 1;
   transform: translateY(0);
 }

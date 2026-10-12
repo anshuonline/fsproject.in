@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Play, MoreVertical } from 'lucide-react';
+import { Play, Pause, Loader2, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -7,7 +7,7 @@ import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThum
 import './CommunityCard.css';
 
 function CommunityCardBase({ item, queueContext = null }) {
-  const { playSong } = usePlayer();
+  const { currentSong, isPlaying, isLoading, playSong, togglePlay } = usePlayer();
   const { openMenu, openPlaylistMenu } = useContextMenu();
   const navigate = useNavigate();
 
@@ -17,6 +17,7 @@ function CommunityCardBase({ item, queueContext = null }) {
     ? item.songs[0]
     : null;
 
+  const isCurrent = Boolean(targetSong?.videoId && currentSong?.videoId === targetSong.videoId);
   const isAlbum = item.type === 'album' || Boolean(item.albumId);
   const effectiveQueue = (queueContext && queueContext.length > 0) ? queueContext : [item];
 
@@ -26,6 +27,10 @@ function CommunityCardBase({ item, queueContext = null }) {
 
   const handlePlayClick = (e) => {
     e.stopPropagation();
+    if (isCurrent) {
+      togglePlay();
+      return;
+    }
     if (item.videoId) {
       playSong(item, effectiveQueue);
     } else if (item.songs && item.songs.length > 0) {
@@ -75,7 +80,7 @@ function CommunityCardBase({ item, queueContext = null }) {
 
   return (
     <div
-      className="fs-comm-card"
+      className={`fs-comm-card ${isCurrent ? 'active' : ''}`}
       onClick={handleCardClick}
       onContextMenu={handleContextMenu}
     >
@@ -110,13 +115,19 @@ function CommunityCardBase({ item, queueContext = null }) {
           </button>
         )}
 
-        {/* Hover play button */}
+        {/* Hover / Active play button */}
         <button
-          className="fs-comm-play-btn"
+          className={`fs-comm-play-btn ${isCurrent ? 'active' : ''}`}
           onClick={handlePlayClick}
-          aria-label={`Play ${item.title}`}
+          aria-label={isCurrent && isPlaying ? `Pause ${item.title}` : `Play ${item.title}`}
         >
-          <Play size={20} fill="#000000" />
+          {isCurrent && isLoading ? (
+            <Loader2 size={20} className="spin" color="#000000" />
+          ) : isCurrent && isPlaying ? (
+            <Pause size={20} fill="#000000" />
+          ) : (
+            <Play size={20} fill="#000000" />
+          )}
         </button>
       </div>
 

@@ -210,7 +210,17 @@ export function PlayerProvider({ children }) {
     return true;
   }, []);
   const saavnCacheRef = useRef(new Map());    // videoId -> { streamUrl, ... }
+  const saavnFallbackTimerRef = useRef(null); // 6-second dual-engine fallback watchdog
   const startYtFallbackRef = useRef(null);    // late-bound YT fallback starter
+  const fallbackToYouTubeRef = useRef(null);  // late-bound robust YT fallback runner
+
+  // Clear pending 6-second JioSaavn watchdog timer
+  const clearSaavnFallbackTimer = useCallback(() => {
+    if (saavnFallbackTimerRef.current) {
+      clearTimeout(saavnFallbackTimerRef.current);
+      saavnFallbackTimerRef.current = null;
+    }
+  }, []);
 
   // ── Cast (Chromecast) refs ───────────────────────────────────────
   const castPlayerRef = useRef(null);         // cast.framework.RemotePlayer
@@ -384,6 +394,7 @@ export function PlayerProvider({ children }) {
 
     const onPlaying = () => {
       if (killIfNotActive()) return;
+      clearSaavnFallbackTimer();
       setIsPlaying(true);
       setIsLoading(false);
       isTransitioningRef.current = false;
@@ -411,11 +422,19 @@ export function PlayerProvider({ children }) {
     };
     const onError = () => {
       if (!isActiveEngine()) return;
-      console.warn('Saavn stream error — falling back to YouTube engine');
-      setIsLoading(false);
+      console.warn('Saavn stream error — immediately falling back to YouTube Music engine');
+      clearSaavnFallbackTimer();
       const song = currentSongRef.current;
+      if (song?.videoId) {
+        saavnCacheRef.current.delete(song.videoId);
+      }
+      try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {}
+      // Keep loading spinner active during engine transition
+      setIsLoading(true);
       activeEngineRef.current = 'yt';
-      if (song?.videoId && startYtFallbackRef.current) startYtFallbackRef.current(song);
+      if (song && fallbackToYouTubeRef.current) {
+        fallbackToYouTubeRef.current(song, playGenerationRef.current);
+      }
     };
     // Wrong-recording guard: verify the stream that ACTUALLY started. If its
     // real duration is wildly different from the requested song's duration,
@@ -428,10 +447,17 @@ export function PlayerProvider({ children }) {
       const streamDur = a.duration;
       if (!songDur || !streamDur || !isFinite(streamDur)) return;
       if (Math.abs(streamDur - songDur) > Math.max(15, songDur * 0.2)) {
-        console.warn('Saavn stream duration mismatch — rejecting wrong recording, falling back to YouTube engine');
-        activeEngineRef.current = 'yt';
+        console.warn('Saavn stream duration mismatch — rejecting wrong recording, falling back to YouTube Music');
+        clearSaavnFallbackTimer();
+        if (song?.videoId) {
+          saavnCacheRef.current.delete(song.videoId);
+        }
         try { a.pause(); a.removeAttribute('src'); a.load(); } catch {}
-        if (song?.videoId && startYtFallbackRef.current) startYtFallbackRef.current(song);
+        setIsLoading(true);
+        activeEngineRef.current = 'yt';
+        if (song && fallbackToYouTubeRef.current) {
+          fallbackToYouTubeRef.current(song, playGenerationRef.current);
+        }
       }
     };
 
@@ -445,6 +471,7 @@ export function PlayerProvider({ children }) {
     a.addEventListener('loadedmetadata', onLoadedMetadata);
 
     return () => {
+      clearSaavnFallbackTimer();
       try {
         a.pause();
         a.removeAttribute('src');
@@ -459,7 +486,7 @@ export function PlayerProvider({ children }) {
       a.removeEventListener('loadedmetadata', onLoadedMetadata);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clearSaavnFallbackTimer]);
 
   // ── Autoplay unblock (reload restore path) ──────────────────────
   // Browsers block unmuted autoplay right after a page reload (?v= deep link).
@@ -514,6 +541,7 @@ export function PlayerProvider({ children }) {
 
     // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED, 5 = CUED
     if (event.data === 1) {
+      clearSaavnFallbackTimer();
       setIsPlaying(true);
       setIsLoading(false);
       isTransitioningRef.current = false;
@@ -675,6 +703,7 @@ export function PlayerProvider({ children }) {
 
   // Pause whichever engine is currently active
   const pauseActiveEngine = useCallback(() => {
+    clearSaavnFallbackTimer();
     if (activeEngineRef.current === 'saavn') {
       try { audioRef.current?.pause(); } catch (e) {}
     } else if (activeEngineRef.current === 'cast') {
@@ -686,7 +715,7 @@ export function PlayerProvider({ children }) {
     } else if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
       try { playerRef.current.pauseVideo(); } catch (e) {}
     }
-  }, []);
+  }, [clearSaavnFallbackTimer]);
 
   // Resume whichever engine is currently active
   const resumeActiveEngine = useCallback(() => {
@@ -728,6 +757,80 @@ export function PlayerProvider({ children }) {
   }, [ensurePlayer, claimEngine]);
   startYtFallbackRef.current = startYtPlayback;
 
+  // Robust YouTube Music fallback runner: resolves valid YouTube videoId via ytmusic-api if needed
+  const fallbackToYouTube = useCallback(async (song, genToken) => {
+    if (!song) return;
+    if (genToken !== undefined && genToken !== playGenerationRef.current) return;
+
+    clearSaavnFallbackTimer();
+    claimEngine('yt', genToken);
+    setIsLoading(true);
+
+    let resolvedVideoId = song.videoId;
+    const isYtIdValid = (id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(id);
+
+    // If videoId is missing or is not a valid 11-char YouTube ID (e.g. JioSaavn chart ID)
+    if (!isYtIdValid(resolvedVideoId)) {
+      try {
+        const ytMatch = await api.resolveYouTubeSong(song.title, song.artist);
+        if (ytMatch?.videoId && isYtIdValid(ytMatch.videoId)) {
+          resolvedVideoId = ytMatch.videoId;
+          setCurrentSong(prev => (prev && (prev.videoId === song.videoId || prev.title === song.title) ? { ...prev, videoId: resolvedVideoId } : prev));
+          setQueue(prevQ => prevQ.map(s => (s.videoId === song.videoId || s.title === song.title ? { ...s, videoId: resolvedVideoId } : s)));
+        }
+      } catch (err) {
+        console.warn('Failed to resolve YouTube video ID for fallback:', err);
+      }
+    }
+
+    if (genToken !== undefined && genToken !== playGenerationRef.current) return;
+
+    if (isYtIdValid(resolvedVideoId)) {
+      const songWithYt = { ...song, videoId: resolvedVideoId };
+      startYtPlayback(songWithYt);
+    } else {
+      console.warn('No playable YouTube video ID found for:', song.title);
+      setIsLoading(false);
+    }
+  }, [claimEngine, clearSaavnFallbackTimer, startYtPlayback]);
+  fallbackToYouTubeRef.current = fallbackToYouTube;
+
+  // 6-second auto-fallback watchdog: if audio does not start playing within 6s on JioSaavn,
+  // automatically abort Saavn and switch to YouTube Music (ytmusic-api)
+  const armSaavnWatchdog = useCallback((song, genToken) => {
+    clearSaavnFallbackTimer();
+    saavnFallbackTimerRef.current = setTimeout(() => {
+      if (genToken !== playGenerationRef.current) return;
+
+      const a = audioRef.current;
+      const isSaavnSounding = activeEngineRef.current === 'saavn' && a && !a.paused && a.currentTime > 0;
+      const isYtSounding = activeEngineRef.current === 'yt' && isPlayingRef.current;
+
+      if (isSaavnSounding || isYtSounding) {
+        return;
+      }
+
+      console.warn(`[Player] JioSaavn engine took >6s without audio playback — auto-switching to YouTube Music fallback for "${song?.title}"`);
+
+      // Delete bad/slow cache entry
+      if (song?.videoId) {
+        saavnCacheRef.current.delete(song.videoId);
+      }
+
+      // Hard-stop HTML5 audio element
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.removeAttribute('src');
+          audioRef.current.load();
+        } catch (e) {}
+      }
+
+      setIsLoading(true);
+      fallbackToYouTube(song, genToken);
+    }, 6000);
+  }, [clearSaavnFallbackTimer, fallbackToYouTube]);
+
   // Try resolving a JioSaavn stream for the song (with session cache)
   const resolveSaavnStream = useCallback(async (song) => {
     if (!song?.videoId || !song?.title) return null;
@@ -740,9 +843,8 @@ export function PlayerProvider({ children }) {
     try {
       const match = await Promise.race([
         api.getSaavnStream(song, bitrate),
-        // Saavn is the first-priority engine (true background playback),
-        // so give it enough time to win the race before the YT IFrame fallback
-        new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 6500))
+        // Bound Saavn resolution to max 4s so the 6s master watchdog has room
+        new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 4000))
       ]);
       if (match?.streamUrl) {
         // Saavn-first validation: title + artist verify — pass => Saavn play
@@ -770,6 +872,8 @@ export function PlayerProvider({ children }) {
     if (!song) return;
     // Engine supervisor generation: any newer start invalidates older async work
     const token = ++playGenerationRef.current;
+    setIsLoading(true);
+    armSaavnWatchdog(song, token);
 
     const match = await resolveSaavnStream(song);
 
@@ -796,21 +900,25 @@ export function PlayerProvider({ children }) {
 
       const a = audioRef.current || null;
       if (!a) {
-        startYtPlayback(song);
+        fallbackToYouTube(song, token);
         return;
       }
       a.volume = computeEffectiveVolume(volumeRef.current);
       a.src = match.streamUrl;
       try {
         const p = a.play();
-        if (p && typeof p.catch === 'function') p.catch(() => {});
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            fallbackToYouTube(song, token);
+          });
+        }
       } catch (e) {
-        startYtPlayback(song);
+        fallbackToYouTube(song, token);
       }
     } else {
-      startYtPlayback(song);
+      fallbackToYouTube(song, token);
     }
-  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume, claimEngine]);
+  }, [resolveSaavnStream, armSaavnWatchdog, fallbackToYouTube, computeEffectiveVolume, claimEngine]);
 
   // ── Cast (Chromecast) core ───────────────────────────────────────
   // Receiver: Google's Default Media Receiver — TV par official cast UI
@@ -1106,6 +1214,7 @@ export function PlayerProvider({ children }) {
 
     // User-initiated playback replaces any pending autoplay-restore unblocking
     disarmAutoplayUnblock();
+    clearSaavnFallbackTimer();
 
     isTransitioningRef.current = false;
     currentSongRef.current = song;
@@ -1143,7 +1252,7 @@ export function PlayerProvider({ children }) {
     if (isAutoplayRef.current && (initialQueue.length <= 2 || initialIdx >= initialQueue.length - 2)) {
       fetchAndAppendRelated(song);
     }
-  }, [startPlayback, fetchAndAppendRelated, disarmAutoplayUnblock]);
+  }, [startPlayback, fetchAndAppendRelated, disarmAutoplayUnblock, clearSaavnFallbackTimer]);
 
   // Play song directly by YouTube videoId (used for shared URLs & deep links)
   const playByVideoId = useCallback(async (videoId) => {
@@ -1192,28 +1301,6 @@ export function PlayerProvider({ children }) {
     // Arm interaction unblocker for browser autoplay restrictions — any tap,
     // click or keypress retries playVideo() until playback actually starts
     armAutoplayUnblock();
-
-    // Autoplay-block watchdog: if the browser silently blocked playback, stop
-    // the infinite loading spinner so the play button becomes clearly tappable
-    setTimeout(() => {
-      if (activeEngineRef.current === 'cast') return; // state driven by cast events
-      if (activeEngineRef.current === 'saavn') {
-        const a = audioRef.current;
-        if (a && a.paused && !a.ended) {
-          setIsPlaying(false);
-          setIsLoading(false);
-        }
-        return;
-      }
-      const player = playerRef.current;
-      if (!player || typeof player.getPlayerState !== 'function') return;
-      let state = -1;
-      try { state = player.getPlayerState(); } catch (e) {}
-      if (state !== 1 && state !== 3) {
-        setIsPlaying(false);
-        setIsLoading(false);
-      }
-    }, 4000);
   }, [playSong, armAutoplayUnblock, resumeActiveEngine]);
 
   // Auto-fetch next batch of songs when approaching the end of queue
@@ -1231,6 +1318,7 @@ export function PlayerProvider({ children }) {
       const a = audioRef.current;
       if (!a) return;
       if (isPlayingRef.current) {
+        clearSaavnFallbackTimer();
         try { a.pause(); } catch (e) {}
       } else {
         try {
@@ -1249,11 +1337,12 @@ export function PlayerProvider({ children }) {
     }
     if (!playerRef.current) return;
     if (isPlayingRef.current) {
+      clearSaavnFallbackTimer();
       playerRef.current.pauseVideo();
     } else {
       playerRef.current.playVideo();
     }
-  }, []);
+  }, [clearSaavnFallbackTimer]);
 
   const toggleAutoplay = useCallback(() => {
     setIsAutoplay(prev => !prev);

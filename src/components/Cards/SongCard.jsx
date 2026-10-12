@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Heart, MoreVertical, Trash2 } from 'lucide-react';
+import { Play, Pause, Heart, MoreVertical, Trash2, Loader2 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -16,7 +16,7 @@ function SongCardBase({
   isUserPlaylist = false,
   isHistory = false
 }) {
-  const { currentSong, isPlaying, playSong, togglePlay, setIsFullScreen } = usePlayer();
+  const { currentSong, isPlaying, isLoading, playSong, togglePlay, setIsFullScreen } = usePlayer();
   const { isLiked, toggleLike, removeSongFromPlaylist, removeFromHistory } = useLibrary();
   const { openMenu, showToast } = useContextMenu();
   const navigate = useNavigate();
@@ -76,7 +76,9 @@ function SongCardBase({
       {index !== null && (
         <div className="fs-song-index-col">
           {isCurrent ? (
-            isPlaying ? (
+            isLoading ? (
+              <Loader2 size={13} className="spin text-brand fs-song-index-loading" />
+            ) : isPlaying ? (
               <span className="fs-song-playing-bars" title="Playing">
                 <span className="fs-bar fs-bar-1" />
                 <span className="fs-bar fs-bar-2" />
@@ -109,7 +111,9 @@ function SongCardBase({
         />
         {index === null && (
           <div className={`fs-song-play-icon ${isCurrent ? 'show' : ''}`}>
-            {isCurrent && isPlaying ? (
+            {isCurrent && isLoading ? (
+              <Loader2 size={16} className="spin text-brand" />
+            ) : isCurrent && isPlaying ? (
               <Pause size={16} fill="currentColor" />
             ) : (
               <Play size={16} fill="currentColor" />

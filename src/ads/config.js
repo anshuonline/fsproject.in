@@ -12,43 +12,47 @@
 // ── 1. UNITS — raw ad-network HTML ──────────────────────────────────────
 export const UNITS = {
   W728H90: `<script>
-  atOptions = {
+  window.atOptions = {
     'key' : '4a50ee1eee52c95c476154cd4848efe0',
     'format' : 'iframe',
     'height' : 90,
     'width' : 728,
     'params' : {}
   };
+  var atOptions = window.atOptions;
 </script>
 <script src="https://www.highrevenueformat.com/4a50ee1eee52c95c476154cd4848efe0/invoke.js"></script>`,
   W320H50: `<script>
-  atOptions = {
+  window.atOptions = {
     'key' : 'd41b950b9ce839eb2f788b9e25a3f970',
     'format' : 'iframe',
     'height' : 50,
     'width' : 320,
     'params' : {}
   };
+  var atOptions = window.atOptions;
 </script>
 <script src="https://www.highrevenueformat.com/d41b950b9ce839eb2f788b9e25a3f970/invoke.js"></script>`,
   W300H250: `<script>
-  atOptions = {
+  window.atOptions = {
     'key' : 'e6ecff65fcc25cd4064b4ff7af8bc342',
     'format' : 'iframe',
     'height' : 250,
     'width' : 300,
     'params' : {}
   };
+  var atOptions = window.atOptions;
 </script>
 <script src="https://www.highrevenueformat.com/e6ecff65fcc25cd4064b4ff7af8bc342/invoke.js"></script>`,
   W160H600: `<script>
-  atOptions = {
+  window.atOptions = {
     'key' : 'f53f12d8edfa281f43e7276c7070aa4f',
     'format' : 'iframe',
     'height' : 600,
     'width' : 160,
     'params' : {}
   };
+  var atOptions = window.atOptions;
 </script>
 <script src="https://www.highrevenueformat.com/f53f12d8edfa281f43e7276c7070aa4f/invoke.js"></script>`,
   NATIVE: `<script async="async" data-cfasync="false" src="https://pl31781023.profitableratecpmnetwork.com/d4ad762d4e64e13cc862cec4e707fc44/invoke.js"></script>
@@ -85,11 +89,16 @@ l.parentNode.insertBefore(s, l);
 // devices: 'both' | 'desktop' | 'mobile'
 export const SLOTS = {
   header_banner: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W320H50 },
+  // Home dynamic in-feed shelf slots — responsive: 728x90 on Desktop, 300x250 on Mobile
   infeed_shelf_1: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
-  infeed_shelf_2: { devices: 'both', scriptDesktop: UNITS.NATIVE, scriptMobile: UNITS.NATIVE },
+  infeed_shelf_2: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
+  infeed_shelf_3: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
+  infeed_shelf_4: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
+  infeed_shelf_5: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
+  infeed_shelf_6: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
   sidebar_sticky: { devices: 'desktop', scriptDesktop: UNITS.W160H600, scriptMobile: '' },
   detail_rectangle: { devices: 'both', scriptDesktop: UNITS.W300H250, scriptMobile: UNITS.W300H250 },
-  search_native: { devices: 'both', scriptDesktop: UNITS.NATIVE, scriptMobile: UNITS.NATIVE },
+  search_native: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
   playlist_infeed: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
   player_cover_rotate: { devices: 'both', scriptDesktop: UNITS.W300H250, scriptMobile: UNITS.W300H250 },
   // Mobile sticky bottom banner (above MobileNav, lifts above the player card

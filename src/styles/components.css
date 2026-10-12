@@ -158,6 +158,7 @@
 }
 
 /* Spin Animation Utility */
+.spin,
 .fs-spin {
   animation: fsSpin 0.9s linear infinite;
 }

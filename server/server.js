@@ -459,6 +459,40 @@ app.get('/api/song/:id', async (req, res) => {
   }
 });
 
+// Dual-Engine Fallback: Resolve a playable YouTube Music song by title & artist
+app.get('/api/yt/resolve', async (req, res) => {
+  const title = String(req.query.title || '').trim().slice(0, 120);
+  const artist = String(req.query.artist || '').trim().slice(0, 120);
+
+  if (!title) {
+    return res.status(400).json({ error: 'title is required' });
+  }
+
+  const normKey = `${title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${artist.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  const cacheKey = `yt_resolve_${normKey}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const yt = await getYTMusic();
+    const query = `${title} ${artist}`.trim();
+    const raw = await yt.searchSongs(query).catch(() => []);
+    const formatted = (raw || [])
+      .map(formatSong)
+      .filter(s => s && s.videoId && !isSpamOrJunkSong(s));
+
+    const match = formatted[0] || null;
+    const result = { match };
+    if (match) {
+      setCache(cacheKey, result, 60 * 60 * 1000); // 1 hour cache
+    }
+    res.json(result);
+  } catch (err) {
+    console.warn(`YouTube resolve error for "${title}":`, err.message);
+    res.status(500).json({ error: 'YouTube resolution failed', match: null });
+  }
+});
+
 // Related / UpNext Radio songs endpoint (infinite queue)
 app.get('/api/related/:videoId', async (req, res) => {
   const { videoId } = req.params;

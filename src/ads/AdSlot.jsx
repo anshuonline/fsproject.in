@@ -18,6 +18,7 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
   const [device, setDevice] = useState(currentDevice());
   const [visible, setVisible] = useState(false);
   const [armed, setArmed] = useState(false);
+  const [hasAd, setHasAd] = useState(false);
   const cleanupRef = useRef(null);
 
   // Device re-check on resize
@@ -55,6 +56,32 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
     return () => observer.disconnect();
   }, [slot]);
 
+  // Monitor when an actual ad element (iframe, img, video, etc.) renders into the container
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el || !visible || !armed) return undefined;
+
+    const checkRendered = () => {
+      const adEl = el.querySelector('iframe, img, ins, embed, video, [id^="container-"]');
+      if (adEl) {
+        setHasAd(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkRendered()) return undefined;
+
+    const mo = new MutationObserver(() => {
+      if (checkRendered()) {
+        mo.disconnect();
+      }
+    });
+
+    mo.observe(el, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [visible, armed]);
+
   // Inject the matching unit (desktop/mobile) + one-shot render verification
   useEffect(() => {
     if (!slot || !visible || !armed || !hostRef.current) return undefined;
@@ -74,11 +101,15 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
       verifyTimer = setTimeout(() => {
         const el = hostRef.current;
         if (!el || retried) return;
-        if (el.querySelector('iframe, img, ins, embed, video')) return;
+        if (el.querySelector('iframe, img, ins, embed, video')) {
+          setHasAd(true);
+          return;
+        }
         retried = true;
         console.info(`[AdSlot] empty after wait — retrying "${slotId}" once`);
         if (cleanupRef.current) cleanupRef.current();
         el.innerHTML = '';
+        setHasAd(false);
         cleanupRef.current = html.includes('atOptions')
           ? queueAdUnitInjection(el, html, verify)
           : injectAdHtml(el, html);
@@ -105,8 +136,13 @@ export const AdSlot = React.memo(function AdSlot({ slotId, className = '', align
   if (devices !== 'both' && devices !== device) return null;
 
   return (
-    <div className={`fs-ad-slot ${className}`} data-slot={slotId} style={{ textAlign: align }} aria-hidden="true">
-      <div className="fs-ad-slot-inner" ref={hostRef} />
+    <div
+      className={`fs-ad-slot ${className} ${hasAd ? 'has-ad' : 'is-empty'}`}
+      data-slot={slotId}
+      style={{ textAlign: align }}
+      aria-hidden="true"
+    >
+      <div className={`fs-ad-slot-inner ${hasAd ? 'has-ad' : ''}`} ref={hostRef} />
     </div>
   );
 });

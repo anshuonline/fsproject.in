@@ -152,7 +152,7 @@ export const api = {
   async getSaavnStream(song, bitrate = 320) {
     if (!song?.title) return null;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4500);
+    const timer = setTimeout(() => controller.abort(), 4000);
     try {
       const params = new URLSearchParams({
         title: String(song.title || '').slice(0, 120),
@@ -164,6 +164,29 @@ export const api = {
       const res = await fetch(`${API_BASE}/saavn/match?${params.toString()}`, {
         signal: controller.signal,
         cache: 'no-store'
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.match || null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
+  // Dual-Engine Fallback: resolve matching YouTube Music track by title & artist
+  async resolveYouTubeSong(title, artist = '') {
+    if (!title) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    try {
+      const params = new URLSearchParams({
+        title: String(title).slice(0, 120),
+        artist: String(artist).slice(0, 120)
+      });
+      const res = await fetch(`${API_BASE}/yt/resolve?${params.toString()}`, {
+        signal: controller.signal
       });
       if (!res.ok) return null;
       const data = await res.json();
