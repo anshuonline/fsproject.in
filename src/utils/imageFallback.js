@@ -41,3 +41,52 @@ export function getArtworkFallback(title = 'Music') {
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
+
+/**
+ * YouTube serves a 120x90 gray "three dots" placeholder with HTTP 200 for
+ * videos whose real thumbnail is unavailable — onError never fires, so it
+ * must be detected via the rendered image's intrinsic dimensions.
+ */
+export function isGrayPlaceholder(img) {
+  return Boolean(img && img.naturalWidth > 0 && img.naturalWidth <= 120 && img.naturalHeight <= 90);
+}
+
+/**
+ * Build an ordered list of thumbnail candidates for a song:
+ * primary source first, then progressively more reliable YouTube sizes.
+ */
+export function buildThumbFallbacks(primaryUrl, videoId) {
+  const list = [];
+  const push = (u) => {
+    if (u && !list.includes(u)) list.push(u);
+  };
+  push(primaryUrl);
+  if (videoId) {
+    push(`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`);
+    push(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
+    push(`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`);
+  }
+  return list;
+}
+
+/**
+ * Advance an <img> to its next thumbnail candidate when the current one
+ * 404s (onError) or turns out to be YouTube's gray placeholder (onLoad).
+ */
+export function advanceThumb(img, candidates, fallbackSvg) {
+  if (!img || !candidates || candidates.length === 0) return;
+  const primary = candidates[0];
+  if (img.dataset.fbFor !== primary) {
+    img.dataset.fbFor = primary;
+    img.dataset.fbStep = '0';
+  }
+  const step = Number(img.dataset.fbStep || 0) + 1;
+  if (step < candidates.length) {
+    img.dataset.fbStep = String(step);
+    img.src = candidates[step];
+  } else {
+    img.onerror = null;
+    img.dataset.fbStep = '0';
+    img.src = fallbackSvg;
+  }
+}

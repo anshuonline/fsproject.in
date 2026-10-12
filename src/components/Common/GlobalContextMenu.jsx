@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Radio,
   CornerDownRight,
@@ -9,6 +9,7 @@ import {
   Heart,
   Share2,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   Check,
   Plus,
@@ -24,6 +25,8 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
 import { PlaylistCover } from './PlaylistCover';
+import { splitArtists } from './ArtistLinks';
+import { api } from '../../services/api';
 import './GlobalContextMenu.css';
 
 export function GlobalContextMenu() {
@@ -72,6 +75,42 @@ export function GlobalContextMenu() {
   );
   const [adjustedPos, setAdjustedPos] = useState({ x: 0, y: 0 });
   const menuRef = useRef(null);
+
+  // ── Go to artist (Spotify-style submenu) ──────────────────────────────
+  const artistList = useMemo(() => splitArtists(song?.artist), [song?.artist]);
+  const [artistImages, setArtistImages] = useState({});
+  const [showAllArtists, setShowAllArtists] = useState(false);
+
+  // Reset submenu state on every open
+  useEffect(() => {
+    if (isOpen) {
+      setShowAllArtists(false);
+      setArtistImages({});
+    }
+  }, [isOpen, song?.videoId]);
+
+  // Artist profile images (JioSaavn artist search) when the submenu opens
+  useEffect(() => {
+    if (!isOpen || currentView !== 'artists' || artistList.length === 0) return undefined;
+    let cancelled = false;
+    api.getSaavnArtistImages(artistList).then((rows) => {
+      if (cancelled) return;
+      const map = {};
+      (rows || []).forEach((r) => {
+        if (r?.name && r?.image) map[r.name] = r.image;
+      });
+      setArtistImages(map);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, currentView, artistList]);
+
+  const handleGoToArtistName = (name) => {
+    closeMenu();
+    if (typeof setIsFullScreen === 'function') {
+      setIsFullScreen(false);
+    }
+    navigate(`/search?q=${encodeURIComponent(name)}`);
+  };
 
   // Google Cast availability (mobile: cast lives in this menu, not the header).
   // iOS WebKit has no Cast sender support — hide there entirely.
@@ -584,12 +623,23 @@ export function GlobalContextMenu() {
                 </button>
               )}
 
-              {song.artist && (
+              {artistList.length === 1 && (
                 <button className="fs-context-item" onClick={handleGoToArtist}>
                   <span className="fs-context-item-icon">
                     <User size={18} />
                   </span>
                   <span className="fs-context-item-label">Go to artist</span>
+                </button>
+              )}
+
+              {artistList.length > 1 && (
+                <button className="fs-context-item" onClick={() => setView('artists')}>
+                  <span className="fs-context-item-icon">
+                    <User size={18} />
+                  </span>
+                  <span className="fs-context-item-label">Go to artist</span>
+                  <span className="fs-context-badge">{artistList.length}</span>
+                  <ChevronRight size={16} className="fs-context-arrow" />
                 </button>
               )}
 
@@ -773,6 +823,55 @@ export function GlobalContextMenu() {
                     <span className="fs-context-item-label">Turn off sleep timer</span>
                   </button>
                 </>
+              )}
+            </div>
+          </>
+        )}
+        {/* View: Go to Artist Sub-menu (Spotify-style, JioSaavn artist data) */}
+        {targetType === 'song' && song && currentView === 'artists' && (
+          <>
+            <div className="fs-context-sub-header">
+              <button
+                className="fs-context-back-btn"
+                onClick={() => setView('root')}
+                aria-label="Back to actions"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <span className="fs-context-sub-title">Go to artist</span>
+            </div>
+
+            <div className="fs-context-body">
+              {(showAllArtists ? artistList : artistList.slice(0, 3)).map((name) => (
+                <button
+                  key={name}
+                  className="fs-context-artist-item"
+                  onClick={() => handleGoToArtistName(name)}
+                >
+                  <span className="fs-context-artist-avatar">
+                    <User size={15} />
+                    {artistImages[name] && (
+                      <img
+                        src={artistImages[name]}
+                        alt=""
+                        className="fs-context-artist-avatar-img"
+                        loading="lazy"
+                        onError={(e) => e.currentTarget.remove()}
+                      />
+                    )}
+                  </span>
+                  <span className="fs-context-artist-name truncate">{name}</span>
+                </button>
+              ))}
+
+              {artistList.length > 3 && !showAllArtists && (
+                <button
+                  className="fs-context-artist-more"
+                  onClick={() => setShowAllArtists(true)}
+                >
+                  <ChevronDown size={16} />
+                  <span>Show all {artistList.length} artists</span>
+                </button>
               )}
             </div>
           </>

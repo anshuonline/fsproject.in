@@ -19,6 +19,8 @@ import {
 import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
+import { isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
+import { ArtistLinks } from '../Common/ArtistLinks';
 import './GlobalPlayer.css';
 
 function formatTime(sec) {
@@ -96,6 +98,10 @@ export function GlobalPlayer() {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const liked = isLiked(currentSong.videoId);
 
+  const thumbPrimary = currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+  const thumbCandidates = buildThumbFallbacks(thumbPrimary, currentSong.videoId);
+  const handleThumbFail = (img) => advanceThumb(img, thumbCandidates, '/images/freesonglogowebp.webp');
+
   return (
     <div
       className={`fs-global-player ${isPlaying ? 'playing' : ''}`}
@@ -122,10 +128,14 @@ export function GlobalPlayer() {
         >
           <div className="fs-player-artwork-wrap">
             <img
-              src={currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
+              src={thumbPrimary}
               alt={currentSong.title}
               className="fs-player-artwork"
               referrerPolicy="no-referrer"
+              onError={(e) => handleThumbFail(e.currentTarget)}
+              onLoad={(e) => {
+                if (isGrayPlaceholder(e.currentTarget)) handleThumbFail(e.currentTarget);
+              }}
             />
             {isPlaying && (
               <div className="fs-artwork-eq" aria-hidden="true">
@@ -137,7 +147,7 @@ export function GlobalPlayer() {
           </div>
           <div className="fs-player-meta">
             <span className="fs-player-song-title truncate">{currentSong.title}</span>
-            <span className="fs-player-song-artist truncate">{currentSong.artist}</span>
+            <ArtistLinks artist={currentSong.artist} className="fs-player-song-artist truncate" />
           </div>
           <button
             className={`btn-icon fs-player-like-btn ${liked ? 'liked' : ''}`}

@@ -173,7 +173,7 @@ export function Explore() {
 
       {/* ─── Trending Now (Official Chart Carousel) ──────────────────────── */}
       {trendingNow.length > 0 && (
-        <Shelf eyebrow="OFFICIAL LIVE CHART • INDIA" title="Trending Now" carousel>
+        <Shelf eyebrow="LIVE TRENDING CHART • INDIA" title="Trending Now" carousel>
           {trendingNow.map((song, i) => (
             <div className="fs-explore-card-col" key={song.videoId}>
               <SongTileCard song={song} queueContext={trendingNow} rank={i + 1} />

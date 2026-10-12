@@ -9,6 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
+import { isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import './MiniPlayer.css';
 
 function formatTime(sec) {
@@ -128,15 +129,23 @@ export function MiniPlayer() {
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  const thumbPrimary = currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+  const thumbCandidates = buildThumbFallbacks(thumbPrimary, currentSong.videoId);
+  const handleThumbFail = (img) => advanceThumb(img, thumbCandidates, '/images/freesonglogowebp.webp');
+
   return createPortal(
     <div className="fs-mini-player">
       <div className="fs-mini-main">
         <img
           className="fs-mini-artwork"
-          src={currentSong.thumbnail || (currentSong.videoId ? `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
+          src={thumbPrimary}
           alt={currentSong.title}
           referrerPolicy="no-referrer"
           draggable={false}
+          onError={(e) => handleThumbFail(e.currentTarget)}
+          onLoad={(e) => {
+            if (isGrayPlaceholder(e.currentTarget)) handleThumbFail(e.currentTarget);
+          }}
         />
 
         <div className="fs-mini-info">

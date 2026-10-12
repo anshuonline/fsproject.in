@@ -58,7 +58,7 @@ export function Search() {
       {loading && (
         <div className="fs-search-loading">
           <Loader2 size={32} className="spin text-brand" />
-          <p>Searching YouTube Music...</p>
+          <p>Searching...</p>
         </div>
       )}
 

@@ -175,6 +175,28 @@ export const api = {
     }
   },
 
+  // Artist profile images (context menu "Go to artist" rows). Names are
+  // '|' separated — commas/& appear inside artist names themselves.
+  async getSaavnArtistImages(names) {
+    const list = (Array.isArray(names) ? names : []).filter(Boolean).slice(0, 8);
+    if (list.length === 0) return [];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(`${API_BASE}/saavn/artists?names=${encodeURIComponent(list.join('|'))}`, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data?.artists || [];
+    } catch {
+      return [];
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
   async getSong(id) {
     if (!id) return null;
     try {

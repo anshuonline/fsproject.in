@@ -9,6 +9,8 @@
  * - Strict anti-spam & anti-mashup filtering
  */
 
+import { fetchSaavnQuickPicks } from './saavnEngine.js';
+
 // ─── Dynamic System Year ────────────────────────────────────────────────────
 export const SYSTEM_YEAR = new Date().getFullYear();
 export const PREV_YEAR = SYSTEM_YEAR - 1;
@@ -331,7 +333,10 @@ export function buildTasteProfile(preferences = {}, history = [], likes = []) {
     recentSongs.push({
       videoId: h.videoId,
       title: cleanSongTitle(h.title) || h.title,
-      artist: h.artist || 'Artist'
+      artist: h.artist || 'Artist',
+      thumbnail: toHDThumbnail(h.thumbnail, h.videoId),
+      duration: h.duration || 0,
+      durationText: h.durationText || ''
     });
     if (recentSongs.length >= 4) break;
   }
@@ -2213,11 +2218,22 @@ export async function buildAlgorithmicFeed(yt, preferences, history, cacheGet, c
 
       // ── TYPE: quickpicks ──
       if (plan.type === 'quickpicks') {
-        const cacheKey = `shelf_quickpicks_v5_${(plan.searchQuery || '').replace(/[^a-z0-9]/g, '_')}`;
+        const cacheKey = `shelf_quickpicks_v7_saavn_${(plan.searchQuery || '').replace(/[^a-z0-9]/g, '_')}`;
         const cached = cacheGet(cacheKey);
         if (cached && cached.length > 0) {
           return { ...plan, items: cached };
         }
+
+        // JioSaavn FIRST: official "Most Searched Songs" chart — real popularity
+        // data + native background-playable streams (YT official picks = fallback)
+        try {
+          const qpSaavn = (await fetchSaavnQuickPicks(24))
+            .filter(s => s && s.videoId && !isSpamOrJunkSong(s));
+          if (qpSaavn.length >= 6) {
+            cacheSet(cacheKey, qpSaavn.slice(0, 24), 15 * 60 * 1000);
+            return { ...plan, items: qpSaavn.slice(0, 24) };
+          }
+        } catch {}
 
         // Use official quick picks directly from YouTube Music if available
         if (officialQuickPicksSec?.contents?.length > 0) {

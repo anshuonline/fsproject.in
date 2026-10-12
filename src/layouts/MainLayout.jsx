@@ -17,7 +17,7 @@ import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
-import { AdSlot, StickyBottomAd, SOCIAL_BAR_SCRIPT, ALL_AD_UNITS_HTML } from '../ads';
+import { AdSlot, StickyBottomAd, DesktopFloatingAd, EntrySplashAd, SOCIAL_BAR_SCRIPT, ALL_AD_UNITS_HTML } from '../ads';
 import { injectAdHtml, prewarmAdConnections } from '../services/adsService';
 import './MainLayout.css';
 
@@ -185,9 +185,13 @@ export function MainLayout() {
       <MobileNav />
       {/* Mobile sticky bottom ad — lifts above the player card while playing */}
       {!isAdminArea && <StickyBottomAd />}
+      {/* Desktop floating pill — mobile strip ka PC equivalent, player ke upar */}
+      {!isAdminArea && <DesktopFloatingAd />}
       <GlobalContextMenu />
       <EditPlaylistModal />
       <InactivityModal />
+      {/* Entry splash ad — once per session, hidden on the analytics admin area */}
+      {!isAdminArea && <EntrySplashAd />}
       <ShortcutIndicator />
       <Toast />
     </div>

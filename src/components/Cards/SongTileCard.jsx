@@ -3,7 +3,7 @@ import { Play, Pause, Heart, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
-import { getArtworkFallback } from '../../utils/imageFallback';
+import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import './SongTileCard.css';
 
 function SongTileCardBase({ song, queueContext = [], rank = null }) {
@@ -15,6 +15,10 @@ function SongTileCardBase({ song, queueContext = [], rank = null }) {
 
   const isCurrent = currentSong?.videoId === song.videoId;
   const liked = isLiked(song.videoId);
+
+  const thumbPrimary = song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+  const thumbCandidates = buildThumbFallbacks(thumbPrimary, song.videoId);
+  const handleThumbFail = (img) => advanceThumb(img, thumbCandidates, getArtworkFallback(song.title));
 
   const handlePlay = (e) => {
     e.stopPropagation();
@@ -37,20 +41,15 @@ function SongTileCardBase({ song, queueContext = [], rank = null }) {
       {/* Square artwork with hover play & optional chart rank */}
       <div className="fs-song-tile-art" onClick={handlePlay}>
         <img
-          src={song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
+          src={thumbPrimary}
           alt={song.title}
           className="fs-song-tile-img"
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            const currentSrc = e.currentTarget.src || '';
-            if (song.videoId && !currentSrc.includes('i.ytimg.com')) {
-              e.currentTarget.src = `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`;
-            } else {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getArtworkFallback(song.title);
-            }
+          onError={(e) => handleThumbFail(e.currentTarget)}
+          onLoad={(e) => {
+            if (isGrayPlaceholder(e.currentTarget)) handleThumbFail(e.currentTarget);
           }}
         />
         {rank !== null && <span className="fs-song-tile-rank">#{rank}</span>}

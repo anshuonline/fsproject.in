@@ -5,6 +5,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { getArtworkFallback } from '../../utils/imageFallback';
+import { ArtistLinks } from '../Common/ArtistLinks';
 import './SongCard.css';
 
 function SongCardBase({
@@ -25,28 +26,9 @@ function SongCardBase({
   const isCurrent = currentSong?.videoId === song.videoId;
   const liked = isLiked(song.videoId);
 
-  const handleArtistClick = (e) => {
-    // On touch devices or mobile viewports, tapping the song row plays the song.
-    // Prevent accidental artist navigation when tapping with fingers/thumbs.
-    const isTouchOrMobile =
-      (typeof window !== 'undefined' && window.innerWidth <= 768) ||
-      e.nativeEvent?.pointerType === 'touch';
-
-    if (isTouchOrMobile) {
-      // Do not stop propagation; allow parent row handlePlay to fire cleanly!
-      return;
-    }
-
-    e.stopPropagation();
-    if (typeof setIsFullScreen === 'function') {
-      setIsFullScreen(false);
-    }
-    if (song.artistId) {
-      navigate(`/artist/${song.artistId}`);
-    } else if (song.artist) {
-      navigate(`/search?q=${encodeURIComponent(song.artist)}`);
-    }
-  };
+  const thumbPrimary = song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+  const thumbCandidates = buildThumbFallbacks(thumbPrimary, song.videoId);
+  const handleThumbFail = (img) => advanceThumb(img, thumbCandidates, getArtworkFallback(song.title));
 
   const handlePlay = (e) => {
     e.stopPropagation();
@@ -115,19 +97,14 @@ function SongCardBase({
       {/* Artwork Thumbnail */}
       <div className="fs-song-thumb-wrap">
         <img
-          src={song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
+          src={thumbPrimary}
           alt={song.title}
           className="fs-song-thumb"
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            const currentSrc = e.currentTarget.src || '';
-            if (song.videoId && !currentSrc.includes('i.ytimg.com')) {
-              e.currentTarget.src = `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`;
-            } else {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getArtworkFallback(song.title);
-            }
+          onError={(e) => handleThumbFail(e.currentTarget)}
+          onLoad={(e) => {
+            if (isGrayPlaceholder(e.currentTarget)) handleThumbFail(e.currentTarget);
           }}
         />
         {index === null && (
@@ -147,13 +124,23 @@ function SongCardBase({
           {song.title}
         </span>
         <div className="fs-song-artist-wrap">
-          <span
+          <ArtistLinks
+            artist={song.artist}
             className="fs-song-artist truncate fs-song-artist-link"
-            title={song.artist}
-            onClick={handleArtistClick}
-          >
-            {song.artist}
-          </span>
+            onArtistClick={(name, e) => {
+              // On touch devices or mobile viewports, tapping the song row
+              // plays the song — prevent accidental artist navigation
+              const isTouchOrMobile =
+                (typeof window !== 'undefined' && window.innerWidth <= 768) ||
+                e?.nativeEvent?.pointerType === 'touch';
+              if (isTouchOrMobile) return;
+              e.stopPropagation();
+              if (typeof setIsFullScreen === 'function') {
+                setIsFullScreen(false);
+              }
+              navigate(`/search?q=${encodeURIComponent(name)}`);
+            }}
+          />
         </div>
       </div>
 

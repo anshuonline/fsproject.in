@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Trash2, Music, MoreVertical } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
+import { isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import './QueueDrawer.css';
 
 export function QueueDrawer() {
@@ -60,6 +61,9 @@ export function QueueDrawer() {
             <div className="fs-queue-items-list">
               {queue.map((song, idx) => {
                 const isCurrent = idx === queueIndex;
+                const thumbPrimary = song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+                const thumbCandidates = buildThumbFallbacks(thumbPrimary, song.videoId);
+                const advance = (img) => advanceThumb(img, thumbCandidates, '/images/freesonglogowebp.webp');
                 return (
                   <div
                     key={`${song.videoId}-${idx}`}
@@ -73,10 +77,14 @@ export function QueueDrawer() {
                   >
                     <div className="fs-queue-idx">{idx + 1}</div>
                     <img
-                      src={song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp')}
+                      src={thumbPrimary}
                       alt={song.title}
                       className="fs-queue-thumb"
                       referrerPolicy="no-referrer"
+                      onError={(e) => advance(e.currentTarget)}
+                      onLoad={(e) => {
+                        if (isGrayPlaceholder(e.currentTarget)) advance(e.currentTarget);
+                      }}
                     />
                     <div className="fs-queue-meta">
                       <span className="fs-queue-song-title truncate">{song.title}</span>

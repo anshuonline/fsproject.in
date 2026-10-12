@@ -2,12 +2,13 @@ import React, { useRef, useState, useEffect, memo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { useHomeData } from './useHomeData';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
-import { SongCard } from '../../components/Cards/SongCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
 import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
 import { SeoContentSection } from '../../components/Common/SeoContentSection';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
+import { isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
+import { usePlayer } from '../../context/PlayerContext';
 import { AdSlot } from '../../ads';
 import './Home.css';
 
@@ -53,7 +54,28 @@ const ArtistsShelf = memo(function ArtistsShelf({ artists, title }) {
   );
 });
 
+const QP_PAGE_SIZE = 12;
+
 const QuickPicksShelf = memo(function QuickPicksShelf({ section }) {
+  const { playSong, currentSong, togglePlay } = usePlayer();
+  const [page, setPage] = useState(0);
+  const items = section.items || [];
+  const pageCount = Math.max(1, Math.ceil(items.length / QP_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const visible = items.slice(safePage * QP_PAGE_SIZE, safePage * QP_PAGE_SIZE + QP_PAGE_SIZE);
+  const currentId = currentSong?.videoId;
+
+  const playItem = (song) => {
+    if (currentId && song.videoId === currentId) togglePlay();
+    else playSong(song, items);
+  };
+
+  const handlePlayAll = () => {
+    if (items.length === 0) return;
+    if (currentId === items[0]?.videoId) togglePlay();
+    else playSong(items[0], items);
+  };
+
   return (
     <section className="fs-shelf">
       <div className="fs-shelf-header">
@@ -61,12 +83,63 @@ const QuickPicksShelf = memo(function QuickPicksShelf({ section }) {
           {section.eyebrow && <span className="fs-shelf-eyebrow">{section.eyebrow}</span>}
           <h2 className="fs-shelf-title">{section.title}</h2>
         </div>
+        <div className="fs-shelf-controls">
+          <button className="fs-qp-playall" onClick={handlePlayAll} disabled={items.length === 0}>
+            Play all
+          </button>
+          <button
+            className="btn-icon fs-carousel-btn"
+            disabled={safePage === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            aria-label="Previous songs"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            className="btn-icon fs-carousel-btn"
+            disabled={safePage >= pageCount - 1}
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            aria-label="More songs"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </div>
       </div>
 
       <div className="fs-quickpicks-grid">
-        {section.items.map((song) => (
-          <SongCard key={song.videoId} song={song} queueContext={section.items} />
-        ))}
+        {visible.map((song) => {
+          const isCurrent = Boolean(currentId) && song.videoId === currentId;
+          const album = song.album && song.album.toLowerCase() !== String(song.title).toLowerCase() ? song.album : '';
+          const thumbPrimary = song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp');
+          const thumbCandidates = buildThumbFallbacks(thumbPrimary, song.videoId);
+          const advance = (img) => advanceThumb(img, thumbCandidates, '/images/freesonglogowebp.webp');
+          return (
+            <div
+              key={song.videoId}
+              className="fs-qp-item"
+              role="button"
+              tabIndex={0}
+              onClick={() => playItem(song)}
+              onKeyDown={(e) => { if (e.key === 'Enter') playItem(song); }}
+            >
+              <img
+                className="fs-qp-thumb"
+                src={thumbPrimary}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={(e) => advance(e.currentTarget)}
+                onLoad={(e) => {
+                  if (isGrayPlaceholder(e.currentTarget)) advance(e.currentTarget);
+                }}
+              />
+              <div className="fs-qp-info">
+                <span className={`fs-qp-title ${isCurrent ? 'playing' : ''}`}>{song.title}</span>
+                <span className="fs-qp-sub">{[song.artist, album].filter(Boolean).join(' • ')}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

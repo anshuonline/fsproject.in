@@ -1,0 +1,138 @@
+/* ─── Entry Splash Ad — HilltopAds 300x250 interstitial ──────────────────── */
+
+.fs-entry-splash-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: fsEntrySplashFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fsEntrySplashFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fs-entry-splash {
+  position: relative;
+  width: 100%;
+  max-width: 356px; /* 300px creative + card padding */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--color-card, #111111);
+  border: 1px solid var(--color-border, #222222);
+  border-radius: 20px;
+  padding: 34px 16px 16px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 1px 1px rgba(255, 255, 255, 0.08);
+  animation: fsEntrySplashScaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fsEntrySplashScaleUp {
+  from {
+    transform: scale(0.92) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Corner badge — countdown number pehle, phir close (X) */
+.fs-entry-splash-corner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border, #222222);
+  background-color: var(--color-bg-secondary, #080808);
+  color: var(--color-text-muted, #707070);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+}
+
+.fs-entry-splash-corner.closable {
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.fs-entry-splash-corner.closable:hover {
+  background-color: var(--color-card-hover, #181818);
+  border-color: #333333;
+}
+
+.fs-entry-splash-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #707070);
+  margin-bottom: 10px;
+}
+
+/* 300x250 creative host — chhoti screens pe overflow clip */
+.fs-entry-splash-ad-host {
+  position: relative;
+  width: 300px;
+  height: 250px;
+  max-width: 100%;
+  background-color: var(--color-bg-secondary, #080808);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-entry-splash-ad-host iframe,
+.fs-entry-splash-ad-host ins {
+  max-width: 100%;
+}
+
+.fs-entry-splash-skip {
+  margin-top: 14px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #222222);
+  background: transparent;
+  color: var(--color-text-muted, #707070);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fs-entry-splash-skip.active {
+  cursor: pointer;
+  opacity: 1;
+  background-color: var(--color-primary, #00C853);
+  border-color: transparent;
+  color: #000000;
+  font-weight: 700;
+}
+
+.fs-entry-splash-skip.active:hover {
+  background-color: var(--color-primary-hover, #00E676);
+  box-shadow: 0 4px 16px rgba(0, 200, 83, 0.35);
+}

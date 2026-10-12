@@ -12,7 +12,7 @@ import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
 import { sendWelcomeEmail, sendAccountDeletionEmail, sendPasswordResetEmail } from './mailer.js';
-import { searchSaavnSongs, matchSaavnSong } from './saavnEngine.js';
+import { searchSaavnSongs, matchSaavnSong, fetchSaavnTrending, fetchSaavnQuickPicks, fetchSaavnArtistImages } from './saavnEngine.js';
 
 dotenv.config();
 
@@ -548,6 +548,31 @@ app.get('/api/saavn/search', async (req, res) => {
   }
 });
 
+// Artist profile images (context menus, cards) — '|' separated names, max 8
+app.get('/api/saavn/artists', async (req, res) => {
+  const names = String(req.query.names || '')
+    .split('|')
+    .map(s => s.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 8);
+  if (names.length === 0) return res.json({ success: true, artists: [] });
+
+  const key = names.map(n => n.toLowerCase().replace(/[^a-z0-9]/g, '')).join('_');
+  const cacheKey = `saavn_artists_${key}`;
+  const cached = getCached(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const artists = await fetchSaavnArtistImages(names);
+    const result = { success: true, artists };
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    console.warn('Saavn artist images error:', err.message);
+    res.json({ success: true, artists: [] });
+  }
+});
+
 // Resolve a playable stream for a YouTube Music song (title/artist/duration match)
 app.get('/api/saavn/match', async (req, res) => {
   const title = String(req.query.title || '').trim().slice(0, 120);
@@ -577,7 +602,7 @@ app.get('/api/saavn/match', async (req, res) => {
 
 // Explore Feeds (Genres, Moods, Curated Picks)
 app.get('/api/explore', async (req, res) => {
-  const cacheKey = 'explore_feed_v3';
+  const cacheKey = 'explore_feed_v4_saavn';
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -630,9 +655,11 @@ app.get('/api/explore', async (req, res) => {
       searchSmart('bollywood workout motivation songs')
     ]);
 
-    // Real-time daily trending: native charts page → editorial hitlists → smart search.
-    // FEmusic_charts rotates daily; editorial hitlists only update weekly.
-    let trendingSongs = await fetchLiveTrendingCharts(yt, getCached, setCache).catch(() => []);
+    // Real-time daily trending — JioSaavn official "Trending Today" chart FIRST
+    // (native JioSaavn data + native background playback), YT live charts only
+    // as fallback. JioSaavn's chart updates daily; editorial hitlists weekly.
+    let trendingSongs = (await fetchSaavnTrending(16).catch(() => []))
+      .filter(s => s && s.videoId && !isSpamOrJunkSong(s));
     if (trendingSongs.length < 8) {
       const editorial = await chartSongs('trending_india', 16).catch(() => []);
       const merged = [...trendingSongs, ...editorial];
@@ -682,7 +709,7 @@ app.get('/api/explore', async (req, res) => {
         { id: 'sleep', name: 'Sleep & Ambient', color: '#3F51B5', icon: 'Moon', query: 'sleep ambient music' },
         { id: 'focus', name: 'Focus & Study', color: '#009688', icon: 'Compass', query: 'focus study music' }
       ],
-      spotlight: trendingSongs[0] ? { ...trendingSongs[0], chartLabel: 'India Trending #1' } : null,
+      spotlight: trendingSongs[0] ? { ...trendingSongs[0], chartLabel: 'Trending #1 • India' } : null,
       trendingNow: trendingSongs,
       freshDrops: freshDropSongs.slice(0, 14),
       newAlbums: albums.slice(0, 14),

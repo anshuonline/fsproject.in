@@ -25,10 +25,17 @@ import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
-import { getArtworkFallback } from '../../utils/imageFallback';
+import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
 import { AdSlot, AffiliateSticker, PLAYER_ROTATION_SECONDS } from '../../ads';
+import { ArtistLinks } from '../Common/ArtistLinks';
 import './FullScreenPlayer.css';
+
+const thumbCandidatesFor = (song) =>
+  buildThumbFallbacks(
+    song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : '/images/freesonglogowebp.webp'),
+    song.videoId
+  );
 
 function formatTime(sec) {
   if (isNaN(sec) || sec < 0) return '0:00';
@@ -437,14 +444,9 @@ export function FullScreenPlayer() {
                 alt={currentSong.title}
                 className="fs-fs-art-image"
                 referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const currentSrc = e.currentTarget.src || '';
-                  if (currentSong.videoId && !currentSrc.includes('i.ytimg.com')) {
-                    e.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.videoId}/hqdefault.jpg`;
-                  } else {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = getArtworkFallback(currentSong.title);
-                  }
+                onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(currentSong), getArtworkFallback(currentSong.title))}
+                onLoad={(e) => {
+                  if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(currentSong), getArtworkFallback(currentSong.title));
                 }}
               />
 
@@ -463,13 +465,11 @@ export function FullScreenPlayer() {
               <div className="fs-fs-mobile-art-meta">
                 <div className="fs-fs-mobile-meta-text">
                   <h2 className="fs-fs-mobile-title truncate">{currentSong.title}</h2>
-                  <p
+                  <ArtistLinks
+                    artist={currentSong.artist}
                     className="fs-fs-mobile-artist truncate fs-clickable-artist"
-                    onClick={(e) => handleNavigateArtist(currentSong.artist, currentSong.artistId, e)}
-                    title={`Go to ${currentSong.artist}`}
-                  >
-                    {currentSong.artist}
-                  </p>
+                    onArtistClick={(name, e) => handleNavigateArtist(name, currentSong.artistId, e)}
+                  />
                 </div>
                 <button
                   className={`btn-icon fs-fs-mobile-like-btn ${liked ? 'liked' : ''}`}
@@ -586,14 +586,9 @@ export function FullScreenPlayer() {
                                 alt={track.title}
                                 className="fs-fs-queue-thumb"
                                 referrerPolicy="no-referrer"
-                                onError={(e) => {
-                                  const currentSrc = e.currentTarget.src || '';
-                                  if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
-                                    e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
-                                  } else {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src = getArtworkFallback(track.title);
-                                  }
+                                onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title))}
+                                onLoad={(e) => {
+                                  if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title));
                                 }}
                               />
                               {isCurrent && (
@@ -607,13 +602,11 @@ export function FullScreenPlayer() {
                               <span className={`fs-fs-queue-title truncate ${isCurrent ? 'text-green' : ''}`}>
                                 {track.title}
                               </span>
-                              <span
+                              <ArtistLinks
+                                artist={track.artist}
                                 className="fs-fs-queue-artist truncate fs-clickable-artist"
-                                onClick={(e) => handleNavigateArtist(track.artist, track.artistId, e)}
-                                title={`Go to ${track.artist}`}
-                              >
-                                {track.artist}
-                              </span>
+                                onArtistClick={(name, e) => handleNavigateArtist(name, track.artistId, e)}
+                              />
                             </div>
 
                             <span className="fs-fs-queue-duration">
@@ -738,26 +731,19 @@ export function FullScreenPlayer() {
                               alt={track.title}
                               className="fs-fs-queue-thumb"
                               referrerPolicy="no-referrer"
-                              onError={(e) => {
-                                const currentSrc = e.currentTarget.src || '';
-                                if (track.videoId && !currentSrc.includes('i.ytimg.com')) {
-                                  e.currentTarget.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
-                                } else {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = getArtworkFallback(track.title);
-                                }
+                              onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title))}
+                              onLoad={(e) => {
+                                if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title));
                               }}
                             />
                           </div>
                           <div className="fs-fs-queue-meta">
                             <span className="fs-fs-queue-title truncate">{track.title}</span>
-                            <span
+                            <ArtistLinks
+                              artist={track.artist}
                               className="fs-fs-queue-artist truncate fs-clickable-artist"
-                              onClick={(e) => handleNavigateArtist(track.artist, track.artistId, e)}
-                              title={`Go to ${track.artist}`}
-                            >
-                              {track.artist}
-                            </span>
+                              onArtistClick={(name, e) => handleNavigateArtist(name, track.artistId, e)}
+                            />
                           </div>
                           <span className="fs-fs-queue-duration">
                             {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
@@ -864,16 +850,18 @@ export function FullScreenPlayer() {
               alt={currentSong.title}
               className="fs-fs-bar-thumb"
               referrerPolicy="no-referrer"
+              onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(currentSong), getArtworkFallback(currentSong.title))}
+              onLoad={(e) => {
+                if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(currentSong), getArtworkFallback(currentSong.title));
+              }}
             />
             <div className="fs-fs-bar-meta">
               <span className="fs-fs-bar-title truncate">{currentSong.title}</span>
-              <span
+              <ArtistLinks
+                artist={currentSong.artist}
                 className="fs-fs-bar-artist truncate fs-clickable-artist"
-                onClick={(e) => handleNavigateArtist(currentSong.artist, currentSong.artistId, e)}
-                title={`Go to ${currentSong.artist}`}
-              >
-                {currentSong.artist}
-              </span>
+                onArtistClick={(name, e) => handleNavigateArtist(name, currentSong.artistId, e)}
+              />
             </div>
             <button
               className={`btn-icon fs-fs-bar-like ${liked ? 'liked' : ''}`}

@@ -167,3 +167,12 @@
   to { transform: rotate(360deg); }
 }
 
+/* Individually clickable artists (multi-artist strings) */
+.fs-artist-link {
+  cursor: pointer;
+}
+
+.fs-artist-link:hover {
+  text-decoration: underline;
+}
+

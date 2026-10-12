@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Search, Play, Loader2, Music2, X, ArrowLeft, Sparkles } from 'lucide-react';
 import { api } from '../../services/api';
-import { getArtworkFallback } from '../../utils/imageFallback';
+import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import { usePlayer } from '../../context/PlayerContext';
 import './PlayerSearch.css';
+
+const thumbCandidatesFor = (song) =>
+  buildThumbFallbacks(
+    song.thumbnail || (song.videoId ? `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg` : ''),
+    song.videoId
+  );
 
 const MemoRow = memo(function MemoRow({ song, onPlay }) {
   return (
@@ -27,14 +33,9 @@ const MemoRow = memo(function MemoRow({ song, onPlay }) {
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            const currentSrc = e.currentTarget.src || '';
-            if (song.videoId && !currentSrc.includes('i.ytimg.com')) {
-              e.currentTarget.src = `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`;
-            } else {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getArtworkFallback(song.title);
-            }
+          onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(song), getArtworkFallback(song.title))}
+          onLoad={(e) => {
+            if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(song), getArtworkFallback(song.title));
           }}
         />
         <div className="fs-ps-result-hover-play">

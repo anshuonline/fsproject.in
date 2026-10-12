@@ -3,7 +3,7 @@ import { Play, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
-import { getArtworkFallback } from '../../utils/imageFallback';
+import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import './CommunityCard.css';
 
 function CommunityCardBase({ item, queueContext = null }) {
@@ -19,6 +19,10 @@ function CommunityCardBase({ item, queueContext = null }) {
 
   const isAlbum = item.type === 'album' || Boolean(item.albumId);
   const effectiveQueue = (queueContext && queueContext.length > 0) ? queueContext : [item];
+
+  const thumbPrimary = item.thumbnail || item.coverImage || (item.songs && item.songs[0]?.thumbnail) || '';
+  const thumbCandidates = buildThumbFallbacks(thumbPrimary, item.videoId);
+  const handleThumbFail = (img) => advanceThumb(img, thumbCandidates, getArtworkFallback(item.title));
 
   const handlePlayClick = (e) => {
     e.stopPropagation();
@@ -78,19 +82,14 @@ function CommunityCardBase({ item, queueContext = null }) {
       {/* Artwork container */}
       <div className="fs-comm-art-wrap">
         <img
-          src={item.thumbnail || item.coverImage || (item.songs && item.songs[0]?.thumbnail) || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : '')}
+          src={thumbPrimary || (item.videoId ? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg` : getArtworkFallback(item.title))}
           alt={item.title}
           className="fs-comm-artwork"
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            const currentSrc = e.currentTarget.src || '';
-            if (item.videoId && !currentSrc.includes('i.ytimg.com')) {
-              e.currentTarget.src = `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`;
-            } else {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getArtworkFallback(item.title);
-            }
+          onError={(e) => handleThumbFail(e.currentTarget)}
+          onLoad={(e) => {
+            if (isGrayPlaceholder(e.currentTarget)) handleThumbFail(e.currentTarget);
           }}
         />
 

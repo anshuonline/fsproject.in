@@ -6,6 +6,8 @@
 export { AdSlot } from './AdSlot';
 export { AffiliateSticker } from './AffiliateSticker';
 export { StickyBottomAd } from './StickyBottomAd';
+export { DesktopFloatingAd } from './DesktopFloatingAd';
+export { EntrySplashAd } from './EntrySplashAd';
 export {
   UNITS,
   SLOTS,
@@ -13,6 +15,8 @@ export {
   SOCIAL_BAR_SCRIPT,
   PLAYER_ROTATION_SECONDS,
   PLAYLIST_INFEED_EVERY,
+  ENTRY_SPLASH_SECONDS,
+  ENTRY_SPLASH_UNIT,
   ALL_AD_UNITS_HTML,
   getSlotById
 } from './config';

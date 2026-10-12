@@ -73,6 +73,28 @@ const isKnownArtist = (name) => {
   return Boolean(s) && s.toLowerCase() !== 'unknown artist';
 };
 
+// Artist validation rule: gana + artist dono match hone chahiye. Multiple
+// artists me se EK bhi artist poora match ho gaya to confirmed —
+// "Arijit Singh, Pritam" vs "Pritam, Badshah" passes; "Anuv Jain" vs
+// "Rahul Sharma" fails (wrong recording => exact YouTube video plays).
+const verifyArtistNames = (target, candidate) => {
+  const splitNames = (s) => String(s || '')
+    .split(/,|&|\bfeat\.?\b|\bft\.?\b/i)
+    .map(part => normalizeVerifyText(part))
+    .filter(Boolean);
+  const tNames = splitNames(target);
+  const cNames = splitNames(candidate);
+  for (const t of tNames) {
+    for (const c of cNames) {
+      if (t === c) return true;
+      // "Sanam Puri" vs "Sanam" — chhota naam bade ke andar poora aa jaye
+      if (t.length >= 4 && c.length >= 4 && (t.includes(c) || c.includes(t))) return true;
+    }
+  }
+  // Stylised duo credits: "Sachet Tandon" vs "Sachet-Parampara"
+  return verifyArtistOverlap(target, candidate) >= 0.5;
+};
+
 // Final gate before a JioSaavn stream is allowed to play: the matched
 // recording's title AND artist must agree with the requested song — except
 // when title + duration together form an exact fingerprint (platforms often
@@ -98,11 +120,13 @@ const verifySaavnMatch = (song, match) => {
   const matchDur = Math.round(match.duration || 0);
   const durBothKnown = songDur > 0 && matchDur > 0;
   const durClose = durBothKnown && Math.abs(songDur - matchDur) <= 15;
-  const titleDurFingerprint = titleScore >= 0.95 && durClose;
 
-  // Artist name check — different known artist => wrong recording
-  if (!titleDurFingerprint && isKnownArtist(song.artist) && isKnownArtist(match.artist)) {
-    if (verifyArtistOverlap(song.artist, match.artist) < 0.5) return false;
+  // Artist validation — koi bhi artist match nahi => wrong recording.
+  // NOTE: title+duration fingerprint alone is NOT enough — same-title
+  // songs by other artists with near-identical duration exist (e.g.
+  // "Jeene Laga Hoon" Atif Aslam vs a Bengali "Jeene Laga Hoon" 1s apart).
+  if (isKnownArtist(song.artist) && isKnownArtist(match.artist)) {
+    if (!verifyArtistNames(song.artist, match.artist)) return false;
   }
 
   // Duration sanity — same title/artist but wildly different length is
@@ -168,7 +192,6 @@ export function PlayerProvider({ children }) {
   // receiver controls ke saath; Saavn stream hi cast hota hai.
   const audioRef = useRef(null);              // hidden HTML5 audio singleton
   const activeEngineRef = useRef('yt');       // 'saavn' | 'yt' | 'cast'
-  const playTokenRef = useRef(0);             // races: async stream fetch vs user skip
   const playGenerationRef = useRef(0);        // engine supervisor: only the newest generation may make sound
 
   // ── Engine Supervisor (single-mutex) ─────────────────────────────
@@ -481,7 +504,12 @@ export function PlayerProvider({ children }) {
 
   // Shared state handler: only the active player drives global playback state
   const handlePlayerStateChange = useCallback((event) => {
-    if (activeEngineRef.current !== 'yt') return;
+    // GENIUS GUARD: the IFrame started sounding while another engine (Saavn /
+    // Cast) owns playback — silence it instantly, never let both play together
+    if (activeEngineRef.current !== 'yt') {
+      try { event.target.stopVideo(); } catch (e) {}
+      return;
+    }
     if (playerRef.current && event.target !== playerRef.current) return;
 
     // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED, 5 = CUED
@@ -500,6 +528,8 @@ export function PlayerProvider({ children }) {
       const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
       if (isHidden && !isTransitioningRef.current) {
         setTimeout(() => {
+          // Engine may have switched to Saavn during the delay — never revive YT then
+          if (activeEngineRef.current !== 'yt') return;
           try { event.target.playVideo(); } catch (e) {}
         }, 400);
       }
@@ -618,7 +648,11 @@ export function PlayerProvider({ children }) {
                 if (typeof event.target.setPlaybackQuality === 'function') {
                   event.target.setPlaybackQuality(quality);
                 }
-                event.target.playVideo();
+                // Only autoplay if the YT engine actually owns playback right
+                // now — a Saavn song may have won the race while we initialized
+                if (activeEngineRef.current === 'yt') {
+                  event.target.playVideo();
+                }
                 resolve(event.target);
               },
               onStateChange: handlePlayerStateChange,
@@ -710,14 +744,19 @@ export function PlayerProvider({ children }) {
         // so give it enough time to win the race before the YT IFrame fallback
         new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 6500))
       ]);
-      if (match?.streamUrl && verifySaavnMatch(song, match)) {
-        saavnCacheRef.current.set(song.videoId, match);
-        // Keep the session cache bounded
-        if (saavnCacheRef.current.size > 120) {
-          const oldest = saavnCacheRef.current.keys().next().value;
-          saavnCacheRef.current.delete(oldest);
+      if (match?.streamUrl) {
+        // Saavn-first validation: title + artist verify — pass => Saavn play
+        // (background playback), fail => IMMEDIATELY exact YouTube videoId
+        if (verifySaavnMatch(song, match)) {
+          saavnCacheRef.current.set(song.videoId, match);
+          // Keep the session cache bounded
+          if (saavnCacheRef.current.size > 120) {
+            const oldest = saavnCacheRef.current.keys().next().value;
+            saavnCacheRef.current.delete(oldest);
+          }
+          return match;
         }
-        return match;
+        console.info('[Player] Saavn validation failed (title/artist mismatch) — playing exact YouTube video instead');
       }
     } catch {
       // no match / timeout — caller falls back to YouTube
@@ -734,8 +773,8 @@ export function PlayerProvider({ children }) {
 
     const match = await resolveSaavnStream(song);
 
-    // A newer play request superseded this one while we were resolving
-    if (token !== playTokenRef.current) return;
+    // A newer play request superseded this one while Saavn was resolving
+    if (token !== playGenerationRef.current) return;
 
     const castActive = Boolean(
       castSessionRef.current && window.cast?.framework && window.chrome?.cast
@@ -783,8 +822,8 @@ export function PlayerProvider({ children }) {
     const match = matchOverride || await resolveSaavnStream(song);
     if (!match?.streamUrl) return false;
 
-    claimEngine('cast');
-    activeEngineRef.current = 'cast';
+    // Claim the cast engine — bumps generation + silences local audio & IFrame
+    if (!claimEngine('cast')) return false;
 
     try {
       const mediaInfo = new window.chrome.cast.media.MediaInfo(match.streamUrl, 'audio/mp4');
@@ -811,18 +850,19 @@ export function PlayerProvider({ children }) {
       console.warn('Cast loadMedia failed:', err);
       return false;
     }
-  }, [resolveSaavnStream]);
+  }, [resolveSaavnStream, claimEngine]);
   transferToCastRef.current = transferToCast;
 
   // After a cast session ends, seamlessly continue on the device at the
   // same position (using the cached Saavn stream when available)
   const resumeLocalAfterCast = useCallback(async (song, position = 0) => {
+    const gen = ++playGenerationRef.current;
     const match = await resolveSaavnStream(song);
     if (!match?.streamUrl) {
       startYtPlayback(song);
       return;
     }
-    activeEngineRef.current = 'saavn';
+    if (!claimEngine('saavn', gen)) return;
     const a = audioRef.current;
     if (!a) {
       startYtPlayback(song);
@@ -844,7 +884,7 @@ export function PlayerProvider({ children }) {
     } catch (e) {
       startYtPlayback(song);
     }
-  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume]);
+  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume, claimEngine]);
 
   // Cast SDK bootstrap: script load + session/remote-player event wiring
   useEffect(() => {

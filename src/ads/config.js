@@ -53,7 +53,32 @@ export const UNITS = {
 <script src="https://www.highrevenueformat.com/f53f12d8edfa281f43e7276c7070aa4f/invoke.js"></script>`,
   NATIVE: `<script async="async" data-cfasync="false" src="https://pl31781023.profitableratecpmnetwork.com/d4ad762d4e64e13cc862cec4e707fc44/invoke.js"></script>
 <div id="container-d4ad762d4e64e13cc862cec4e707fc44"></div>`,
-  SOCIAL_BAR: `<script src="https://pl31781024.profitableratecpmnetwork.com/8f/2a/43/8f2a43bcad420c2d0d24fe4a00b3c484.js"></script>`
+  SOCIAL_BAR: `<script src="https://pl31781024.profitableratecpmnetwork.com/8f/2a/43/8f2a43bcad420c2d0d24fe4a00b3c484.js"></script>`,
+  // HilltopAds "MultiTag: Banner 300x250" — entry splash ad (EntrySplashAd.jsx).
+  HILLTOP_300X250: `<script>(function(vho){
+var d = document,
+    s = d.createElement('script'),
+    l = d.currentScript || d.scripts[d.scripts.length - 1];
+s.settings = vho || {};
+s.src = "\/\/massivesalad.com\/b\/X.VLs_dzGglA0WYlWicN\/deBmP9juvZ_UElIkdPcT\/c\/1iMbTIIpxTMwjREBtRNmz\/UqxhMcjQE\/y\/N\/Qw";
+s.async = true;
+s.referrerPolicy = 'no-referrer-when-downgrade';
+l.parentNode.insertBefore(s, l);
+})({})
+</script>`,
+  // HilltopAds test zone #2 — splash pe compare karne ke liye.
+  // Wapas purana chahiye to ENTRY_SPLASH_UNIT ko UNITS.HILLTOP_300X250 kar do.
+  HILLTOP_300X250_V2: `<script>(function(jproub){
+var d = document,
+    s = d.createElement('script'),
+    l = d.currentScript || d.scripts[d.scripts.length - 1];
+s.settings = jproub || {};
+s.src = "\/\/massivesalad.com\/bUXAVFs.d_G\/lS0NYIWOcN\/QedmD9quSZmUVl\/ksPSTSc\/1\/MQTAI\/xzNITjMot\/NRz-UWx\/M\/j\/E\/1FNfwA";
+s.async = true;
+s.referrerPolicy = 'no-referrer-when-downgrade';
+l.parentNode.insertBefore(s, l);
+})({})
+</script>`
 };
 
 // ── 2. SLOTS — placement map (components refer by slotId) ───────────────
@@ -68,8 +93,11 @@ export const SLOTS = {
   playlist_infeed: { devices: 'both', scriptDesktop: UNITS.W728H90, scriptMobile: UNITS.W300H250 },
   player_cover_rotate: { devices: 'both', scriptDesktop: UNITS.W300H250, scriptMobile: UNITS.W300H250 },
   // Mobile sticky bottom banner (above MobileNav, lifts above the player card
-  // while a song plays) — see StickyBottomAd.jsx
-  sticky_bottom: { devices: 'mobile', scriptDesktop: '', scriptMobile: UNITS.W320H50 }
+  // while playing) — see StickyBottomAd.jsx
+  sticky_bottom: { devices: 'mobile', scriptDesktop: '', scriptMobile: UNITS.W320H50 },
+  // Desktop floating pill (bottom-right, above the player bar) — mirrors the
+  // mobile sticky strip so PC users bhi wahi floating ad dekhein
+  floating_desktop: { devices: 'desktop', scriptDesktop: UNITS.W320H50, scriptMobile: '' }
 };
 
 export function getSlotById(slotId) {
@@ -90,6 +118,9 @@ export const AFFILIATE_PRODUCTS = [
 export const SOCIAL_BAR_SCRIPT = UNITS.SOCIAL_BAR;
 export const PLAYER_ROTATION_SECONDS = 5;   // full-screen player cover-ad rotation
 export const PLAYLIST_INFEED_EVERY = 5;     // playlist rows between in-feed ads
+export const ENTRY_SPLASH_SECONDS = 6;      // entry splash countdown (forced view)
+export const ENTRY_SPLASH_COOLDOWN_HOURS = 24; // splash itne ghante baad dubara dikhe
+export const ENTRY_SPLASH_UNIT = UNITS.HILLTOP_300X250_V2;
 
 // Every unit's raw HTML — used by MainLayout to prewarm ad-network connections
 export const ALL_AD_UNITS_HTML = Object.values(UNITS);

@@ -96,8 +96,27 @@ function artistOverlapScore(targetArtists, candidateArtists) {
   return denom > 0 ? Math.min(1, matched / denom) : 0;
 }
 
-function durationClosenessScore(targetDuration, candidateDuration) {
-  const t = parseInt(targetDuration, 10) || 0;
+// Full artist-name match: multiple artists me se EK bhi artist poora match
+// ho jaye to confirm — "Arijit Singh, Pritam" vs "Pritam, Badshah" passes,
+// "Anuv Jain" vs "Rahul Sharma" fails (wrong recording, YouTube fallback)
+function artistNamesMatchAny(targetArtists, candidateArtists) {
+  const splitNames = (s) => String(s || '')
+    .split(/,|&|\bfeat\.?\b|\bft\.?\b/i)
+    .map(part => normalizeText(part))
+    .filter(Boolean);
+  const tNames = splitNames(targetArtists);
+  const cNames = splitNames(candidateArtists);
+  for (const t of tNames) {
+    for (const c of cNames) {
+      if (t === c) return true;
+      // "Sanam Puri" vs "Sanam" — chhota naam bade ke andar poora aa jaye
+      if (t.length >= 4 && c.length >= 4 && (t.includes(c) || c.includes(t))) return true;
+    }
+  }
+  return false;
+}
+
+function durationClosenessScore(targetDuration, candidateDuration) {  const t = parseInt(targetDuration, 10) || 0;
   const c = parseInt(candidateDuration, 10) || 0;
   if (t <= 0 || c <= 0) return 0.5; // unknown — neutral
   const diff = Math.abs(t - c);
@@ -174,9 +193,14 @@ async function resolveStreamUrl(encryptedUrl, requestedBitrate) {
 
   if (/_\d+\.mp4$/i.test(base)) {
     const order = bitrate === 320 ? [320, 160, 96] : bitrate === 160 ? [160, 320, 96] : [96, 160, 320];
-    for (const b of order) {
-      const candidate = bitrateUrl(base, b);
-      if (await isReachable(candidate)) return candidate;
+    // Sab bitrate probes PARALLEL — sequential me 3 x 4s timeout worst case
+    // ~12s lagta tha; ab max ~4s, typical ~300ms. Preference order me
+    // pehla reachable chunta hai.
+    const probes = await Promise.all(
+      order.map(async (b) => ({ b, ok: await isReachable(bitrateUrl(base, b)) }))
+    );
+    for (const { b, ok } of probes) {
+      if (ok) return bitrateUrl(base, b);
     }
     return base; // last resort: original decrypted URL
   }
@@ -303,26 +327,22 @@ export async function matchSaavnSong({ title, artist, album, duration, bitrate }
     const durScore = durationClosenessScore(duration, cand.duration);
     const score = titleScore * 0.55 + artistScore * 0.25 + durScore * 0.20;
 
-    // Artist verification: a recording by a DIFFERENT known artist must
-    // never play for the requested song — covers, remixes and same-title
-    // tracks by other singers all fail this gate (client then falls back
-    // to the exact YouTube videoId).
+    // Artist verification: gana + artist dono match hone chahiye. Multiple
+    // artists me se EK bhi poora artist match => confirmed; koi nahi =>
+    // reject (wrong recording — client exact YouTube videoId play karega).
     const candArtist = String(cand.artist || '').trim();
     const candArtistKnown = candArtist.length > 0 && candArtist.toLowerCase() !== 'unknown artist';
-    const artistConfirmed = !artistRequested || !candArtistKnown || artistScore >= 0.5;
+    const artistConfirmed = !artistRequested || !candArtistKnown ||
+      artistNamesMatchAny(artistStr, cand.artist) || artistScore >= 0.5;
 
-    // Confidence gates: title must always be close; duration seals the deal
+    // Confidence gates: title must always be close; duration seals the deal.
+    // Title+duration alone is NOT enough — same-title songs by other artists
+    // with near-identical durations exist (Atif Aslam vs Bengali same-name).
     const durKnown = (parseInt(duration, 10) || 0) > 0 && cand.duration > 0;
-    // Title+duration fingerprint escape hatch: platforms often credit
-    // different artists (singer vs composer), but an identical title with a
-    // matching duration is the same recording — prefer the background-playable
-    // Saavn stream over falling back to YouTube for it.
-    const titleDurFingerprint = titleScore >= 0.95 && durKnown && durScore >= 0.75;
     const passes =
       (titleScore >= 0.92 && artistConfirmed && score >= 0.6) ||
       (titleScore >= 0.6 && durKnown && durScore >= 0.75 && score >= 0.68 && artistConfirmed) ||
-      (titleScore >= 0.6 && !durKnown && artistScore >= 0.6 && score >= 0.65) ||
-      titleDurFingerprint;
+      (titleScore >= 0.6 && !durKnown && artistScore >= 0.6 && score >= 0.65);
 
     if (passes && score > bestScore) {
       bestScore = score;
@@ -344,4 +364,87 @@ export async function matchSaavnSong({ title, artist, album, duration, bitrate }
     streamUrl,
     matchedScore: Math.round(bestScore * 100) / 100
   };
+}
+
+// ─── Official JioSaavn Charts (content.getHomepageData → charts modules) ─────
+// Live editorial charts with real JioSaavn popularity data. Chart songs map
+// 1:1 into the app's videoId-keyed shape — at play time the client re-resolves
+// the stream natively (title/artist text match) for background playback.
+
+const SAAVN_CHART_PLAYLISTS = {
+  trending_today: '110858205',            // "Trending Today" — official daily chart
+  most_searched_hindi: '946682072',       // "Most Searched Songs - Hindi"
+  most_streamed_love_hindi: '1139074020'  // "Most Streamed Love Songs: Hindi"
+};
+
+export async function fetchSaavnChart(chartKey, limit = 16) {
+  const listid = SAAVN_CHART_PLAYLISTS[chartKey];
+  if (!listid) return [];
+  const json = await saavnApiJson({
+    __call: 'playlist.getDetails',
+    listid,
+    p: '1',
+    n: String(Math.min(Math.max(parseInt(limit, 10) || 16, 1), 50))
+  });
+  const list = json?.list || [];
+  if (!Array.isArray(list)) return [];
+  return list.map(normalizeSaavnSong).filter(s => s && s.title && s.encryptedUrl);
+}
+
+// JioSaavn song → app universal song shape (videoId-keyed). Every card, queue
+// and player flow works unchanged; the stream itself stays 100% JioSaavn.
+export function formatSaavnSongForApp(song) {
+  if (!song || !song.id) return null;
+  const dur = parseInt(song.duration, 10) || 0;
+  return {
+    videoId: song.id,
+    title: song.title,
+    artist: song.artist || 'Unknown Artist',
+    album: song.album || '',
+    duration: dur,
+    durationText: dur ? `${Math.floor(dur / 60)}:${(dur % 60).toString().padStart(2, '0')}` : '',
+    thumbnail: song.image || '',
+    thumbnailLow: song.image || '',
+    type: 'song',
+    source: 'saavn'
+  };
+}
+
+// Explore "Trending Now" — JioSaavn official daily trending chart
+export async function fetchSaavnTrending(limit = 16) {
+  const songs = await fetchSaavnChart('trending_today', limit);
+  return songs.map(formatSaavnSongForApp).filter(Boolean);
+}
+
+// Home "Quick Picks" — JioSaavn "Most Searched Songs" chart
+export async function fetchSaavnQuickPicks(limit = 16) {
+  const songs = await fetchSaavnChart('most_searched_hindi', limit);
+  return songs.map(formatSaavnSongForApp).filter(Boolean);
+}
+
+// Artist profile images for context menus / cards — best-name match per query
+export async function fetchSaavnArtistImages(names) {
+  const list = (Array.isArray(names) ? names : [])
+    .map(n => String(n || '').trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 8);
+
+  return Promise.all(list.map(async (name) => {
+    const json = await saavnApiJson({ __call: 'search.getArtistResults', q: name, p: '1', n: '3' });
+    const arr = json?.data?.results || json?.results || [];
+    let best = null;
+    let bestScore = 0;
+    for (const a of arr) {
+      const an = decodeEntities(String(a.title || a.name || ''));
+      const score = diceCoefficient(name, an);
+      if (score > bestScore) { bestScore = score; best = a; }
+    }
+    const rawImg = best ? String(best.image || '') : '';
+    const image = rawImg
+      .replace('50x50', '500x500')
+      .replace('150x150', '500x500');
+    // Default placeholder images are useless — client falls back to an icon
+    const usable = image && !image.includes('artist-default') && /^https?:\/\//.test(image) ? image : '';
+    return { name, image: usable };
+  }));
 }
