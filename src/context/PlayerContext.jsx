@@ -18,6 +18,105 @@ const QUALITY_MAP = {
   'data-saver': 'small'
 };
 
+// ── JioSaavn match verification ──────────────────────────────────────
+// A JioSaavn stream is resolved by TEXT search (title/artist), so the
+// returned recording must be re-verified against the requested song
+// BEFORE it plays. A mismatched artist/title means the wrong song would
+// start — in that case the match is rejected and the exact YouTube
+// videoId plays instead via the IFrame engine.
+
+const normalizeVerifyText = (str) => String(str || '')
+  .toLowerCase()
+  .replace(/\((?:from|feat|ft\.?|with|lyrical|video|audio|official|slowed|reverb|sped|nightcore|lofi|lo-fi|remix)[^)]*\)/g, ' ')
+  .replace(/\[(?:from|feat|ft\.?|lyrical|video|audio|official|slowed|reverb|sped|nightcore|lofi|lo-fi|remix)[^\]]*\]/g, ' ')
+  .replace(/&/g, ' and ')
+  .replace(/[^a-z0-9\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const verifyDice = (a, b) => {
+  const s1 = normalizeVerifyText(a);
+  const s2 = normalizeVerifyText(b);
+  if (!s1 || !s2) return 0;
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return s1 === s2 ? 1 : 0;
+  const grams = new Map();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bg = s1.slice(i, i + 2);
+    grams.set(bg, (grams.get(bg) || 0) + 1);
+  }
+  let hits = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bg = s2.slice(i, i + 2);
+    const count = grams.get(bg) || 0;
+    if (count > 0) {
+      grams.set(bg, count - 1);
+      hits += 1;
+    }
+  }
+  return (2 * hits) / (s1.length - 1 + s2.length - 1);
+};
+
+const verifyArtistOverlap = (target, candidate) => {
+  const splitArtists = (s) => String(s || '').split(/,|&|\bfeat\.?\b|\bft\.?\b/i);
+  const tTokens = new Set(splitArtists(target).flatMap(p => normalizeVerifyText(p).split(' ')).filter(Boolean));
+  const cTokens = new Set(splitArtists(candidate).flatMap(p => normalizeVerifyText(p).split(' ')).filter(Boolean));
+  if (tTokens.size === 0 || cTokens.size === 0) return 0.5;
+  let matched = 0;
+  cTokens.forEach(tok => { if (tTokens.has(tok)) matched += 1; });
+  const denom = Math.min(tTokens.size, cTokens.size, 4);
+  return denom > 0 ? Math.min(1, matched / denom) : 0;
+};
+
+const isKnownArtist = (name) => {
+  const s = String(name || '').trim();
+  return Boolean(s) && s.toLowerCase() !== 'unknown artist';
+};
+
+// Final gate before a JioSaavn stream is allowed to play: the matched
+// recording's title AND artist must agree with the requested song — except
+// when title + duration together form an exact fingerprint (platforms often
+// credit different artists for the same recording).
+const verifySaavnMatch = (song, match) => {
+  if (!song?.title || !match?.title) return false;
+  let titleScore = verifyDice(song.title, match.title);
+
+  // Repeated/hook titles: "O Maahi" vs "O Maahi O Maahi" score low on Dice
+  // but are the same song — token containment rescues them
+  const st = new Set(normalizeVerifyText(song.title).split(' ').filter(Boolean));
+  const mt = new Set(normalizeVerifyText(match.title).split(' ').filter(Boolean));
+  if (st.size && mt.size && titleScore < 0.85) {
+    const smaller = st.size <= mt.size ? st : mt;
+    const larger = st.size <= mt.size ? mt : st;
+    let hits = 0;
+    smaller.forEach(tok => { if (larger.has(tok)) hits += 1; });
+    if (hits === smaller.size) titleScore = 0.85;
+  }
+  if (titleScore < 0.75) return false;
+
+  const songDur = Math.round(song.duration || 0);
+  const matchDur = Math.round(match.duration || 0);
+  const durBothKnown = songDur > 0 && matchDur > 0;
+  const durClose = durBothKnown && Math.abs(songDur - matchDur) <= 15;
+  const titleDurFingerprint = titleScore >= 0.95 && durClose;
+
+  // Artist name check — different known artist => wrong recording
+  if (!titleDurFingerprint && isKnownArtist(song.artist) && isKnownArtist(match.artist)) {
+    if (verifyArtistOverlap(song.artist, match.artist) < 0.5) return false;
+  }
+
+  // Duration sanity — same title/artist but wildly different length is
+  // likely a jukebox/extended/cover version. Also reject jukebox-length
+  // recordings and tiny snippets outright (anti-spam rule: >12min / <45s).
+  if (matchDur > 0) {
+    if (matchDur > 720 || matchDur < 45) return false;
+    if (durBothKnown && !durClose && titleScore < 0.9) {
+      return false;
+    }
+  }
+  return true;
+};
+
 export function PlayerProvider({ children }) {
   const { user } = useAuth();
   const { addToHistory } = useLibrary();
@@ -270,6 +369,23 @@ export function PlayerProvider({ children }) {
       activeEngineRef.current = 'yt';
       if (song?.videoId && startYtFallbackRef.current) startYtFallbackRef.current(song);
     };
+    // Wrong-recording guard: verify the stream that ACTUALLY started. If its
+    // real duration is wildly different from the requested song's duration,
+    // JioSaavn resolved the wrong audio — reject it and play the exact
+    // YouTube videoId instead.
+    const onLoadedMetadata = () => {
+      if (!isActiveEngine()) return;
+      const song = currentSongRef.current;
+      const songDur = Math.round(song?.duration || 0);
+      const streamDur = a.duration;
+      if (!songDur || !streamDur || !isFinite(streamDur)) return;
+      if (Math.abs(streamDur - songDur) > Math.max(15, songDur * 0.2)) {
+        console.warn('Saavn stream duration mismatch — rejecting wrong recording, falling back to YouTube engine');
+        activeEngineRef.current = 'yt';
+        try { a.pause(); a.removeAttribute('src'); a.load(); } catch {}
+        if (song?.videoId && startYtFallbackRef.current) startYtFallbackRef.current(song);
+      }
+    };
 
     a.addEventListener('playing', onPlaying);
     a.addEventListener('pause', onPause);
@@ -277,6 +393,7 @@ export function PlayerProvider({ children }) {
     a.addEventListener('timeupdate', onTimeUpdate);
     a.addEventListener('ended', onEnded);
     a.addEventListener('error', onError);
+    a.addEventListener('loadedmetadata', onLoadedMetadata);
 
     return () => {
       try {
@@ -290,6 +407,7 @@ export function PlayerProvider({ children }) {
       a.removeEventListener('timeupdate', onTimeUpdate);
       a.removeEventListener('ended', onEnded);
       a.removeEventListener('error', onError);
+      a.removeEventListener('loadedmetadata', onLoadedMetadata);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -556,9 +674,11 @@ export function PlayerProvider({ children }) {
     try {
       const match = await Promise.race([
         api.getSaavnStream(song, bitrate),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 4000))
+        // Saavn is the first-priority engine (true background playback),
+        // so give it enough time to win the race before the YT IFrame fallback
+        new Promise((_, reject) => setTimeout(() => reject(new Error('saavn timeout')), 6500))
       ]);
-      if (match?.streamUrl) {
+      if (match?.streamUrl && verifySaavnMatch(song, match)) {
         saavnCacheRef.current.set(song.videoId, match);
         // Keep the session cache bounded
         if (saavnCacheRef.current.size > 120) {

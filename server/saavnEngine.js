@@ -264,17 +264,24 @@ export async function matchSaavnSong({ title, artist, album, duration, bitrate }
   const artistStr = String(artist || '').trim().slice(0, 120);
   const albumStr = String(album || '').trim().slice(0, 120);
 
-  // Two-stage search: "title artist" first, then plain title for broad coverage
+  // Search variants: normalised title (strips "(From ...)", "(Lyrical)",
+  // "(Official Video)" etc. — JioSaavn's search chokes on raw YouTube
+  // suffixes) + artist / album, then the bare title for broad coverage.
+  const baseQuery = normalizeText(cleanTitle) || cleanTitle.toLowerCase();
   const queries = [];
-  if (artistStr) queries.push(`${cleanTitle} ${artistStr.split(',')[0].trim()}`);
-  if (albumStr && albumStr.toLowerCase() !== 'single') queries.push(`${cleanTitle} ${albumStr}`);
-  queries.push(cleanTitle);
+  if (artistStr) queries.push(`${baseQuery} ${artistStr.split(',')[0].trim()}`);
+  if (albumStr && albumStr.toLowerCase() !== 'single') queries.push(`${baseQuery} ${albumStr}`);
+  queries.push(baseQuery);
 
+  // Fire all query variants in parallel — Saavn must answer fast enough to
+  // win the client's resolution race so the background-playable Saavn
+  // stream is preferred over the YouTube IFrame engine.
   const seenIds = new Set();
   const candidates = [];
-  for (const q of queries) {
-    if (candidates.length >= 25) break;
-    const found = await searchSaavnSongs(q, 20).catch(() => []);
+  const foundLists = await Promise.all(
+    queries.map(q => searchSaavnSongs(q, 20).catch(() => []))
+  );
+  for (const found of foundLists) {
     for (const song of found) {
       if (song.id && !seenIds.has(song.id)) {
         seenIds.add(song.id);
@@ -286,18 +293,36 @@ export async function matchSaavnSong({ title, artist, album, duration, bitrate }
 
   let best = null;
   let bestScore = 0;
+  const artistRequested = artistStr.length > 0;
   for (const cand of candidates) {
+    // Anti-spam: reject jukeboxes/non-stop mixes and tiny snippets — a
+    // matching title on a 15-minute mix is still the wrong recording
+    if (cand.duration > 720 || (cand.duration > 0 && cand.duration < 45)) continue;
     const titleScore = diceCoefficient(cleanTitle, cand.title);
     const artistScore = artistOverlapScore(artistStr, cand.artist);
     const durScore = durationClosenessScore(duration, cand.duration);
     const score = titleScore * 0.55 + artistScore * 0.25 + durScore * 0.20;
 
+    // Artist verification: a recording by a DIFFERENT known artist must
+    // never play for the requested song — covers, remixes and same-title
+    // tracks by other singers all fail this gate (client then falls back
+    // to the exact YouTube videoId).
+    const candArtist = String(cand.artist || '').trim();
+    const candArtistKnown = candArtist.length > 0 && candArtist.toLowerCase() !== 'unknown artist';
+    const artistConfirmed = !artistRequested || !candArtistKnown || artistScore >= 0.5;
+
     // Confidence gates: title must always be close; duration seals the deal
     const durKnown = (parseInt(duration, 10) || 0) > 0 && cand.duration > 0;
+    // Title+duration fingerprint escape hatch: platforms often credit
+    // different artists (singer vs composer), but an identical title with a
+    // matching duration is the same recording — prefer the background-playable
+    // Saavn stream over falling back to YouTube for it.
+    const titleDurFingerprint = titleScore >= 0.95 && durKnown && durScore >= 0.75;
     const passes =
-      (titleScore >= 0.9 && score >= 0.55) ||
-      (titleScore >= 0.6 && durKnown && durScore >= 0.75 && score >= 0.68) ||
-      (titleScore >= 0.6 && !durKnown && artistScore >= 0.6 && score >= 0.65);
+      (titleScore >= 0.92 && artistConfirmed && score >= 0.6) ||
+      (titleScore >= 0.6 && durKnown && durScore >= 0.75 && score >= 0.68 && artistConfirmed) ||
+      (titleScore >= 0.6 && !durKnown && artistScore >= 0.6 && score >= 0.65) ||
+      titleDurFingerprint;
 
     if (passes && score > bestScore) {
       bestScore = score;
