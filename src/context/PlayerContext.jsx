@@ -169,6 +169,23 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(null);              // hidden HTML5 audio singleton
   const activeEngineRef = useRef('yt');       // 'saavn' | 'yt' | 'cast'
   const playTokenRef = useRef(0);             // races: async stream fetch vs user skip
+  const playGenerationRef = useRef(0);        // engine supervisor: only the newest generation may make sound
+
+  // ── Engine Supervisor (single-mutex) ─────────────────────────────
+  // Every engine switch goes through claimEngine(). It (1) rejects stale
+  // generations, (2) hard-stops every OTHER engine the moment a new one is
+  // claimed, so YouTube IFrame + JioSaavn audio can never sound together.
+  const claimEngine = useCallback((engine, genToken) => {
+    if (genToken !== undefined && genToken !== playGenerationRef.current) return false;
+    activeEngineRef.current = engine;
+    if (engine !== 'saavn' && audioRef.current) {
+      try { audioRef.current.pause(); } catch (e) {}
+    }
+    if (engine !== 'yt' && playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+      try { playerRef.current.stopVideo(); } catch (e) {}
+    }
+    return true;
+  }, []);
   const saavnCacheRef = useRef(new Map());    // videoId -> { streamUrl, ... }
   const startYtFallbackRef = useRef(null);    // late-bound YT fallback starter
 
@@ -334,8 +351,16 @@ export function PlayerProvider({ children }) {
 
     const isActiveEngine = () => activeEngineRef.current === 'saavn';
 
+    // Defensive: if audio somehow starts while another engine owns playback,
+    // silence it immediately (prevents YT + Saavn double-play)
+    const killIfNotActive = () => {
+      if (isActiveEngine()) return false;
+      try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {}
+      return true;
+    };
+
     const onPlaying = () => {
-      if (!isActiveEngine()) return;
+      if (killIfNotActive()) return;
       setIsPlaying(true);
       setIsLoading(false);
       isTransitioningRef.current = false;
@@ -388,6 +413,7 @@ export function PlayerProvider({ children }) {
     };
 
     a.addEventListener('playing', onPlaying);
+    a.addEventListener('play', (e) => { if (killIfNotActive()) return; });
     a.addEventListener('pause', onPause);
     a.addEventListener('waiting', onWaiting);
     a.addEventListener('timeupdate', onTimeUpdate);
@@ -652,14 +678,20 @@ export function PlayerProvider({ children }) {
   // Start playback through the YouTube IFrame engine
   const startYtPlayback = useCallback((song) => {
     if (!song?.videoId) return;
-    activeEngineRef.current = 'yt';
-    try { audioRef.current?.pause(); } catch (e) {}
+    const gen = ++playGenerationRef.current;
+    if (!claimEngine('yt', gen)) return;
     ensurePlayer(song.videoId).then(player => {
+      // Generation re-check: a newer song (or Saavn win) may have taken over
+      // while the IFrame was still initializing — never double-play over it
+      if (gen !== playGenerationRef.current || activeEngineRef.current !== 'yt') {
+        try { player.stopVideo(); } catch (e) {}
+        return;
+      }
       if (player && typeof player.playVideo === 'function') {
         player.playVideo();
       }
     });
-  }, [ensurePlayer]);
+  }, [ensurePlayer, claimEngine]);
   startYtFallbackRef.current = startYtPlayback;
 
   // Try resolving a JioSaavn stream for the song (with session cache)
@@ -697,7 +729,8 @@ export function PlayerProvider({ children }) {
   // When a Cast session is active, the Saavn stream is cast to the TV instead.
   const startPlayback = useCallback(async (song) => {
     if (!song) return;
-    const token = ++playTokenRef.current;
+    // Engine supervisor generation: any newer start invalidates older async work
+    const token = ++playGenerationRef.current;
 
     const match = await resolveSaavnStream(song);
 
@@ -714,14 +747,13 @@ export function PlayerProvider({ children }) {
       // Cast load failed — continue locally below
     }
 
+    // A newer play request superseded this one while Cast was loading
+    if (token !== playGenerationRef.current) return;
+
     if (match?.streamUrl) {
-      activeEngineRef.current = 'saavn';
-      // Silence the YouTube engine before switching
-      try {
-        if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
-          playerRef.current.stopVideo();
-        }
-      } catch (e) {}
+      // Claim the Saavn engine: bumps the generation and hard-stops YouTube.
+      // If a newer play request already superseded this one, stand down.
+      if (!claimEngine('saavn', token)) return;
 
       const a = audioRef.current || null;
       if (!a) {
@@ -739,7 +771,7 @@ export function PlayerProvider({ children }) {
     } else {
       startYtPlayback(song);
     }
-  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume]);
+  }, [resolveSaavnStream, startYtPlayback, computeEffectiveVolume, claimEngine]);
 
   // ── Cast (Chromecast) core ───────────────────────────────────────
   // Receiver: Google's Default Media Receiver — TV par official cast UI
@@ -751,14 +783,8 @@ export function PlayerProvider({ children }) {
     const match = matchOverride || await resolveSaavnStream(song);
     if (!match?.streamUrl) return false;
 
+    claimEngine('cast');
     activeEngineRef.current = 'cast';
-    // Silence local engines first
-    try { audioRef.current?.pause(); } catch (e) {}
-    try {
-      if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
-        playerRef.current.stopVideo();
-      }
-    } catch (e) {}
 
     try {
       const mediaInfo = new window.chrome.cast.media.MediaInfo(match.streamUrl, 'audio/mp4');
