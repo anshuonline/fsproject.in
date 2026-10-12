@@ -18,16 +18,9 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* ─── Ambient Glow ─── */
+/* ─── Ambient Glow (Disabled for high FPS & AMOLED battery efficiency) ─── */
 .fs-fs-ambient-bg {
-  position: absolute;
-  inset: -20%;
-  background-size: cover;
-  background-position: center;
-  filter: blur(100px) brightness(0.18);
-  opacity: 0.6;
-  pointer-events: none;
-  transform: scale(1.2);
+  display: none;
 }
 
 /* ─── Top Minimal Header ─── */
@@ -62,8 +55,7 @@
 .fs-fs-mobile-segments {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
+  background: #141414;
   padding: 3px;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -192,10 +184,9 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #ffffff;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.75);
   padding: 3px 8px;
   border-radius: 4px;
-  backdrop-filter: blur(4px);
 }
 
 .fs-fs-art-image {
@@ -214,8 +205,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(14, 14, 14, 0.94);
-  backdrop-filter: blur(28px);
+  background: #080808;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   border-right: none;
@@ -632,8 +622,7 @@
   left: 0;
   right: 0;
   height: 72px;
-  background: rgba(10, 10, 10, 0.96);
-  backdrop-filter: blur(24px);
+  background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 20;
   display: flex;

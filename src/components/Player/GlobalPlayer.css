@@ -82,8 +82,7 @@
   height: 14px;
   padding: 3px 4px;
   border-radius: var(--radius-xs);
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.85);
   pointer-events: none;
 }
 
