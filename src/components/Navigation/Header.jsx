@@ -48,14 +48,16 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
     return () => window.removeEventListener('fs_search_history_cleared', handleClearEvent);
   }, []);
 
-  // Sync searchQuery with URL query parameter on /search
+  // Sync searchQuery with URL query parameter on /search & close dropdown on route changes
   useEffect(() => {
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
     if (location.pathname === '/search') {
       const params = new URLSearchParams(location.search);
       const q = params.get('q');
       if (q) setSearchQuery(q);
     }
-  }, [location]);
+  }, [location.pathname, location.search]);
 
   // Ctrl+K / Cmd+K global shortcut — focus the search bar from anywhere
   useEffect(() => {
@@ -71,15 +73,16 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
     return () => window.removeEventListener('fs_focus_search', handleFocusSearch);
   }, []);
 
-  // Click outside listener to close suggestions
+  // Click/tap outside listener to close suggestions (capture phase bypasses child stopPropagation)
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowSuggestions(false);
+        setSelectedIndex(-1);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside, true);
+    return () => document.removeEventListener('pointerdown', handleClickOutside, true);
   }, []);
 
   // Debounced search suggestions fetch
@@ -192,6 +195,20 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
     inputRef.current?.focus();
   };
 
+  const handleBlur = (e) => {
+    // If focus is transferring to another element inside the search container, don't close
+    if (containerRef.current && containerRef.current.contains(e.relatedTarget)) {
+      return;
+    }
+    // Small delay ensures clicks on dropdown items finish executing before closing
+    setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) {
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      }
+    }, 150);
+  };
+
   // Helper to render suggestion text with YouTube-style bolding
   const renderHighlightedText = (text, query) => {
     if (!query) return text;
@@ -251,6 +268,7 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
               if (!showSuggestions) setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             autoComplete="off"
             spellCheck="false"
@@ -285,6 +303,11 @@ export const Header = React.memo(function Header({ onToggleSidebar }) {
             role="listbox"
             onMouseDown={(e) => {
               // Prevent losing input focus / premature blur on tap/click
+              if (e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+              }
+            }}
+            onPointerDown={(e) => {
               if (e.target.tagName !== 'INPUT') {
                 e.preventDefault();
               }

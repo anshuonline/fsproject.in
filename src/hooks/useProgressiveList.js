@@ -2,98 +2,118 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * useProgressiveList
- * High-performance virtualized chunking hook for large track lists (1,500+ items).
- * Renders an initial batch (default 40 items) and progressively mounts next batches
- * (+40 items) when the user scrolls near the bottom sentinel.
+ * High-performance progressive rendering hook for large track lists (1,500+ items).
+ * Renders an initial batch (default 40 items) and progressively reveals more
+ * as the user scrolls near the bottom sentinel.
  *
- * Keeps DOM size minimal, memory tiny, prevents UI freezes, and guarantees
- * locked 60 FPS scrolling even with thousands of tracks.
+ * Designed with strict throttling and reference stability to prevent
+ * any flickering, layout bouncing, or re-render loops.
  *
- * @param {Array} items - Full array of items
- * @param {Object} options
- * @param {number} [options.initialBatch=40] - Items to mount on first render
+ * @param {Array} items - The source list of items
+ * @param {Object} [options]
+ * @param {number} [options.initialBatch=40] - Items to render on initial load
  * @param {number} [options.batchSize=40] - Items to append on each scroll trigger
- * @param {string} [options.rootMargin='600px'] - Pre-load buffer ahead of scroll
+ * @param {string} [options.rootMargin='300px'] - Preload margin ahead of scroll
  * @param {React.RefObject} [options.rootRef=null] - Scroll container ref (null = window)
+ * @param {any} [options.resetKey=null] - Explicit key to trigger a reset (e.g. search query, playlist id)
  */
 export function useProgressiveList(items = [], options = {}) {
   const {
     initialBatch = 40,
     batchSize = 40,
-    rootMargin = '600px',
-    rootRef = null
+    rootMargin = '300px',
+    rootRef = null,
+    resetKey = null
   } = options;
-
-  const [visibleCount, setVisibleCount] = useState(initialBatch);
-  const sentinelRef = useRef(null);
 
   const safeItems = Array.isArray(items) ? items : [];
   const itemsLength = safeItems.length;
 
-  // Whenever the source items reference or length changes (e.g. search filter query updated),
-  // reset visible count back to the initial batch for instant responsiveness.
+  const [visibleCount, setVisibleCount] = useState(initialBatch);
+  const sentinelRef = useRef(null);
+
+  // Synchronous refs for state values to avoid recreating observer on every render
+  const visibleCountRef = useRef(visibleCount);
+  visibleCountRef.current = visibleCount;
+
+  const itemsLengthRef = useRef(itemsLength);
+  itemsLengthRef.current = itemsLength;
+
+  const isThrottledRef = useRef(false);
+
+  // Track previous resetKey and itemsLength to only reset when genuinely intended
+  const prevResetKeyRef = useRef(resetKey);
+  const prevLengthRef = useRef(itemsLength);
+
   useEffect(() => {
-    setVisibleCount(initialBatch);
-  }, [items, initialBatch]);
+    const keyChanged = prevResetKeyRef.current !== resetKey;
+    const lengthChanged = prevLengthRef.current !== itemsLength;
+
+    if (keyChanged || lengthChanged) {
+      prevResetKeyRef.current = resetKey;
+      prevLengthRef.current = itemsLength;
+      setVisibleCount(initialBatch);
+      visibleCountRef.current = initialBatch;
+    }
+  }, [resetKey, itemsLength, initialBatch]);
 
   const loadMore = useCallback(() => {
-    setVisibleCount(prev => Math.min(itemsLength, prev + batchSize));
-  }, [itemsLength, batchSize]);
+    if (isThrottledRef.current) return;
+    if (visibleCountRef.current >= itemsLengthRef.current) return;
+
+    isThrottledRef.current = true;
+    setVisibleCount(prev => {
+      const next = Math.min(itemsLengthRef.current, prev + batchSize);
+      visibleCountRef.current = next;
+      return next;
+    });
+
+    // Throttled latch release prevents tight loop rapid firing
+    setTimeout(() => {
+      isThrottledRef.current = false;
+    }, 150);
+  }, [batchSize]);
 
   const loadAll = useCallback(() => {
-    setVisibleCount(itemsLength);
-  }, [itemsLength]);
+    setVisibleCount(itemsLengthRef.current);
+    visibleCountRef.current = itemsLengthRef.current;
+  }, []);
 
+  // Stable IntersectionObserver that observes the sentinel
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || visibleCount >= itemsLength) return;
+    if (!sentinel) return;
 
     const rootElement = rootRef?.current || null;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
           loadMore();
         }
       },
       {
         root: rootElement,
         rootMargin,
-        threshold: 0.01
+        threshold: 0.05
       }
     );
 
     observer.observe(sentinel);
 
-    // Passive scroll listener fallback for fluid momentum scrolling
-    const scrollTarget = rootElement || window;
-    const handleScroll = () => {
-      if (visibleCount >= itemsLength) return;
-      if (rootElement) {
-        if (rootElement.scrollTop + rootElement.clientHeight >= rootElement.scrollHeight - 500) {
-          loadMore();
-        }
-      } else {
-        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600) {
-          loadMore();
-        }
-      }
-    };
-
-    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
-
     return () => {
       observer.disconnect();
-      scrollTarget.removeEventListener('scroll', handleScroll);
     };
-  }, [visibleCount, itemsLength, rootRef?.current, rootMargin, loadMore]);
+  }, [rootRef?.current, rootMargin, loadMore]);
 
-  const visibleItems = safeItems.slice(0, visibleCount);
-  const hasMore = visibleCount < itemsLength;
+  const safeVisibleCount = Math.min(visibleCount, itemsLength);
+  const visibleItems = safeItems.slice(0, safeVisibleCount);
+  const hasMore = safeVisibleCount < itemsLength;
 
   return {
     visibleItems,
-    visibleCount: Math.min(visibleCount, itemsLength),
+    visibleCount: safeVisibleCount,
     totalCount: itemsLength,
     hasMore,
     sentinelRef,

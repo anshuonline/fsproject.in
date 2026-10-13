@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ChevronDown,
   Play,
@@ -143,9 +143,16 @@ export function FullScreenPlayer() {
     : 0;
   const isLargeQueue = queue.length > 40;
 
-  const prevQueueTracks = isLargeQueue && safeQueueIndex > 0 ? queue.slice(0, safeQueueIndex) : [];
+  // Memoize slices so array references remain stable across re-renders
+  const prevQueueTracks = useMemo(() => {
+    return isLargeQueue && safeQueueIndex > 0 ? queue.slice(0, safeQueueIndex) : [];
+  }, [isLargeQueue, queue, safeQueueIndex]);
+
   const currentQueueTrack = isLargeQueue ? queue[safeQueueIndex] : null;
-  const upcomingQueueTracks = isLargeQueue ? queue.slice(safeQueueIndex + 1) : [];
+
+  const upcomingQueueTracks = useMemo(() => {
+    return isLargeQueue ? queue.slice(safeQueueIndex + 1) : [];
+  }, [isLargeQueue, queue, safeQueueIndex]);
 
   const {
     visibleItems: visibleUpcomingQueue,
@@ -155,7 +162,8 @@ export function FullScreenPlayer() {
   } = useProgressiveList(upcomingQueueTracks, {
     initialBatch: 30,
     batchSize: 30,
-    rootRef: queueListRef
+    rootRef: queueListRef,
+    resetKey: `${safeQueueIndex}-${queue.length}`
   });
 
   // ── Ultra-Optimized Swipe Animation & Gestures (Zero-Lag) ──

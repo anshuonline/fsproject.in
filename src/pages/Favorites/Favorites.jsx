@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Heart, Play, Shuffle, Search, Music, Clock, Loader2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
@@ -11,10 +11,15 @@ export function Favorites() {
   const { playSong } = usePlayer();
   const [filterText, setFilterText] = useState('');
 
-  const filteredSongs = likedSongs.filter(s =>
-    s.title?.toLowerCase().includes(filterText.toLowerCase()) ||
-    s.artist?.toLowerCase().includes(filterText.toLowerCase())
-  );
+  // Memoize filtered list to prevent unnecessary array recreation on re-renders
+  const filteredSongs = useMemo(() => {
+    if (!filterText.trim()) return likedSongs;
+    const q = filterText.toLowerCase();
+    return likedSongs.filter(s =>
+      s.title?.toLowerCase().includes(q) ||
+      s.artist?.toLowerCase().includes(q)
+    );
+  }, [likedSongs, filterText]);
 
   // High-performance progressive list: renders initial batch of 40 songs and
   // lazily appends more on scroll. Keeps DOM small & fast even with 1,500+ songs.
@@ -24,7 +29,11 @@ export function Favorites() {
     totalCount,
     hasMore,
     sentinelRef
-  } = useProgressiveList(filteredSongs, { initialBatch: 40, batchSize: 40 });
+  } = useProgressiveList(filteredSongs, {
+    initialBatch: 40,
+    batchSize: 40,
+    resetKey: filterText
+  });
 
   const handlePlayAll = () => {
     if (likedSongs.length > 0) {
@@ -120,7 +129,7 @@ export function Favorites() {
           <>
             {visibleItems.map((song, idx) => (
               <SongCard
-                key={song.videoId || idx}
+                key={`${song.videoId || 'song'}-${idx}`}
                 song={song}
                 index={idx}
                 queueContext={filteredSongs}

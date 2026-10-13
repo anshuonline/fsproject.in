@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { X, Trash2, Music, MoreVertical, Loader2, Volume2, History as HistoryIcon } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -24,10 +24,16 @@ export function QueueDrawer() {
   const safeIndex = (queueIndex >= 0 && queueIndex < queue.length) ? queueIndex : 0;
   const isLargeQueue = queue.length > 40;
 
-  // For large queues, partition into Previous, Now Playing, and Next Up (Spotify style)
-  const prevTracks = isLargeQueue && safeIndex > 0 ? queue.slice(0, safeIndex) : [];
+  // Memoize slices so array references remain stable across re-renders
+  const prevTracks = useMemo(() => {
+    return isLargeQueue && safeIndex > 0 ? queue.slice(0, safeIndex) : [];
+  }, [isLargeQueue, queue, safeIndex]);
+
   const currentTrack = isLargeQueue ? queue[safeIndex] : null;
-  const upcomingTracks = isLargeQueue ? queue.slice(safeIndex + 1) : [];
+
+  const upcomingTracks = useMemo(() => {
+    return isLargeQueue ? queue.slice(safeIndex + 1) : [];
+  }, [isLargeQueue, queue, safeIndex]);
 
   // Progressive rendering for upcoming tracks in large queue to eliminate drawer freeze
   const {
@@ -38,7 +44,8 @@ export function QueueDrawer() {
   } = useProgressiveList(upcomingTracks, {
     initialBatch: 30,
     batchSize: 30,
-    rootRef: bodyRef
+    rootRef: bodyRef,
+    resetKey: `${safeIndex}-${queue.length}`
   });
 
   if (!isQueueOpen) return null;

@@ -88,7 +88,11 @@ export function PlaylistDetail() {
     totalCount,
     hasMore,
     sentinelRef
-  } = useProgressiveList(playlist?.songs || [], { initialBatch: 40, batchSize: 40 });
+  } = useProgressiveList(playlist?.songs || [], {
+    initialBatch: 40,
+    batchSize: 40,
+    resetKey: id
+  });
 
   if (loading) {
     return (
@@ -250,7 +254,7 @@ export function PlaylistDetail() {
           ) : (
             <>
               {visibleItems.map((song, idx) => (
-                <React.Fragment key={song.videoId || idx}>
+                <React.Fragment key={`${song.videoId || 'song'}-${idx}`}>
                   <SongCard
                     song={song}
                     queueContext={playlist.songs}
