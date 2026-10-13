@@ -55,7 +55,7 @@ function tokenize(str) {
 }
 
 // Dice coefficient over character bigrams — robust for song-title fuzziness
-function diceCoefficient(a, b) {
+export function diceCoefficient(a, b) {
   const s1 = normalizeText(a);
   const s2 = normalizeText(b);
   if (!s1 || !s2) return 0;
@@ -186,7 +186,7 @@ async function isReachable(url) {
 }
 
 // Resolve the best playable URL at the requested bitrate (falls back gracefully)
-async function resolveStreamUrl(encryptedUrl, requestedBitrate) {
+export async function resolveStreamUrl(encryptedUrl, requestedBitrate) {
   const base = decryptMediaUrl(encryptedUrl);
   if (!base) return null;
   const bitrate = VALID_BITRATES.has(requestedBitrate) ? requestedBitrate : 320;
@@ -448,3 +448,157 @@ export async function fetchSaavnArtistImages(names) {
     return { name, image: usable };
   }));
 }
+
+// ─── Artist Discography & Official Releases ─────────────────────────────────
+
+function toHD(img) {
+  if (!img) return '';
+  return String(img)
+    .replace('150x150', '500x500')
+    .replace('50x50', '500x500');
+}
+
+export async function fetchSaavnArtistDiscography(artistName) {
+  const q = String(artistName || '').trim().slice(0, 100);
+  if (!q) return { albums: [], singles: [] };
+
+  let artistId = null;
+  try {
+    const sJson = await saavnApiJson({ __call: 'search.getArtistResults', q, p: '1', n: '5' });
+    const hits = sJson?.data?.results || sJson?.results || [];
+    let best = null;
+    let bestScore = 0;
+    for (const h of hits) {
+      const hn = decodeEntities(String(h.name || h.title || ''));
+      const score = diceCoefficient(q, hn);
+      if (score > bestScore) {
+        bestScore = score;
+        best = h;
+      }
+    }
+    if (best && bestScore >= 0.45) {
+      artistId = best.id;
+    }
+  } catch (err) {
+    console.warn(`Saavn artist search failed for "${q}":`, err.message);
+  }
+
+  const albums = [];
+  const singles = [];
+  const seenAlbumTitles = new Set();
+  const seenSingleTitles = new Set();
+
+  if (artistId) {
+    try {
+      const dJson = await saavnApiJson({ __call: 'artist.getArtistPageDetails', artistId, p: '1', n: '30' });
+
+      // 1. Official albums from artist profile
+      for (const a of (dJson?.topAlbums || [])) {
+        const norm = (a.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (norm && !seenAlbumTitles.has(norm)) {
+          seenAlbumTitles.add(norm);
+          albums.push({
+            id: `saavn_${a.id}`,
+            saavnId: a.id,
+            title: decodeEntities(a.title),
+            artist: a.subtitle || q,
+            year: a.year || '',
+            thumbnail: toHD(a.image),
+            type: 'album',
+            source: 'saavn'
+          });
+        }
+      }
+
+      // 2. Official singles from artist profile
+      for (const s of (dJson?.singles || [])) {
+        const norm = (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (norm && !seenSingleTitles.has(norm)) {
+          seenSingleTitles.add(norm);
+          singles.push({
+            id: `saavn_${s.id}`,
+            saavnId: s.id,
+            title: decodeEntities(s.title),
+            artist: s.subtitle || q,
+            year: s.year || '',
+            thumbnail: toHD(s.image),
+            type: 'single',
+            source: 'saavn'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`Saavn artist details failed for "${q}":`, err.message);
+    }
+  }
+
+  // 3. Enrich albums via search.getAlbumResults (finds iconic movie soundtrack albums)
+  try {
+    const aJson = await saavnApiJson({ __call: 'search.getAlbumResults', q, p: '1', n: '20' });
+    const aHits = aJson?.data?.results || aJson?.results || [];
+    for (const a of aHits) {
+      const title = a.title || '';
+      // Anti-spam: reject unofficial mashups, non-stop DJ remixes
+      if (/mashup|remix|dj\s+remix/i.test(title)) continue;
+      const norm = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (norm && !seenAlbumTitles.has(norm) && !seenSingleTitles.has(norm)) {
+        seenAlbumTitles.add(norm);
+        albums.push({
+          id: `saavn_${a.id}`,
+          saavnId: a.id,
+          title: decodeEntities(a.title),
+          artist: a.subtitle || a.more_info?.music || q,
+          year: a.year || '',
+          thumbnail: toHD(a.image),
+          type: 'album',
+          source: 'saavn'
+        });
+      }
+    }
+  } catch (err) {
+    console.warn(`Saavn album search enrichment failed for "${q}":`, err.message);
+  }
+
+  return { albums, singles };
+}
+
+// ─── JioSaavn Album Details & Song Tracks ────────────────────────────────────
+
+export async function fetchSaavnAlbumDetails(albumId) {
+  const cleanId = String(albumId || '').replace(/^saavn_/, '').trim();
+  if (!cleanId) return null;
+
+  try {
+    const d = await saavnApiJson({ __call: 'content.getAlbumDetails', albumid: cleanId });
+    if (!d || !d.title) return null;
+
+    const songs = (d.list || []).map(raw => {
+      const s = normalizeSaavnSong(raw);
+      if (!s) return null;
+      const formatted = formatSaavnSongForApp(s);
+      if (!formatted) return null;
+      formatted.encryptedUrl = s.encryptedUrl;
+      return formatted;
+    }).filter(Boolean);
+
+    const isSingle = songs.length <= 2;
+
+    return {
+      id: `saavn_${d.id}`,
+      saavnId: d.id,
+      title: decodeEntities(d.title),
+      artist: decodeEntities(d.subtitle || d.more_info?.music || 'Various Artists'),
+      year: d.year || '',
+      coverImage: toHD(d.image),
+      songs,
+      trackCount: songs.length,
+      originalCount: songs.length,
+      isSingle,
+      source: 'saavn'
+    };
+  } catch (err) {
+    console.warn(`Saavn album details fetch error for ${cleanId}:`, err.message);
+    return null;
+  }
+}
+

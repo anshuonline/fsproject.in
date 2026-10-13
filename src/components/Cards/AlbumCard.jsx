@@ -13,7 +13,9 @@ export const AlbumCard = memo(function AlbumCard({ album }) {
 
   const albumId = album.id || album.albumId;
   const title = album.title || album.name || 'Untitled Album';
-  const subtitle = [album.artist, album.year, 'Album'].filter(Boolean).join(' • ');
+  const isSingle = album.type === 'single';
+  const badgeLabel = isSingle ? 'Single' : 'Album';
+  const subtitle = [album.artist, album.year, badgeLabel].filter(Boolean).join(' • ');
 
   const handlePlayClick = (e) => {
     e.stopPropagation();
@@ -43,9 +45,9 @@ export const AlbumCard = memo(function AlbumCard({ album }) {
           }}
         />
 
-        <div className="fs-album-card-badge" title="Album">
+        <div className="fs-album-card-badge" title={badgeLabel}>
           <Disc size={13} className="fs-album-disc-icon" />
-          <span>ALBUM</span>
+          <span>{isSingle ? 'SINGLE' : 'ALBUM'}</span>
         </div>
 
         <button

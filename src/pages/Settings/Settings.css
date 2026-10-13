@@ -902,6 +902,69 @@ input:checked + .fs-slider:before {
   color: #ffffff;
 }
 
+.fs-password-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.fs-forgot-pw-action-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.fs-btn-forgot-pw {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #141414;
+  border: 1px solid #282828;
+  color: #e2e8f0;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.fs-btn-forgot-pw:hover:not(:disabled) {
+  background-color: rgba(0, 200, 83, 0.12);
+  border-color: rgba(0, 200, 83, 0.45);
+  color: var(--color-primary-hover, #00E676);
+  transform: translateY(-1px);
+}
+
+.fs-btn-forgot-pw:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.fs-btn-forgot-pw:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #101010;
+  border-color: #202020;
+  color: #888888;
+}
+
+.fs-forgot-pw-limit-hint {
+  font-size: 0.73rem;
+  color: var(--color-text-muted, #707070);
+  padding-left: 6px;
+  letter-spacing: 0.01em;
+}
+
+.fs-forgot-pw-limit-hint.limit-reached {
+  color: #ef4444;
+  font-weight: 600;
+}
+
 @media (max-width: 600px) {
   .fs-password-inputs-row {
     grid-template-columns: 1fr;
@@ -911,4 +974,22 @@ input:checked + .fs-slider:before {
     align-items: flex-start;
     gap: 12px;
   }
+  .fs-password-submit-row {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .fs-forgot-pw-action-col {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  .fs-btn-forgot-pw {
+    width: 100%;
+    justify-content: center;
+  }
+  .fs-forgot-pw-limit-hint {
+    padding-left: 0;
+  }
 }
+

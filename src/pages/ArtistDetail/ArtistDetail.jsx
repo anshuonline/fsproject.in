@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Play, UserCheck, UserPlus, Loader2, User } from 'lucide-react';
 import { api } from '../../services/api';
@@ -17,6 +17,15 @@ export function ArtistDetail() {
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [discoFilter, setDiscoFilter] = useState('all'); // 'all' | 'albums' | 'singles'
+
+  const allReleases = useMemo(() => {
+    const albList = (artist?.albums || []).map(a => ({ ...a, type: a.type || 'album' }));
+    const sglList = (artist?.singles || []).map(s => ({ ...s, type: 'single' }));
+    if (discoFilter === 'albums') return albList;
+    if (discoFilter === 'singles') return sglList;
+    return [...albList, ...sglList];
+  }, [artist?.albums, artist?.singles, discoFilter]);
 
   // Real artist name once metadata loads (long-tail SEO)
   useSeo({
@@ -142,12 +151,39 @@ export function ArtistDetail() {
         </section>
       )}
 
-      {/* Albums */}
-      {artist?.albums && artist.albums.length > 0 && (
+      {/* Discography */}
+      {allReleases.length > 0 && (
         <section className="fs-artist-section">
-          <h2 className="fs-section-title">Discography</h2>
+          <div className="fs-artist-section-header">
+            <h2 className="fs-section-title">Discography</h2>
+            {artist?.singles?.length > 0 && (
+              <div className="fs-artist-disco-filters">
+                <button
+                  type="button"
+                  className={`fs-disco-pill ${discoFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setDiscoFilter('all')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`fs-disco-pill ${discoFilter === 'albums' ? 'active' : ''}`}
+                  onClick={() => setDiscoFilter('albums')}
+                >
+                  Albums ({artist.albums?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  className={`fs-disco-pill ${discoFilter === 'singles' ? 'active' : ''}`}
+                  onClick={() => setDiscoFilter('singles')}
+                >
+                  Singles ({artist.singles?.length || 0})
+                </button>
+              </div>
+            )}
+          </div>
           <div className="fs-artist-albums-grid">
-            {artist.albums.map(al => (
+            {allReleases.map(al => (
               <AlbumCard
                 key={al.id}
                 album={al}

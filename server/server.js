@@ -11,8 +11,16 @@ import { detectGenreMoodQuery, fetchGenreMoodSongs } from './genreSearch.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
-import { sendWelcomeEmail, sendAccountDeletionEmail, sendPasswordResetEmail } from './mailer.js';
-import { searchSaavnSongs, matchSaavnSong, fetchSaavnTrending, fetchSaavnQuickPicks, fetchSaavnArtistImages } from './saavnEngine.js';
+import {
+  searchSaavnSongs,
+  matchSaavnSong,
+  fetchSaavnTrending,
+  fetchSaavnQuickPicks,
+  fetchSaavnArtistImages,
+  fetchSaavnArtistDiscography,
+  fetchSaavnAlbumDetails,
+  resolveStreamUrl
+} from './saavnEngine.js';
 
 dotenv.config();
 
@@ -624,6 +632,25 @@ app.get('/api/saavn/match', async (req, res) => {
   if (cached) return res.json(cached);
 
   try {
+    if (req.query.encryptedUrl) {
+      try {
+        const streamUrl = await resolveStreamUrl(req.query.encryptedUrl, bitrate);
+        if (streamUrl) {
+          const fastMatch = {
+            id: req.query.songId || '',
+            title,
+            artist,
+            album,
+            duration,
+            streamUrl,
+            matchedScore: 1
+          };
+          setCache(cacheKey, { match: fastMatch });
+          return res.json({ match: fastMatch });
+        }
+      } catch {}
+    }
+
     const match = await matchSaavnSong({ title, artist, album, duration, bitrate });
     const result = match ? { match } : { match: null, reason: 'no_confident_match' };
     setCache(cacheKey, result);
@@ -802,38 +829,54 @@ app.get('/api/album/:id', async (req, res) => {
   if (cached) return res.json(cached);
 
   try {
-    const yt = await getYTMusic();
-    let targetId = id;
-    if (targetId.startsWith('OLAK')) {
-      targetId = 'VL' + targetId;
+    const isSaavnId = id.startsWith('saavn_') || /^\d{6,12}$/.test(id);
+    let album = null;
+    let songs = [];
+
+    // 1. If it is a JioSaavn album ID, fetch via saavnEngine
+    if (isSaavnId) {
+      const saavnAlbumId = id.replace(/^saavn_/, '');
+      const saavnData = await fetchSaavnAlbumDetails(saavnAlbumId);
+      if (saavnData && saavnData.songs?.length > 0) {
+        album = saavnData;
+        songs = saavnData.songs;
+      }
     }
 
-    let album = null;
-    try {
-      album = await yt.getAlbum(targetId);
-    } catch (err) {
-      if (!targetId.startsWith('VL') && !targetId.startsWith('MPREb_')) {
-        try {
-          album = await yt.getAlbum('VL' + targetId);
-        } catch {}
+    // 2. If not found via Saavn or it is a YouTube album ID
+    if (!album) {
+      const yt = await getYTMusic();
+      let targetId = id;
+      if (targetId.startsWith('OLAK')) {
+        targetId = 'VL' + targetId;
+      }
+
+      try {
+        album = await yt.getAlbum(targetId);
+      } catch (err) {
+        if (!targetId.startsWith('VL') && !targetId.startsWith('MPREb_')) {
+          try {
+            album = await yt.getAlbum('VL' + targetId);
+          } catch {}
+        }
+      }
+
+      if (album) {
+        if (Array.isArray(album.songs) && album.songs.length > 0) {
+          songs = album.songs.map(formatSong).filter(Boolean);
+        } else if (album.playlistId) {
+          let pid = album.playlistId;
+          if (pid.startsWith('PL')) pid = 'VL' + pid;
+          const videos = await yt.getPlaylistVideos(pid).catch(() => []);
+          if (videos && videos.length > 0) {
+            songs = videos.map(formatSong).filter(Boolean);
+          }
+        }
       }
     }
 
     if (!album) {
       return res.status(404).json({ error: 'Album not found' });
-    }
-
-    let songs = [];
-    // Prioritize album.songs because yt.getAlbum already extracts tracks directly with full metadata
-    if (Array.isArray(album.songs) && album.songs.length > 0) {
-      songs = album.songs.map(formatSong).filter(Boolean);
-    } else if (album.playlistId) {
-      let pid = album.playlistId;
-      if (pid.startsWith('PL')) pid = 'VL' + pid;
-      const videos = await yt.getPlaylistVideos(pid).catch(() => []);
-      if (videos && videos.length > 0) {
-        songs = videos.map(formatSong).filter(Boolean);
-      }
     }
 
     const originalCount = songs.length;
@@ -842,6 +885,7 @@ app.get('/api/album/:id', async (req, res) => {
     // If album has only 1 or 2 tracks (Single or OST release), enrich with soundtrack / related songs
     if (isSingle) {
       try {
+        const yt = await getYTMusic();
         const albumName = album.name || album.title || req.query.name || '';
         const artistName = album.artist?.name || (typeof album.artist === 'string' ? album.artist : '');
 
@@ -897,12 +941,12 @@ app.get('/api/album/:id', async (req, res) => {
     }
 
     const thumbs = album.thumbnails || [];
-    const bestCover = thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || (songs[0]?.thumbnail || '');
+    const bestCover = album.coverImage || thumbs[thumbs.length - 1]?.url || thumbs[0]?.url || (songs[0]?.thumbnail || '');
 
     const result = {
-      id: album.albumId || id,
-      title: album.name || album.title || req.query.name || 'Album',
-      artist: album.artist?.name || (typeof album.artist === 'string' ? album.artist : 'Various Artists'),
+      id: album.id || album.albumId || id,
+      title: album.title || album.name || req.query.name || 'Album',
+      artist: (typeof album.artist === 'string' ? album.artist : album.artist?.name) || 'Various Artists',
       year: album.year || '',
       coverImage: toHDUrl(bestCover),
       songs,
@@ -924,7 +968,7 @@ app.get('/api/artist/:id', async (req, res) => {
   const { id } = req.params;
   if (!id) return res.status(400).json({ error: 'Artist ID is required' });
 
-  const cacheKey = `artist_v2_${id.toLowerCase()}`;
+  const cacheKey = `artist_v3_${id.toLowerCase()}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);
 
@@ -1057,20 +1101,54 @@ app.get('/api/artist/:id', async (req, res) => {
       }
     }
 
-    // 6. Enrich albums: top up with real releases via search (deduped, junk-free)
-    if (albums.length < 8) {
-      try {
-        const extraAlbums = await yt.searchAlbums(`${artistName} official album`).catch(() => []);
-        const seenAlbumIds = new Set(albums.map(a => a.id));
-        for (const a of (extraAlbums || [])) {
-          const formatted = formatAlbum(a);
-          if (formatted && formatted.id && !seenAlbumIds.has(formatted.id) && !isJunkAlbum(formatted.title)) {
-            seenAlbumIds.add(formatted.id);
-            albums.push(formatted);
-            if (albums.length >= 10) break;
+    // 6. Enrich Discography with official JioSaavn recommendations (albums, soundtracks, singles)
+    let singles = [];
+    try {
+      const saavnDisco = await fetchSaavnArtistDiscography(artistName).catch(() => ({ albums: [], singles: [] }));
+      if (saavnDisco?.albums?.length > 0) {
+        // Dedup: start with JioSaavn's official albums & soundtracks
+        const seenNormTitles = new Set();
+        const mergedAlbums = [];
+
+        for (const sa of saavnDisco.albums) {
+          const norm = (sa.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (norm && !seenNormTitles.has(norm)) {
+            seenNormTitles.add(norm);
+            mergedAlbums.push(sa);
           }
         }
-      } catch (albErr) {}
+
+        // Merge any additional unique official albums from YouTube Music
+        for (const ya of albums) {
+          const norm = (ya.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (norm && !seenNormTitles.has(norm)) {
+            seenNormTitles.add(norm);
+            mergedAlbums.push(ya);
+          }
+        }
+
+        albums = mergedAlbums;
+      } else if (albums.length < 8) {
+        // Fallback: top up via YouTube Music album search if JioSaavn returned nothing
+        try {
+          const extraAlbums = await yt.searchAlbums(`${artistName} official album`).catch(() => []);
+          const seenAlbumIds = new Set(albums.map(a => a.id));
+          for (const a of (extraAlbums || [])) {
+            const formatted = formatAlbum(a);
+            if (formatted && formatted.id && !seenAlbumIds.has(formatted.id) && !isJunkAlbum(formatted.title)) {
+              seenAlbumIds.add(formatted.id);
+              albums.push(formatted);
+              if (albums.length >= 10) break;
+            }
+          }
+        } catch {}
+      }
+
+      if (saavnDisco?.singles?.length > 0) {
+        singles = saavnDisco.singles;
+      }
+    } catch (discoErr) {
+      console.warn(`Discography enrichment error for ${artistName}:`, discoErr.message);
     }
 
     // 7. Ensure fallback image if still none
@@ -1089,7 +1167,8 @@ app.get('/api/artist/:id', async (req, res) => {
       headerImage,
       avatarImage,
       topSongs,
-      albums
+      albums,
+      singles
     };
 
     setCache(cacheKey, result, 30 * 60 * 1000); // 30 min cache
@@ -1408,17 +1487,44 @@ function isEasyPassword(password) {
   return false;
 }
 
-// Check if user has set a password
+// Check if user has set a password and get reset request rate limit status
 app.get('/api/user/has-password', async (req, res) => {
   const { userId, email } = req.query;
   try {
     const resolvedUserId = await resolveUserId(userId, email);
-    if (!resolvedUserId) return res.json({ hasPassword: false });
-    const users = await query('SELECT password_hash FROM users WHERE id = ?', [resolvedUserId]);
-    const hasPassword = Boolean(users && users[0] && users[0].password_hash);
-    res.json({ hasPassword });
+    if (!resolvedUserId) return res.json({ hasPassword: false, requestsUsed: 0, requestsRemaining: 2, hoursRemaining: 0 });
+    const users = await query(
+      'SELECT password_hash, last_reset_window_start, last_reset_request_at, reset_request_count FROM users WHERE id = ?',
+      [resolvedUserId]
+    );
+    const u = users && users[0];
+    const hasPassword = Boolean(u && u.password_hash);
+
+    let requestsUsed = 0;
+    let requestsRemaining = 2;
+    let hoursRemaining = 0;
+
+    if (u) {
+      const now = Date.now();
+      const windowStart = u.last_reset_window_start
+        ? new Date(u.last_reset_window_start).getTime()
+        : (u.last_reset_request_at ? new Date(u.last_reset_request_at).getTime() : 0);
+      const diffHours = windowStart > 0 ? (now - windowStart) / (1000 * 60 * 60) : 999;
+      if (diffHours < 24) {
+        requestsUsed = u.reset_request_count || 0;
+        requestsRemaining = Math.max(0, 2 - requestsUsed);
+        hoursRemaining = Math.max(1, Math.ceil(24 - diffHours));
+      }
+    }
+
+    res.json({
+      hasPassword,
+      requestsUsed,
+      requestsRemaining,
+      hoursRemaining
+    });
   } catch {
-    res.json({ hasPassword: false });
+    res.json({ hasPassword: false, requestsUsed: 0, requestsRemaining: 2, hoursRemaining: 0 });
   }
 });
 

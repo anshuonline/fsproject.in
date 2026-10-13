@@ -161,6 +161,9 @@ export const api = {
         duration: String(Math.round(song.duration || 0)),
         bitrate: String(bitrate)
       });
+      if (song.encryptedUrl) {
+        params.set('encryptedUrl', song.encryptedUrl);
+      }
       const res = await fetch(`${API_BASE}/saavn/match?${params.toString()}`, {
         signal: controller.signal,
         cache: 'no-store'
@@ -638,6 +641,17 @@ export const api = {
       return Boolean(data.hasPassword);
     } catch {
       return false;
+    }
+  },
+
+  async getPasswordAuthStatus(userId, email) {
+    try {
+      const res = await fetch(`${API_BASE}/user/has-password?userId=${encodeURIComponent(userId || '')}&email=${encodeURIComponent(email || '')}`);
+      if (!res.ok) return { hasPassword: false, requestsUsed: 0, requestsRemaining: 2, hoursRemaining: 0 };
+      const data = await res.json();
+      return data;
+    } catch {
+      return { hasPassword: false, requestsUsed: 0, requestsRemaining: 2, hoursRemaining: 0 };
     }
   },
 

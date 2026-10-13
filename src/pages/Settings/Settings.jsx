@@ -59,6 +59,9 @@ export function Settings() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [hasPasswordState, setHasPasswordState] = useState(Boolean(user?.hasPassword));
   const [passwordError, setPasswordError] = useState(null);
+  const [sendingResetLink, setSendingResetLink] = useState(false);
+  const [resetRateLimitInfo, setResetRateLimitInfo] = useState(null);
+  const [resetRateLimited, setResetRateLimited] = useState(false);
 
   // Delete Account Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -77,18 +80,67 @@ export function Settings() {
     }
   }, [user]);
 
-  // Check if password exists in cloud for current user
+  // Check if password exists in cloud and check reset link rate limit (max 2 per 24 hours)
   useEffect(() => {
     if (user?.email || user?.dbId) {
-      if (user.hasPassword !== undefined) {
-        setHasPasswordState(Boolean(user.hasPassword));
-      } else {
-        api.checkHasPassword(user.dbId || user.id, user.email).then(has => {
-          setHasPasswordState(has);
-        });
-      }
+      api.getPasswordAuthStatus(user.dbId || user.id, user.email).then(status => {
+        if (status) {
+          if (status.hasPassword !== undefined) {
+            setHasPasswordState(Boolean(status.hasPassword));
+          }
+          if (status.requestsRemaining !== undefined) {
+            if (status.requestsRemaining <= 0) {
+              setResetRateLimited(true);
+              const hrs = status.hoursRemaining || 24;
+              setResetRateLimitInfo(`Limit reached: 2 of 2 used. Try again in ${hrs}h`);
+            } else if (status.requestsUsed > 0) {
+              setResetRateLimitInfo(`${status.requestsRemaining} of 2 requests remaining in 24h`);
+            } else {
+              setResetRateLimited(false);
+              setResetRateLimitInfo(null);
+            }
+          }
+        }
+      }).catch(() => {});
     }
-  }, [user?.email, user?.dbId, user?.hasPassword]);
+  }, [user?.email, user?.dbId]);
+
+  // Send Password Reset Link to User's Email (Max 2 requests per 24 hours)
+  const handleSendResetLink = async () => {
+    if (!user?.email) {
+      showToast('User email not found', 'error');
+      return;
+    }
+    if (resetRateLimited) {
+      showToast('Limit reached: You can only send 2 reset links per 24 hours.', 'error');
+      return;
+    }
+
+    setSendingResetLink(true);
+    try {
+      const res = await api.requestPasswordReset(user.email);
+      if (res.requestsRemaining !== undefined) {
+        if (res.requestsRemaining <= 0) {
+          setResetRateLimited(true);
+          setResetRateLimitInfo('2 of 2 used (24h limit reached)');
+        } else {
+          setResetRateLimitInfo(`${res.requestsRemaining} of 2 requests remaining in 24h`);
+        }
+      }
+      showToast(res.message || 'Password reset link sent to your email! (Valid for 24 hours)', 'success');
+    } catch (err) {
+      if (err.code === 'RATE_LIMIT_EXCEEDED' || err.status === 429) {
+        setResetRateLimited(true);
+        const hrs = err.hoursRemaining || 24;
+        setResetRateLimitInfo(`Limit reached: 2 of 2 used. Try again in ${hrs}h`);
+        showToast(`Limit reached: You can only send 2 reset links per 24 hours. Try again in ${hrs} hour${hrs > 1 ? 's' : ''}.`, 'error');
+      } else {
+        showToast(err.message || 'Failed to send password reset link', 'error');
+      }
+    } finally {
+      setSendingResetLink(false);
+    }
+  };
 
   const notifySaved = () => {
     setSavedNotice(true);
@@ -586,7 +638,36 @@ export function Settings() {
                   </div>
                 </div>
 
-                <div className="fs-form-submit-row">
+                <div className="fs-form-submit-row fs-password-submit-row">
+                  {hasPasswordState ? (
+                    <div className="fs-forgot-pw-action-col">
+                      <button
+                        type="button"
+                        className="fs-btn-forgot-pw"
+                        onClick={handleSendResetLink}
+                        disabled={sendingResetLink || resetRateLimited}
+                        title={resetRateLimited ? 'Limit reached (max 2 requests per 24 hours)' : 'Send password reset link to your email (max 2 requests per 24 hours)'}
+                      >
+                        {sendingResetLink ? (
+                          <>
+                            <Loader2 size={15} className="spin" />
+                            <span>Sending Reset Link...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mail size={15} />
+                            <span>Forgot Password? Send Reset Link</span>
+                          </>
+                        )}
+                      </button>
+                      <span className={`fs-forgot-pw-limit-hint ${resetRateLimited ? 'limit-reached' : ''}`}>
+                        {resetRateLimitInfo || 'Max 2 reset links per 24 hours'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
+
                   <button
                     type="submit"
                     className="btn btn-primary fs-btn-save-profile"
