@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles, ArrowRight } from 'lucide-react';
 import { injectAdHtml } from '../services/adsService';
 import {
   ENTRY_SPLASH_UNIT,
@@ -151,6 +151,9 @@ export function EntrySplashAd() {
   return (
     <div className="fs-entry-splash-backdrop" role="dialog" aria-modal="true" aria-label="Advertisement">
       <div className="fs-entry-splash" onClick={(e) => e.stopPropagation()}>
+        {/* Subtle ambient glow behind modal */}
+        <div className="fs-entry-splash-ambient" aria-hidden="true" />
+
         <button
           type="button"
           className={`fs-entry-splash-corner ${canClose ? 'closable' : ''}`}
@@ -161,9 +164,24 @@ export function EntrySplashAd() {
           {canClose ? <X size={16} /> : countdown}
         </button>
 
-        <span className="fs-entry-splash-label">Advertisement</span>
+        {/* Top header with 24-Hour Pass badge and micro label */}
+        <div className="fs-entry-splash-header">
+          <div className="fs-entry-splash-pass-badge">
+            <Sparkles size={12} className="pass-sparkle" />
+            <span>24-Hour Music Pass</span>
+          </div>
+          <span className="fs-entry-splash-label">Advertisement</span>
+        </div>
 
         <div className="fs-entry-splash-ad-host" ref={hostRef} aria-hidden="true" />
+
+        {/* Professional 24-Hour Explanatory Notice */}
+        <div className="fs-entry-splash-notice">
+          <p className="notice-headline">Unlock 24 Hours of Pure Music</p>
+          <p className="notice-subtext">
+            Watch this quick ad once every 24 hours to access FreeSong with <strong>zero audio ads</strong> all day.
+          </p>
+        </div>
 
         <button
           type="button"
@@ -171,8 +189,20 @@ export function EntrySplashAd() {
           onClick={canClose ? handleClose : undefined}
           disabled={!canClose}
         >
-          {canClose ? 'Skip Ad' : countdown > 0 ? `Please wait ${countdown}s` : 'Loading ad…'}
+          {canClose ? (
+            <>
+              <span>Continue to FreeSong</span>
+              <ArrowRight size={15} className="btn-arrow" />
+            </>
+          ) : countdown > 0 ? (
+            `Please wait ${countdown}s`
+          ) : (
+            'Loading ad…'
+          )}
         </button>
+
+        {/* Micro trust footnote */}
+        <span className="fs-entry-splash-footnote">One short ad • 24 hours uninterrupted listening</span>
       </div>
     </div>
   );
