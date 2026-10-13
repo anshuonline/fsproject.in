@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Heart, Play, Shuffle, Search, Music } from 'lucide-react';
+import { Heart, Play, Shuffle, Search, Music, Clock, Loader2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import './Favorites.css';
 
 export function Favorites() {
@@ -14,6 +15,16 @@ export function Favorites() {
     s.title?.toLowerCase().includes(filterText.toLowerCase()) ||
     s.artist?.toLowerCase().includes(filterText.toLowerCase())
   );
+
+  // High-performance progressive list: renders initial batch of 40 songs and
+  // lazily appends more on scroll. Keeps DOM small & fast even with 1,500+ songs.
+  const {
+    visibleItems,
+    visibleCount,
+    totalCount,
+    hasMore,
+    sentinelRef
+  } = useProgressiveList(filteredSongs, { initialBatch: 40, batchSize: 40 });
 
   const handlePlayAll = () => {
     if (likedSongs.length > 0) {
@@ -81,6 +92,18 @@ export function Favorites() {
         </div>
       )}
 
+      {/* Spotify-Style Table Header */}
+      {filteredSongs.length > 0 && (
+        <div className="fs-fav-table-header">
+          <span className="fs-fav-th fs-fav-th-num">#</span>
+          <span className="fs-fav-th fs-fav-th-title">TITLE</span>
+          <span className="fs-fav-th fs-fav-th-time">
+            <Clock size={16} />
+          </span>
+          <span className="fs-fav-th-spacer" />
+        </div>
+      )}
+
       {/* Track list */}
       <div className="fs-fav-list">
         {likedSongs.length === 0 ? (
@@ -94,9 +117,30 @@ export function Favorites() {
             <p>No songs match "{filterText}"</p>
           </div>
         ) : (
-          filteredSongs.map((song) => (
-            <SongCard key={song.videoId} song={song} queueContext={filteredSongs} />
-          ))
+          <>
+            {visibleItems.map((song, idx) => (
+              <SongCard
+                key={song.videoId || idx}
+                song={song}
+                index={idx}
+                queueContext={filteredSongs}
+              />
+            ))}
+
+            {/* Scroll Sentinel for progressive chunk loading */}
+            {hasMore && (
+              <div ref={sentinelRef} className="fs-progressive-status">
+                <Loader2 size={16} className="spin text-brand" />
+                <span>Loading more songs ({visibleCount} of {totalCount})...</span>
+              </div>
+            )}
+
+            {totalCount > 40 && !hasMore && (
+              <div className="fs-progressive-status finished">
+                <span>All {totalCount} liked songs loaded</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

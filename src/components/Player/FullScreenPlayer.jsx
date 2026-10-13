@@ -18,6 +18,7 @@ import {
   Moon,
   Sparkles,
   ListPlus,
+  History as HistoryIcon,
   Search as SearchIcon
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -25,6 +26,7 @@ import { usePlayer, usePlayerProgress } from '../../context/PlayerContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { api } from '../../services/api';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
 import { AdSlot, AffiliateSticker, PLAYER_ROTATION_SECONDS } from '../../ads';
@@ -131,6 +133,30 @@ export function FullScreenPlayer() {
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 850 : false
   );
+
+  // Up Next Queue Progressive & Partitioning State (Spotify-style for 1,500+ track queues)
+  const [showPrevQueue, setShowPrevQueue] = useState(false);
+  const queueListRef = useRef(null);
+
+  const safeQueueIndex = (typeof queueIndex === 'number' && queueIndex >= 0 && queueIndex < queue.length)
+    ? queueIndex
+    : 0;
+  const isLargeQueue = queue.length > 40;
+
+  const prevQueueTracks = isLargeQueue && safeQueueIndex > 0 ? queue.slice(0, safeQueueIndex) : [];
+  const currentQueueTrack = isLargeQueue ? queue[safeQueueIndex] : null;
+  const upcomingQueueTracks = isLargeQueue ? queue.slice(safeQueueIndex + 1) : [];
+
+  const {
+    visibleItems: visibleUpcomingQueue,
+    visibleCount: visibleUpcomingQueueCount,
+    hasMore: hasMoreUpcomingQueue,
+    sentinelRef: queueSentinelRef
+  } = useProgressiveList(upcomingQueueTracks, {
+    initialBatch: 30,
+    batchSize: 30,
+    rootRef: queueListRef
+  });
 
   // ── Ultra-Optimized Swipe Animation & Gestures (Zero-Lag) ──
   const [slideAnimClass, setSlideAnimClass] = useState('');
@@ -483,6 +509,72 @@ export function FullScreenPlayer() {
     setContextView('playlist');
   };
 
+  const renderQueueItem = (track, actualIdx, isCurrent = false) => {
+    if (!track) return null;
+    return (
+      <div
+        key={`${track.videoId}-${actualIdx}`}
+        className={`fs-fs-queue-item ${isCurrent ? 'playing' : ''}`}
+        onClick={() => playSong(track, queue)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openMenu(track, e);
+        }}
+      >
+        <div className="fs-fs-queue-thumb-wrap">
+          <img
+            src={
+              track.thumbnail ||
+              (track.videoId
+                ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
+                : '/images/freesonglogowebp.webp')
+            }
+            alt={track.title}
+            className="fs-fs-queue-thumb"
+            referrerPolicy="no-referrer"
+            onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title))}
+            onLoad={(e) => {
+              if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title));
+            }}
+          />
+          {isCurrent && (
+            <div className="fs-fs-playing-speaker">
+              <Volume2 size={15} />
+            </div>
+          )}
+        </div>
+
+        <div className="fs-fs-queue-meta">
+          <span className={`fs-fs-queue-title truncate ${isCurrent ? 'text-green' : ''}`}>
+            {track.title}
+          </span>
+          <ArtistLinks
+            artist={track.artist}
+            className="fs-fs-queue-artist truncate fs-clickable-artist"
+            onArtistClick={(name, e) => handleNavigateArtist(name, track.artistId, e)}
+          />
+        </div>
+
+        <span className="fs-fs-queue-duration">
+          {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
+        </span>
+
+        <button
+          className="btn-icon fs-fs-queue-more"
+          onClick={(e) => {
+            e.stopPropagation();
+            openMenu(track, e);
+          }}
+          title="Track options"
+          aria-label="Track options"
+        >
+          <MoreVertical size={16} />
+        </button>
+      </div>
+    );
+  };
+
   const handleOpenSleepTimerMenu = (e) => {
     e.stopPropagation();
     openMenu(currentSong, e);
@@ -716,75 +808,61 @@ export function FullScreenPlayer() {
                   </div>
 
                   {/* Queue List with thumbnails, titles, artists and right-aligned durations */}
-                  <div className="fs-fs-queue-list">
+                  <div className="fs-fs-queue-list" ref={queueListRef}>
                     {queue.length === 0 ? (
                       <div className="fs-empty-queue">Queue is empty</div>
+                    ) : !isLargeQueue ? (
+                      queue.map((track, idx) => renderQueueItem(track, idx, idx === safeQueueIndex))
                     ) : (
-                      queue.map((track, idx) => {
-                        const isCurrent = idx === queueIndex;
-                        return (
-                          <div
-                            key={`${track.videoId}-${idx}`}
-                            className={`fs-fs-queue-item ${isCurrent ? 'playing' : ''}`}
-                            onClick={() => playSong(track, queue)}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              openMenu(track, e);
-                            }}
-                          >
-                            <div className="fs-fs-queue-thumb-wrap">
-                              <img
-                                src={
-                                  track.thumbnail ||
-                                  (track.videoId
-                                    ? `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`
-                                    : '/images/freesonglogowebp.webp')
-                                }
-                                alt={track.title}
-                                className="fs-fs-queue-thumb"
-                                referrerPolicy="no-referrer"
-                                onError={(e) => advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title))}
-                                onLoad={(e) => {
-                                  if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(track), getArtworkFallback(track.title));
-                                }}
-                              />
-                              {isCurrent && (
-                                <div className="fs-fs-playing-speaker">
-                                  <Volume2 size={15} />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="fs-fs-queue-meta">
-                              <span className={`fs-fs-queue-title truncate ${isCurrent ? 'text-green' : ''}`}>
-                                {track.title}
-                              </span>
-                              <ArtistLinks
-                                artist={track.artist}
-                                className="fs-fs-queue-artist truncate fs-clickable-artist"
-                                onArtistClick={(name, e) => handleNavigateArtist(name, track.artistId, e)}
-                              />
-                            </div>
-
-                            <span className="fs-fs-queue-duration">
-                              {track.durationText || (track.duration ? formatTime(track.duration) : '3:30')}
-                            </span>
-
+                      <>
+                        {/* Previously Played Tracks Toggle */}
+                        {prevQueueTracks.length > 0 && (
+                          <div className="fs-fs-queue-prev-section">
                             <button
-                              className="btn-icon fs-fs-queue-more"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openMenu(track, e);
-                              }}
-                              title="Track options"
-                              aria-label="Track options"
+                              type="button"
+                              className="fs-fs-queue-prev-toggle"
+                              onClick={() => setShowPrevQueue(!showPrevQueue)}
                             >
-                              <MoreVertical size={16} />
+                              <HistoryIcon size={13} />
+                              <span>{showPrevQueue ? 'Hide played tracks' : `Previously played (${prevQueueTracks.length})`}</span>
                             </button>
+
+                            {showPrevQueue && (
+                              <div className="fs-fs-queue-prev-list">
+                                {prevQueueTracks.map((track, idx) => renderQueueItem(track, idx, false))}
+                              </div>
+                            )}
                           </div>
-                        );
-                      })
+                        )}
+
+                        {/* Now Playing Section */}
+                        {currentQueueTrack && (
+                          <div className="fs-fs-queue-section-group">
+                            <div className="fs-fs-queue-section-header">NOW PLAYING</div>
+                            {renderQueueItem(currentQueueTrack, safeQueueIndex, true)}
+                          </div>
+                        )}
+
+                        {/* Next In Queue Section */}
+                        {upcomingQueueTracks.length > 0 && (
+                          <div className="fs-fs-queue-section-group">
+                            <div className="fs-fs-queue-section-header">
+                              NEXT IN QUEUE ({upcomingQueueTracks.length})
+                            </div>
+                            {visibleUpcomingQueue.map((track, i) => {
+                              const actualIdx = safeQueueIndex + 1 + i;
+                              return renderQueueItem(track, actualIdx, false);
+                            })}
+
+                            {hasMoreUpcomingQueue && (
+                              <div ref={queueSentinelRef} className="fs-fs-queue-progressive-loader">
+                                <Loader2 size={15} className="spin text-brand" />
+                                <span>Loading more ({visibleUpcomingQueueCount} of {upcomingQueueTracks.length})...</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -1,13 +1,22 @@
 import React from 'react';
-import { History as HistoryIcon, Trash2, Play, Music } from 'lucide-react';
+import { History as HistoryIcon, Trash2, Play, Music, Loader2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePlayer } from '../../context/PlayerContext';
 import { SongCard } from '../../components/Cards/SongCard';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import './History.css';
 
 export function History() {
   const { history, clearHistory } = useLibrary();
   const { playSong } = usePlayer();
+
+  const {
+    visibleItems,
+    visibleCount,
+    totalCount,
+    hasMore,
+    sentinelRef
+  } = useProgressiveList(history, { initialBatch: 40, batchSize: 40 });
 
   const handlePlayAll = () => {
     if (history.length > 0) {
@@ -45,15 +54,30 @@ export function History() {
             <p>Songs you stream will appear here so you can easily replay them.</p>
           </div>
         ) : (
-          history.map((song, idx) => (
-            <SongCard
-              key={`${song.videoId}-${song.playedAt || idx}`}
-              song={song}
-              index={idx}
-              queueContext={history}
-              isHistory={true}
-            />
-          ))
+          <>
+            {visibleItems.map((song, idx) => (
+              <SongCard
+                key={`${song.videoId}-${song.playedAt || idx}`}
+                song={song}
+                index={idx}
+                queueContext={history}
+                isHistory={true}
+              />
+            ))}
+
+            {hasMore && (
+              <div ref={sentinelRef} className="fs-progressive-status">
+                <Loader2 size={16} className="spin text-brand" />
+                <span>Loading more tracks ({visibleCount} of {totalCount})...</span>
+              </div>
+            )}
+
+            {totalCount > 40 && !hasMore && (
+              <div className="fs-progressive-status finished">
+                <span>All {totalCount} history tracks loaded</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

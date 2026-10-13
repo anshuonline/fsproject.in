@@ -8,6 +8,7 @@ import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
 import { AdSlot, PLAYLIST_INFEED_EVERY } from '../../ads';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
 
@@ -79,6 +80,15 @@ export function PlaylistDetail() {
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
   }, [id, loading]);
+
+  // Progressive track rendering for instant load of large playlists (1,500+ tracks)
+  const {
+    visibleItems,
+    visibleCount,
+    totalCount,
+    hasMore,
+    sentinelRef
+  } = useProgressiveList(playlist?.songs || [], { initialBatch: 40, batchSize: 40 });
 
   if (loading) {
     return (
@@ -238,21 +248,37 @@ export function PlaylistDetail() {
               <p>No songs found in this playlist.</p>
             </div>
           ) : (
-            playlist?.songs?.map((song, idx) => (
-              <React.Fragment key={song.videoId || idx}>
-                <SongCard
-                  song={song}
-                  queueContext={playlist.songs}
-                  index={idx}
-                  playlistId={isCustom ? playlist.id : null}
-                  isUserPlaylist={isCustom}
-                />
-                {/* In-feed ad row after every N tracks (except after the last) */}
-                {(idx + 1) % infeedEvery === 0 && idx + 1 < playlist.songs.length && (
-                  <AdSlot slotId="playlist_infeed" className="fs-ad-slot--playlist-row" />
-                )}
-              </React.Fragment>
-            ))
+            <>
+              {visibleItems.map((song, idx) => (
+                <React.Fragment key={song.videoId || idx}>
+                  <SongCard
+                    song={song}
+                    queueContext={playlist.songs}
+                    index={idx}
+                    playlistId={isCustom ? playlist.id : null}
+                    isUserPlaylist={isCustom}
+                  />
+                  {/* In-feed ad row after every N tracks (except after the last) */}
+                  {(idx + 1) % infeedEvery === 0 && idx + 1 < totalCount && (
+                    <AdSlot slotId="playlist_infeed" className="fs-ad-slot--playlist-row" />
+                  )}
+                </React.Fragment>
+              ))}
+
+              {/* Scroll Sentinel for progressive chunk loading */}
+              {hasMore && (
+                <div ref={sentinelRef} className="fs-progressive-status">
+                  <Loader2 size={16} className="spin text-brand" />
+                  <span>Loading more tracks ({visibleCount} of {totalCount})...</span>
+                </div>
+              )}
+
+              {totalCount > 40 && !hasMore && (
+                <div className="fs-progressive-status finished">
+                  <span>All {totalCount} tracks loaded</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

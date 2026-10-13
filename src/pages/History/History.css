@@ -50,3 +50,19 @@
   gap: 12px;
   color: var(--color-text-secondary);
 }
+
+.fs-progressive-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.fs-progressive-status.finished {
+  color: var(--color-text-secondary);
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  margin-top: 12px;
+}

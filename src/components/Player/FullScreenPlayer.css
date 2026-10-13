@@ -579,6 +579,69 @@
   color: #FFFFFF;
 }
 
+/* ─── Spotify-Style Up Next Queue Sections & Partitions ─── */
+.fs-fs-queue-section-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.fs-fs-queue-section-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted, #707070);
+  text-transform: uppercase;
+  padding: 8px 18px 4px 18px;
+}
+
+.fs-fs-queue-prev-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+
+.fs-fs-queue-prev-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full, 999px);
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #afafaf);
+  cursor: pointer;
+  width: fit-content;
+  margin: 6px auto 10px auto;
+  transition: all 0.15s ease;
+}
+
+.fs-fs-queue-prev-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+.fs-fs-queue-prev-list {
+  display: flex;
+  flex-direction: column;
+  opacity: 0.75;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.fs-fs-queue-progressive-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 18px;
+  color: var(--color-text-muted, #707070);
+  font-size: 0.75rem;
+}
+
 /* ─── Lyrics Panel ─── */
 .fs-fs-lyrics-panel {
   flex: 1;
