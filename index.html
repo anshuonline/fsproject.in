@@ -7,21 +7,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#000000" />
     <meta name="referrer" content="no-referrer-when-downgrade" />
-    <meta name="description" content="FreeSong.in — 100% ads free music streaming platform. Stream unlimited free songs - Bollywood, Hindi, Punjabi, Lo-Fi & global hits in high quality audio with real-time synced lyrics, true AMOLED dark mode and zero subscriptions. No ads, no fees - just free streaming." />
-    <meta name="keywords" content="ads free songs, ads free music, ads free streaming, free streaming, free song, free songs, free songs online, free music streaming, free music online, free streaming music, ads free music player, free music player, music streaming app, listen music online, hindi songs, bollywood songs, punjabi songs, lofi songs, synced lyrics, online music player, web music player, freesong.in" />
+    <meta name="description" content="FreeSong.in — #1 Free Music Streaming Platform. Listen to online songs free with zero ads, real-time synced lyrics and studio HD audio. Stream millions of Hindi, Bollywood, Punjabi & global songs by top artists like Arijit Singh, Diljit Dosanjh, Shreya Ghoshal, Sidhu Moose Wala, Atif Aslam and hit tracks like Apna Bana Le, Kesariya, Chaleya, Heeriye. 100% free streaming with true AMOLED dark mode." />
+    <meta name="keywords" content="online songs, free song, free songs, ads free song, ads free songs, listen songs, listen free songs, listen songs online, listen free songs online, free songs online, play songs online, stream songs free, free music streaming, ads free music streaming, free music online, free streaming music, ads free music player, free music player, music streaming app, listen music online, arijit singh songs, shreya ghoshal songs, diljit dosanjh songs, sidhu moose wala songs, atif aslam songs, anirudh ravichander songs, badshah songs, neha kakkar songs, karan aujla songs, kk songs, kishore kumar songs, lata mangeshkar songs, apna bana le, kesariya, chaleya, heeriye, o maahi, hindi songs, bollywood songs, punjabi songs, lofi songs, synced lyrics, freesong.in" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="221c553fe6cc4fa4f80ab70448c3852db2ed3920" content="221c553fe6cc4fa4f80ab70448c3852db2ed3920" />
     <link rel="canonical" href="https://freesong.in/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="FreeSong.in" />
     <meta property="og:url" content="https://freesong.in/" />
-    <meta property="og:title" content="Ads Free Music Streaming - Free Songs Online | freesong.in" />
-    <meta property="og:description" content="Stream unlimited free songs ads free - Bollywood, Hindi, Punjabi & global hits in high fidelity. Real-time synced lyrics, true AMOLED dark mode, zero subscriptions." />
+    <meta property="og:title" content="Online Songs - Listen Free Songs & Ads Free Music | FreeSong.in" />
+    <meta property="og:description" content="Listen to online songs free on FreeSong.in. Stream millions of Bollywood, Hindi, Punjabi & international songs ads free with live synced lyrics. Top artists Arijit Singh, Diljit Dosanjh, Shreya Ghoshal and trending hits with zero subscription fees." />
     <meta property="og:image" content="/images/freesonglogowebp.webp" />
     <meta property="og:locale" content="en_IN" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Ads Free Music Streaming - Free Songs Online | freesong.in" />
-    <meta name="twitter:description" content="Stream millions of free songs ads free with real-time synced lyrics, zero subscriptions, and AMOLED true black design." />
+    <meta name="twitter:title" content="Online Songs - Listen Free Songs & Ads Free Music | FreeSong.in" />
+    <meta name="twitter:description" content="Stream millions of free songs online with zero ads, real-time synced lyrics, and true AMOLED dark mode. Top hits by Arijit Singh, Diljit Dosanjh, Shreya Ghoshal & more." />
     <meta name="twitter:image" content="/images/freesonglogowebp.webp" />
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="/manifest.json" />
@@ -31,8 +31,8 @@
     <meta name="apple-mobile-web-app-title" content="FreeSong" />
     <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
-    <title>Ads Free Music Streaming - Free Songs & Synced Lyrics | freesong.in</title>
-    <!-- Structured Data: WebSite + Organization + WebApplication -->
+    <title>Online Songs - Listen Free Songs & Ads Free Music | FreeSong.in</title>
+    <!-- Structured Data: WebSite (with Sitelinks Searchbox) + Organization + WebApplication + Top Music Items -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -42,17 +42,28 @@
           "@id": "https://freesong.in/#website",
           "url": "https://freesong.in/",
           "name": "FreeSong.in",
-          "alternateName": "FreeSong",
-          "description": "Ads free music streaming - free songs online with synced lyrics",
+          "alternateName": ["FreeSong", "Free Song", "FreeSong Music"],
+          "description": "Listen to online songs free on FreeSong.in - 100% ads free music streaming with live synced lyrics and AMOLED player.",
           "publisher": { "@id": "https://freesong.in/#organization" },
-          "inLanguage": "en"
+          "inLanguage": "en",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://freesong.in/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
         },
         {
           "@type": "Organization",
           "@id": "https://freesong.in/#organization",
           "name": "FreeSong.in",
           "url": "https://freesong.in/",
-          "logo": { "@type": "ImageObject", "url": "https://freesong.in/images/freesonglogowebp.webp" }
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://freesong.in/images/freesonglogowebp.webp"
+          }
         },
         {
           "@type": "WebApplication",
@@ -60,11 +71,40 @@
           "name": "FreeSong.in",
           "url": "https://freesong.in/",
           "applicationCategory": "EntertainmentApplication",
-          "operatingSystem": "Web",
+          "operatingSystem": "Web, Android, iOS, Windows, macOS",
           "browserRequirements": "Requires JavaScript",
-          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
-          "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "82454", "bestRating": "5", "worstRating": "1" },
-          "featureList": "Ads free music streaming, Free songs, Real-time synced lyrics, AMOLED dark mode, Playlists, High quality audio"
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "98420",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "featureList": "Online songs streaming, Ads free song player, Free music streaming, Real-time karaoke synced lyrics, AMOLED dark mode, 320kbps HD audio, Playlist cloner, Background playback"
+        },
+        {
+          "@type": "ItemList",
+          "@id": "https://freesong.in/#top-music",
+          "name": "Top Online Songs & Trending Hits on FreeSong.in",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Apna Bana Le - Arijit Singh" },
+            { "@type": "ListItem", "position": 2, "name": "Kesariya - Arijit Singh" },
+            { "@type": "ListItem", "position": 3, "name": "Chaleya - Arijit Singh & Shilpa Rao" },
+            { "@type": "ListItem", "position": 4, "name": "Heeriye - Arijit Singh & Jasleen Royal" },
+            { "@type": "ListItem", "position": 5, "name": "O Maahi - Arijit Singh" },
+            { "@type": "ListItem", "position": 6, "name": "Lover - Diljit Dosanjh" },
+            { "@type": "ListItem", "position": 7, "name": "Born to Shine - Diljit Dosanjh" },
+            { "@type": "ListItem", "position": 8, "name": "295 - Sidhu Moose Wala" },
+            { "@type": "ListItem", "position": 9, "name": "Tauba Tauba - Karan Aujla" },
+            { "@type": "ListItem", "position": 10, "name": "Deewani Mastani - Shreya Ghoshal" },
+            { "@type": "ListItem", "position": 11, "name": "Pehli Dafa - Atif Aslam" },
+            { "@type": "ListItem", "position": 12, "name": "Illuminati - Sushin Shyam" }
+          ]
         }
       ]
     }

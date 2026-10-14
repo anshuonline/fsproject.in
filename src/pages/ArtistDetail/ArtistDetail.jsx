@@ -27,12 +27,37 @@ export function ArtistDetail() {
     return [...albList, ...sglList];
   }, [artist?.albums, artist?.singles, discoFilter]);
 
-  // Real artist name once metadata loads (long-tail SEO)
+  // Real artist name once metadata loads (long-tail SEO & structured data)
+  const artistJsonLd = useMemo(() => {
+    if (!artist?.name) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'MusicGroup',
+      'name': artist.name,
+      'url': `https://freesong.in/artist/${id}`,
+      'image': artist.thumbnail || '/images/freesonglogowebp.webp',
+      'description': `Listen to ${artist.name} songs online free with synced lyrics on FreeSong.in. Stream top tracks, albums, singles and discography ads free in HD audio.`,
+      'genre': ['Bollywood', 'Hindi', 'Indian Pop', 'Punjabi'],
+      'track': (artist.songs || []).slice(0, 10).map((s, idx) => ({
+        '@type': 'MusicRecording',
+        'position': idx + 1,
+        'name': s.title || s.name,
+        'url': `https://freesong.in/song/${s.videoId || s.id}`
+      }))
+    };
+  }, [artist, id]);
+
   useSeo({
-    title: artist?.name ? `${artist.name} Songs - Free Music Streaming | freesong.in` : undefined,
+    title: artist?.name ? `${artist.name} Songs - Listen Free Songs Online | FreeSong.in` : undefined,
     description: artist?.name
-      ? `Listen to ${artist.name} songs ads free with real-time synced lyrics on FreeSong.in. Stream top tracks, albums & playlists free in high quality audio.`
-      : undefined
+      ? `Listen to ${artist.name} songs online free on FreeSong.in. Stream ${artist.name}'s top hits, albums, singles and full discography with live synced lyrics and zero ads in studio HD audio.`
+      : undefined,
+    keywords: artist?.name
+      ? `${artist.name} songs, listen ${artist.name} songs, ${artist.name} online songs, ${artist.name} free song, ${artist.name} hit songs, ${artist.name} albums, ${artist.name} discography, free songs online, freesong.in`
+      : undefined,
+    image: artist?.thumbnail || undefined,
+    jsonLd: artistJsonLd,
+    jsonLdId: 'artist-seo-jsonld'
   });
 
   useEffect(() => {

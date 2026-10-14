@@ -4,26 +4,51 @@ export const SITE_URL = 'https://freesong.in';
 export const BRAND = 'freesong.in';
 export const DEFAULT_IMAGE = '/images/freesonglogowebp.webp';
 
-// Site-wide keyword pool: ads-free & free-streaming variants first, brand last
+// Site-wide keyword pool: high-volume target queries first, top artists & trending songs, brand last
 export const SITE_KEYWORDS = [
-  'ads free songs',
-  'ads free music',
-  'ads free streaming',
-  'free streaming',
+  'online songs',
   'free song',
   'free songs',
+  'ads free song',
+  'ads free songs',
+  'listen songs',
+  'listen free songs',
+  'listen songs online',
+  'listen free songs online',
   'free songs online',
+  'play songs online',
+  'stream songs free',
   'free music streaming',
+  'ads free music streaming',
   'free music online',
   'free streaming music',
   'ads free music player',
   'free music player',
   'music streaming app',
   'listen music online',
+  'arijit singh songs',
+  'shreya ghoshal songs',
+  'diljit dosanjh songs',
+  'sidhu moose wala songs',
+  'atif aslam songs',
+  'anirudh ravichander songs',
+  'badshah songs',
+  'neha kakkar songs',
+  'karan aujla songs',
+  'kk songs',
+  'kishore kumar songs',
+  'lata mangeshkar songs',
+  'apna bana le',
+  'kesariya',
+  'chaleya',
+  'heeriye',
+  'o maahi',
   'hindi songs',
   'bollywood songs',
   'punjabi songs',
   'lofi songs',
+  'bhojpuri songs',
+  'haryanvi songs',
   'synced lyrics',
   'online music player',
   'web music player',
@@ -51,6 +76,25 @@ function upsertCanonical(href) {
   el.setAttribute('href', href);
 }
 
+export function upsertJsonLd(id, data) {
+  if (!data) return;
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('script');
+    el.id = id;
+    el.type = 'application/ld+json';
+    document.head.appendChild(el);
+  }
+  try {
+    el.textContent = typeof data === 'string' ? data : JSON.stringify(data);
+  } catch (e) {}
+}
+
+export function removeJsonLd(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
 // Apply full on-page SEO: title (brand always trails), description, keywords,
 // robots, canonical, Open Graph & Twitter cards
 export function applySeo({ title, description, keywords, path = '', image = DEFAULT_IMAGE, noindex = false }) {
@@ -75,10 +119,20 @@ export function applySeo({ title, description, keywords, path = '', image = DEFA
   upsertMeta('name', 'twitter:image', image);
 }
 
-// React hook for per-page & dynamic SEO (album/artist/playlist titles)
+// React hook for per-page & dynamic SEO (album/artist/playlist titles + dynamic schema)
 export function useSeo(config) {
-  const { title, description, keywords, path, image, noindex } = config || {};
+  const { title, description, keywords, path, image, noindex, jsonLd, jsonLdId = 'dynamic-seo-jsonld' } = config || {};
+  const jsonLdStr = jsonLd ? JSON.stringify(jsonLd) : null;
+
   useEffect(() => {
     applySeo({ title, description, keywords, path, image, noindex });
-  }, [title, description, keywords, path, image, noindex]);
+    if (jsonLd) {
+      upsertJsonLd(jsonLdId, jsonLd);
+    }
+    return () => {
+      if (jsonLd) {
+        removeJsonLd(jsonLdId);
+      }
+    };
+  }, [title, description, keywords, path, image, noindex, jsonLdStr, jsonLdId]);
 }

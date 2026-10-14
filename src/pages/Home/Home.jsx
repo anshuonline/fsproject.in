@@ -218,6 +218,17 @@ export function Home() {
 
   return (
     <div className="fs-home-page">
+      {/* ─── Semantic Top SEO H1 ───────────────────────────────────────── */}
+      <div className="fs-home-seo-hero">
+        <h1 className="fs-home-seo-h1">
+          <span className="fs-home-seo-h1-main">Online Songs</span>
+          <span className="fs-home-seo-h1-sub">— Listen Free Songs & Ads-Free Music</span>
+        </h1>
+        <p className="fs-home-seo-subtitle">
+          Stream unlimited free songs online in studio HD audio with live synced lyrics. Featuring top artists Arijit Singh, Diljit Dosanjh, Shreya Ghoshal, Sidhu Moose Wala, Atif Aslam and trending hits like Apna Bana Le, Kesariya with zero ads.
+        </p>
+      </div>
+
       {/* ─── Taste Profile Banner ───────────────────────────────────────── */}
       <div className="fs-home-taste-banner">
         <div className="fs-taste-info">

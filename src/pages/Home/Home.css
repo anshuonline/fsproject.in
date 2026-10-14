@@ -16,6 +16,56 @@
   color: var(--color-text-secondary);
 }
 
+/* ─── Semantic Top SEO Hero ──────────────────────────────────────────────── */
+.fs-home-seo-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 2px 0;
+}
+
+.fs-home-seo-h1 {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-home-seo-h1-main {
+  color: var(--color-primary);
+  background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.fs-home-seo-h1-sub {
+  color: var(--color-white);
+  font-weight: 700;
+}
+
+.fs-home-seo-subtitle {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 980px;
+}
+
+@media (max-width: 768px) {
+  .fs-home-seo-h1 {
+    font-size: 1.2rem;
+    gap: 4px;
+  }
+  .fs-home-seo-subtitle {
+    font-size: 0.8rem;
+  }
+}
+
 /* ─── Taste Profile Banner ───────────────────────────────────────────────── */
 .fs-home-taste-banner {
   display: flex;

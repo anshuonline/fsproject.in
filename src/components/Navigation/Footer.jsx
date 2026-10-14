@@ -87,14 +87,14 @@ export function Footer() {
           <div className="fs-footer-column">
             <span className="fs-footer-col-title">Popular Searches</span>
             <ul className="fs-footer-links-list">
-              <li><Link to="/search?q=free+hindi+songs+online" className="fs-footer-link">Free Hindi Songs</Link></li>
-              <li><Link to="/search?q=romantic+bollywood+songs" className="fs-footer-link">Romantic Love Songs</Link></li>
-              <li><Link to="/search?q=gym+workout+music" className="fs-footer-link">Gym Workout Music</Link></li>
-              <li><Link to="/search?q=party+dance+songs" className="fs-footer-link">Party Dance Songs</Link></li>
-              <li><Link to="/search?q=90s+evergreen+hindi" className="fs-footer-link">90s Evergreen Retro</Link></li>
-              <li><Link to="/search?q=desi+hip+hop" className="fs-footer-link">Desi Hip Hop Anthems</Link></li>
-              <li><Link to="/search?q=late+night+drive+songs" className="fs-footer-link">Late Night Drive</Link></li>
-              <li><Link to="/search?q=sleep+relaxing+music" className="fs-footer-link">Sleep & Relaxing</Link></li>
+              <li><Link to="/search?q=online+songs" className="fs-footer-link">Online Songs Free</Link></li>
+              <li><Link to="/search?q=listen+free+songs" className="fs-footer-link">Listen Free Songs</Link></li>
+              <li><Link to="/search?q=ads+free+songs" className="fs-footer-link">Ads Free Songs</Link></li>
+              <li><Link to="/search?q=Arijit+Singh+songs" className="fs-footer-link">Arijit Singh Hits</Link></li>
+              <li><Link to="/search?q=Diljit+Dosanjh+songs" className="fs-footer-link">Diljit Dosanjh Songs</Link></li>
+              <li><Link to="/search?q=Apna+Bana+Le" className="fs-footer-link">Apna Bana Le Song</Link></li>
+              <li><Link to="/search?q=Kesariya" className="fs-footer-link">Kesariya Song</Link></li>
+              <li><Link to="/search?q=free+hindi+songs" className="fs-footer-link">Free Hindi Songs</Link></li>
             </ul>
           </div>
 
@@ -215,18 +215,24 @@ export function Footer() {
           <div className="fs-footer-seo-tags-wrap">
             <span className="fs-footer-seo-tags-label">POPULAR MUSIC SEARCHES:</span>
             <div className="fs-footer-seo-tags">
+              <Link to="/search?q=online+songs" className="fs-footer-tag-pill">Online Songs</Link>
+              <Link to="/search?q=free+songs" className="fs-footer-tag-pill">Free Songs</Link>
+              <Link to="/search?q=ads+free+songs" className="fs-footer-tag-pill">Ads Free Songs</Link>
+              <Link to="/search?q=listen+songs" className="fs-footer-tag-pill">Listen Songs</Link>
+              <Link to="/search?q=listen+free+songs" className="fs-footer-tag-pill">Listen Free Songs</Link>
               <Link to="/search?q=free+music+streaming" className="fs-footer-tag-pill">Free Music Streaming</Link>
-              <Link to="/search?q=ads+free+music" className="fs-footer-tag-pill">Ads Free Music</Link>
-              <Link to="/search?q=listen+songs+online" className="fs-footer-tag-pill">Listen Songs Online</Link>
+              <Link to="/search?q=Arijit+Singh+songs" className="fs-footer-tag-pill">Arijit Singh Songs</Link>
+              <Link to="/search?q=Diljit+Dosanjh+songs" className="fs-footer-tag-pill">Diljit Dosanjh Songs</Link>
+              <Link to="/search?q=Shreya+Ghoshal+songs" className="fs-footer-tag-pill">Shreya Ghoshal Songs</Link>
+              <Link to="/search?q=Sidhu+Moose+Wala+songs" className="fs-footer-tag-pill">Sidhu Moose Wala</Link>
+              <Link to="/search?q=Apna+Bana+Le" className="fs-footer-tag-pill">Apna Bana Le</Link>
+              <Link to="/search?q=Kesariya" className="fs-footer-tag-pill">Kesariya</Link>
+              <Link to="/search?q=Chaleya" className="fs-footer-tag-pill">Chaleya</Link>
+              <Link to="/search?q=Heeriye" className="fs-footer-tag-pill">Heeriye</Link>
+              <Link to="/search?q=O+Maahi" className="fs-footer-tag-pill">O Maahi</Link>
               <Link to="/search?q=new+bollywood+songs" className="fs-footer-tag-pill">New Bollywood Songs</Link>
               <Link to="/search?q=punjabi+songs+free" className="fs-footer-tag-pill">Punjabi Songs Free</Link>
-              <Link to="/search?q=free+hindi+songs" className="fs-footer-tag-pill">Hindi Songs Stream</Link>
               <Link to="/search?q=free+music+player" className="fs-footer-tag-pill">Free Music Player</Link>
-              <Link to="/search?q=lofi+chill+songs" className="fs-footer-tag-pill">Lo-Fi Chill Music</Link>
-              <Link to="/search?q=bhojpuri+hit+songs" className="fs-footer-tag-pill">Bhojpuri Hit Songs</Link>
-              <Link to="/search?q=90s+evergreen+hindi" className="fs-footer-tag-pill">90s Evergreen Retro</Link>
-              <Link to="/search?q=gym+workout+music" className="fs-footer-tag-pill">Gym Workout Music</Link>
-              <Link to="/search?q=romantic+love+songs" className="fs-footer-tag-pill">Romantic Love Songs</Link>
             </div>
           </div>
         </section>

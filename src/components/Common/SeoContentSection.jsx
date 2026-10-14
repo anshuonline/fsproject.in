@@ -16,6 +16,57 @@ import './SeoContentSection.css';
 
 const SEARCHABLE_CATEGORIES = [
   {
+    category: '🔥 Top Trending Songs (Listen Free Online)',
+    tags: [
+      'Apna Bana Le',
+      'Kesariya',
+      'Chaleya',
+      'Heeriye',
+      'O Maahi',
+      'Kahani Suno 2.0',
+      'Soulmate',
+      'Husn',
+      'Tauba Tauba',
+      'Illuminati',
+      'Softly',
+      'Winning Speech'
+    ]
+  },
+  {
+    category: '🎤 Top Music Artists (Stream Free Songs)',
+    tags: [
+      'Arijit Singh Songs',
+      'Diljit Dosanjh Songs',
+      'Shreya Ghoshal Songs',
+      'Sidhu Moose Wala Songs',
+      'Atif Aslam Songs',
+      'Anirudh Ravichander Songs',
+      'Badshah Songs',
+      'Neha Kakkar Songs',
+      'Karan Aujla Songs',
+      'Kishore Kumar Evergreen',
+      'KK Hit Songs',
+      'Lata Mangeshkar Classics'
+    ]
+  },
+  {
+    category: '🎧 High-Traffic Free Song Searches',
+    tags: [
+      'Online Songs',
+      'Free Songs',
+      'Ads Free Songs',
+      'Listen Songs Online',
+      'Listen Free Songs',
+      'Free Music Streaming',
+      'Play Songs Online',
+      'Free Hindi Songs',
+      'Free Punjabi Songs',
+      'Free Bollywood Music',
+      'Free MP3 Songs Alternative',
+      'No Ads Music Player'
+    ]
+  },
+  {
     category: 'Trending Bollywood & Hindi Hits',
     tags: [
       'New Bollywood Songs',
@@ -68,12 +119,20 @@ const SEARCHABLE_CATEGORIES = [
 
 const FAQS = [
   {
-    q: 'Is FreeSong.in 100% free to stream music?',
-    a: 'Yes, FreeSong.in is completely free. We do not require credit card information, monthly subscription fees, or paid memberships. You can stream full-length songs, movie soundtracks, and customized radio stations indefinitely.'
+    q: 'Where can I listen to online songs free without ads?',
+    a: 'You can listen to unlimited online songs free on FreeSong.in. We offer millions of songs across Bollywood, Punjabi, Hindi, English, and regional languages with zero commercial interruptions and no monthly subscription fees.'
+  },
+  {
+    q: 'Which top artists and songs can I listen to for free on FreeSong.in?',
+    a: 'FreeSong.in features the complete discography of top music artists including Arijit Singh, Diljit Dosanjh, Shreya Ghoshal, Sidhu Moose Wala, Atif Aslam, Karan Aujla, Badshah, KK, and Anirudh Ravichander. You can stream blockbuster hits like Apna Bana Le, Kesariya, Chaleya, Heeriye, O Maahi, 295, and timeless classics anytime.'
+  },
+  {
+    q: 'Is FreeSong.in 100% free with zero subscriptions?',
+    a: 'Yes! FreeSong.in is 100% free forever. We do not require credit card details, monthly memberships, or forced app downloads. Simply open FreeSong.in in your browser or install our AMOLED PWA app to stream unlimited music.'
   },
   {
     q: 'How does FreeSong.in provide high-fidelity audio without paywalls?',
-    a: 'FreeSong.in leverages authorized YouTube IFrame Player APIs to index and deliver official audio streams directly from YouTube Music. This ensures maximum audio quality, seamless playback latency, and fair monetization for original creators and record labels.'
+    a: 'FreeSong.in delivers official high-bitrate audio streams directly from official music pipelines. This ensures maximum audio quality, crystal-clear vocals, punchy bass, and seamless playback latency without subscription paywalls.'
   },
   {
     q: 'Can I sing along with real-time synced lyrics?',
@@ -81,7 +140,7 @@ const FAQS = [
   },
   {
     q: 'How does the algorithmic queue and continuous radio work?',
-    a: 'Whenever you start any track, FreeSong.in queries official YouTube Music radio queues via our backend pipeline. When your current song approaches completion, our Auto-play engine smoothly appends related tracks and artist recommendations so your listening never ends.'
+    a: 'Whenever you start any track, FreeSong.in queries official algorithmic radio queues via our backend pipeline. When your current song approaches completion, our Auto-play engine smoothly appends related tracks and artist recommendations so your listening never ends.'
   },
   {
     q: 'How does FreeSong.in respect copyright and DMCA policies?',
@@ -100,12 +159,12 @@ const SeoContentSectionBase = function SeoContentSection() {
     <section className="fs-seo-section" aria-label="Why FreeSong.in and music directory">
       {/* ─── Header ─── */}
       <div className="fs-seo-header">
-        <span className="fs-seo-eyebrow">THE PREMIER AMOLED MUSIC PORTAL</span>
+        <span className="fs-seo-eyebrow">#1 ONLINE SONGS & ADS-FREE MUSIC STREAMING PORTAL</span>
         <h2 className="fs-seo-title">
-          Why FreeSong.in? Unlimited, High-Fidelity AMOLED Music Streaming
+          Why FreeSong.in? Listen Online Songs Free with Synced Lyrics
         </h2>
         <p className="fs-seo-desc">
-          Experience the internet's cleanest music web player. Designed with AMOLED true black aesthetics, instant search recommendations, real-time synchronized lyrics, and zero subscription walls.
+          Experience the internet's cleanest music web player. Designed with AMOLED true black aesthetics, instant search recommendations, real-time synchronized lyrics, top artists like Arijit Singh & Diljit Dosanjh, and zero audio advertisements.
         </p>
       </div>
 

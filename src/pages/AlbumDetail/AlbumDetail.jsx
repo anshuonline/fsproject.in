@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Play, Shuffle, Disc, Loader2, ArrowLeft, RefreshCw, Clock } from 'lucide-react';
 import { api } from '../../services/api';
@@ -18,10 +18,41 @@ export function AlbumDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Real album title & description once metadata loads (long-tail SEO)
+  // Real album title, description & structured data (long-tail SEO)
+  const albumJsonLd = useMemo(() => {
+    if (!album?.title) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'MusicAlbum',
+      'name': album.title,
+      'url': `https://freesong.in/album/${id}`,
+      'image': album.thumbnail || '/images/freesonglogowebp.webp',
+      'description': album.description || `Listen to ${album.title} album online free on FreeSong.in with synced lyrics and no ads.`,
+      'byArtist': {
+        '@type': 'MusicGroup',
+        'name': album.artist || 'Various Artists'
+      },
+      'numTracks': album.tracks?.length || 0,
+      'track': (album.tracks || []).slice(0, 15).map((t, idx) => ({
+        '@type': 'MusicRecording',
+        'position': idx + 1,
+        'name': t.title || t.name,
+        'url': `https://freesong.in/song/${t.videoId || t.id}`
+      }))
+    };
+  }, [album, id]);
+
   useSeo({
-    title: album?.title ? `${album.title} - Ads Free Album Streaming | freesong.in` : undefined,
-    description: album?.description || undefined
+    title: album?.title ? `${album.title} Songs - Listen Album Free Online | FreeSong.in` : undefined,
+    description: album?.title
+      ? `Listen to ${album.title} full album free online on FreeSong.in. Stream all songs with real-time synced lyrics, high definition audio, and zero advertisements.`
+      : undefined,
+    keywords: album?.title
+      ? `${album.title} songs, ${album.title} album, listen ${album.title} free, ${album.title} online songs, ${album.artist || ''} songs, free album streaming, freesong.in`
+      : undefined,
+    image: album?.thumbnail || undefined,
+    jsonLd: albumJsonLd,
+    jsonLdId: 'album-seo-jsonld'
   });
 
   const loadAlbum = () => {

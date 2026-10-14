@@ -8,6 +8,7 @@ import { LibraryCard } from '../../components/Cards/LibraryCard';
 import { AlbumCard } from '../../components/Cards/AlbumCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
 import { AdSlot } from '../../ads';
+import { useSeo } from '../../services/seo';
 import './Search.css';
 
 const FILTERS = [
@@ -21,6 +22,16 @@ const FILTERS = [
 export function Search() {
   const navigate = useNavigate();
   const { query, filterType, setFilterType, results, loading, error } = useSearchData();
+
+  useSeo({
+    title: query ? `${query} Songs - Listen Free Online | FreeSong.in` : 'Search Online Songs - Listen Free Songs & Music Finder | FreeSong.in',
+    description: query
+      ? `Listen to ${query} songs online free on FreeSong.in. Stream high quality audio with real-time synced lyrics, continuous playback, and zero ads.`
+      : 'Search and listen to online songs free. Discover millions of Hindi, Bollywood & Punjabi tracks by Arijit Singh, Diljit Dosanjh, and stream ads free on FreeSong.in.',
+    keywords: query
+      ? `${query} songs, listen ${query} online, ${query} free songs, ${query} mp3 alternative, free songs online, online songs, freesong.in`
+      : undefined
+  });
 
   useEffect(() => {
     if (!loading) {

@@ -40,50 +40,50 @@ const SEO_ROUTES = [
     match: /^\/$/,
     path: '/',
     editable: true,
-    title: 'Ads Free Music Streaming - Free Songs Online | freesong.in',
-    description: 'Stream unlimited free songs on FreeSong.in - a 100% ads free music streaming platform. Enjoy Bollywood, Hindi, Punjabi, Lo-Fi & global hits in high quality audio with real-time synced lyrics, true AMOLED dark mode and zero subscriptions. No ads, no fees - just free streaming.'
+    title: 'Online Songs - Listen Free Songs & Ads Free Music | FreeSong.in',
+    description: 'Listen to online songs free on FreeSong.in — #1 ads free song streaming platform. Stream millions of Hindi, Bollywood, Punjabi & global songs in HD audio with live synced lyrics. Top artists Arijit Singh, Diljit Dosanjh, Shreya Ghoshal & hit tracks like Kesariya, Apna Bana Le with zero ads.'
   },
   {
     match: /^\/(watch|song|track)\//,
     path: '/watch • /song/:id • /track/:id',
     editable: false,
-    title: 'Play Free Songs - Ads Free Music Player | freesong.in',
-    description: 'Play any song ads free in high quality audio with real-time synced lyrics. Free unlimited music streaming on FreeSong.in - no ads, no subscription, pure AMOLED experience.'
+    title: 'Play Free Songs Online - Ads Free Music Player | FreeSong.in',
+    description: 'Play online songs free in studio HD audio with live synced lyrics. 100% ads free song streaming on FreeSong.in — no subscription, zero fees, pure AMOLED experience.'
   },
   {
     match: /^\/explore/,
     path: '/explore',
     editable: true,
-    title: 'Explore Free Music - Trending Songs & New Releases | freesong.in',
-    description: 'Explore trending chartbusters, latest releases, top artists, moods & genres - all ads free. Stream free songs across Bollywood, Punjabi, Tamil, Telugu, Lo-Fi & more with synced lyrics.'
+    title: 'Explore Online Songs - Free Music & Trending Hits | FreeSong.in',
+    description: 'Explore online songs and trending chartbusters free. Stream latest Bollywood, Punjabi, Tamil, Telugu, Lo-Fi hits and new releases with zero ads on FreeSong.in.'
   },
   {
     match: /^\/search/,
     path: '/search',
     editable: true,
-    title: 'Search Free Songs - Ads Free Music Finder | freesong.in',
-    description: 'Search millions of free songs, albums, artists & playlists instantly. Ads free streaming in high quality audio with synced lyrics on FreeSong.in.'
+    title: 'Search Online Songs - Listen Free Songs & Music Finder | FreeSong.in',
+    description: 'Search and listen to online songs free. Discover millions of Hindi, Bollywood & Punjabi tracks by Arijit Singh, Diljit Dosanjh, Sidhu Moose Wala and more with zero ads on FreeSong.in.'
   },
   {
     match: /^\/playlist\//,
     path: '/playlist/:id',
     editable: false,
-    title: 'Playlist - Free Music Streaming | freesong.in',
+    title: 'Playlist - Free Music Streaming | FreeSong.in',
     noindex: true
   },
   {
     match: /^\/album\//,
     path: '/album/:id',
     editable: false,
-    title: 'Album - Ads Free Streaming | freesong.in',
-    description: 'Stream the full album ads free in high quality audio with synced lyrics. Free unlimited music streaming on FreeSong.in.'
+    title: 'Album Songs - Listen Album Free Online | FreeSong.in',
+    description: 'Listen to album songs online free on FreeSong.in. Stream full album tracklist with real-time synced lyrics and zero ads in high quality audio.'
   },
   {
     match: /^\/artist\//,
     path: '/artist/:id',
     editable: false,
-    title: 'Artist Songs - Free Music Streaming | freesong.in',
-    description: 'Listen to your favourite artist songs ads free with synced lyrics. Stream top tracks, albums & playlists free on FreeSong.in.'
+    title: 'Artist Songs - Listen Free Songs Online | FreeSong.in',
+    description: 'Listen to artist songs online free on FreeSong.in. Stream top tracks, albums, singles and discography ads free in HD audio with synced lyrics.'
   },
   {
     match: /^\/library/,

@@ -3650,13 +3650,44 @@ Sitemap: https://freesong.in/sitemap.xml
 const SITEMAP_BASE = [
   { loc: 'https://freesong.in/', priority: '1.0', freq: 'daily' },
   { loc: 'https://freesong.in/explore', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=online+songs', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=free+songs', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=ads+free+songs', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=listen+songs', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=listen+free+songs', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=free+music+streaming', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=bollywood+songs', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=punjabi+songs', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=hindi+songs', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Arijit+Singh', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Diljit+Dosanjh', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Shreya+Ghoshal', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Sidhu+Moose+Wala', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Atif+Aslam', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Anirudh+Ravichander', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Badshah', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Karan+Aujla', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Apna+Bana+Le', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Kesariya', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Chaleya', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=Heeriye', priority: '0.8', freq: 'daily' },
+  { loc: 'https://freesong.in/search?q=O+Maahi', priority: '0.8', freq: 'daily' },
   { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
   { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
   { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
   { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
   { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
 ];
+
+function escapeXml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
 
 function buildRobotsTxt(overrides) {
   const allowLines = (overrides || [])
@@ -3678,7 +3709,7 @@ function buildSitemapXml(overrides) {
   const urls = SITEMAP_BASE.filter(u => !blocked.has(new URL(u.loc).pathname));
   const today = new Date().toISOString().split('T')[0];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-    .map(u => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
+    .map(u => `  <url>\n    <loc>${escapeXml(u.loc)}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
     .join('\n')}\n</urlset>`;
 }
 
@@ -3908,25 +3939,61 @@ if (fs.existsSync(distPath)) {
     try {
       const rows = await query('SELECT page_path AS pagePath, title, description, keywords, noindex FROM seo_overrides LIMIT 200');
       const override = (rows || []).find(r => r.pagePath === reqPath);
-      if (override) {
-        const noindexed = Number(override.noindex) === 1;
-        const robotsValue = noindexed
-          ? 'noindex, nofollow'
-          : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+
+      let title = override?.title;
+      let description = override?.description;
+      let keywords = override?.keywords;
+      let noindexed = override ? Number(override.noindex) === 1 : false;
+
+      // Smart SSR route fallbacks for crawlers when no database override is set
+      if (!override) {
+        if (reqPath === '/explore') {
+          title = 'Explore Online Songs - Free Music & Trending Hits | FreeSong.in';
+          description = 'Explore online songs and trending chartbusters free. Stream latest Bollywood, Punjabi, Tamil, Telugu, Lo-Fi hits and new releases with zero ads on FreeSong.in.';
+        } else if (reqPath === '/search') {
+          title = 'Search Online Songs - Listen Free Songs & Music Finder | FreeSong.in';
+          description = 'Search and listen to online songs free. Discover millions of Hindi, Bollywood & Punjabi tracks by Arijit Singh, Diljit Dosanjh, Sidhu Moose Wala and more with zero ads on FreeSong.in.';
+        } else if (reqPath.startsWith('/artist/')) {
+          title = 'Artist Songs - Listen Free Songs Online | FreeSong.in';
+          description = 'Listen to artist songs online free on FreeSong.in. Stream top tracks, albums, singles and discography ads free in HD audio with synced lyrics.';
+        } else if (reqPath.startsWith('/album/')) {
+          title = 'Album Songs - Listen Album Free Online | FreeSong.in';
+          description = 'Listen to album songs online free on FreeSong.in. Stream full album tracklist with real-time synced lyrics and zero ads in high quality audio.';
+        } else if (/^\/(watch|song|track)\//.test(reqPath)) {
+          title = 'Play Free Songs Online - Ads Free Music Player | FreeSong.in';
+          description = 'Play online songs free in studio HD audio with live synced lyrics. 100% ads free song streaming on FreeSong.in — no subscription, zero fees, pure AMOLED experience.';
+        }
+      }
+
+      if (noindexed) {
+        const robotsValue = 'noindex, nofollow';
         if (/<meta name="robots"/.test(html)) {
           html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/, `<meta name="robots" content="${robotsValue}" />`);
         } else {
           html = html.replace('</head>', `    <meta name="robots" content="${robotsValue}" />\n  </head>`);
         }
-        if (override.title) {
-          html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(String(override.title))}</title>`);
-        }
-        if (override.description) {
-          html = html.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${escapeHtml(String(override.description))}" />`);
-        }
-        if (override.keywords) {
-          html = html.replace(/<meta name="keywords" content="[^"]*"\s*\/?>/, `<meta name="keywords" content="${escapeHtml(String(override.keywords))}" />`);
-        }
+      }
+
+      if (title) {
+        const escapedTitle = escapeHtml(String(title));
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapedTitle}</title>`);
+        html = html.replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${escapedTitle}" />`);
+        html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${escapedTitle}" />`);
+      }
+      if (description) {
+        const escapedDesc = escapeHtml(String(description));
+        html = html.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${escapedDesc}" />`);
+        html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${escapedDesc}" />`);
+        html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${escapedDesc}" />`);
+      }
+      if (keywords) {
+        html = html.replace(/<meta name="keywords" content="[^"]*"\s*\/?>/, `<meta name="keywords" content="${escapeHtml(String(keywords))}" />`);
+      }
+
+      if (reqPath && reqPath !== '/') {
+        const reqUrl = `https://freesong.in${reqPath}`;
+        html = html.replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${escapeHtml(reqUrl)}" />`);
+        html = html.replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${escapeHtml(reqUrl)}" />`);
       }
     } catch {}
     return html;
