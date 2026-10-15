@@ -55,6 +55,11 @@ const SEARCHABLE_CATEGORIES = [
       'Online Songs',
       'Free Songs',
       'Ads Free Songs',
+      'Listen To Free Music Unblocked',
+      'Unblocked Music Player',
+      'Free Music Streaming Unblocked',
+      'Free Music Online Unblocked',
+      'Music Player Unblocked',
       'Listen Songs Online',
       'Listen Free Songs',
       'Free Music Streaming',
@@ -121,6 +126,10 @@ const FAQS = [
   {
     q: 'Where can I listen to online songs free without ads?',
     a: 'You can listen to unlimited online songs free on FreeSong.in. We offer millions of songs across Bollywood, Punjabi, Hindi, English, and regional languages with zero commercial interruptions and no monthly subscription fees.'
+  },
+  {
+    q: 'Can I use FreeSong.in as an unblocked music player for school and work?',
+    a: 'Yes! FreeSong.in functions as a fast, lightweight unblocked music web player. It is directly accessible on any browser without downloads or sign-ups, providing free music streaming unblocked and free music online unblocked on school, college, and office Wi-Fi networks.'
   },
   {
     q: 'Which top artists and songs can I listen to for free on FreeSong.in?',

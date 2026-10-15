@@ -220,6 +220,9 @@ export function Footer() {
               <Link to="/search?q=ads+free+songs" className="fs-footer-tag-pill">Ads Free Songs</Link>
               <Link to="/search?q=listen+songs" className="fs-footer-tag-pill">Listen Songs</Link>
               <Link to="/search?q=listen+free+songs" className="fs-footer-tag-pill">Listen Free Songs</Link>
+              <Link to="/search?q=unblocked+music+player" className="fs-footer-tag-pill">Unblocked Music Player</Link>
+              <Link to="/search?q=free+music+streaming+unblocked" className="fs-footer-tag-pill">Free Music Streaming Unblocked</Link>
+              <Link to="/search?q=listen+to+free+music+unblocked" className="fs-footer-tag-pill">Listen Free Music Unblocked</Link>
               <Link to="/search?q=free+music+streaming" className="fs-footer-tag-pill">Free Music Streaming</Link>
               <Link to="/search?q=Arijit+Singh+songs" className="fs-footer-tag-pill">Arijit Singh Songs</Link>
               <Link to="/search?q=Diljit+Dosanjh+songs" className="fs-footer-tag-pill">Diljit Dosanjh Songs</Link>
