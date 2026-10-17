@@ -1,207 +1,161 @@
 import React from 'react';
 import { LegalLayout } from './LegalLayout';
-
-const link = { color: 'var(--color-primary)' };
+import { Link } from 'react-router-dom';
 
 export function PrivacyPolicy() {
+  const currentMonthYear = `${new Date().toLocaleString('en-US', { month: 'long' })} ${new Date().getFullYear()}`;
+
   return (
     <LegalLayout
       badge="PRIVACY & DATA PROTECTION"
-      title="Privacy Policy"
-      subtitle="This Privacy Policy explains, in clear and simple language, what information FreeSong.in collects, why we collect it, and the rights and choices available to you. We are fully committed to transparency and to international data protection standards."
+      title="Privacy Policy | FreeSong.in"
+      subtitle="At FreeSong.in, we take your privacy seriously. Please read this Privacy Policy to learn how we treat your personal data."
     >
       <div className="fs-legal-section">
-        <h2>1. Introduction & Scope</h2>
+        <h2>Privacy Policy</h2>
         <p>
-          Welcome to <strong>FreeSong.in</strong> (referred to as "FreeSong", "we", "our", or "us"). FreeSong.in is an online music discovery and streaming interface that lets visitors search, explore, and play music through officially supported third-party embedded players. This Privacy Policy applies to all visitors, registered users, and other individuals who interact with our website at <code>https://freesong.in</code> and any related subdomains, features, or services.
+          <strong>Effective Date:</strong> {currentMonthYear}<br />
+          <strong>Last Updated:</strong> {currentMonthYear}
         </p>
-        <p>
-          By accessing or using FreeSong.in, you acknowledge that you have read and understood the practices described in this Privacy Policy. If you do not agree with any part of this policy, please discontinue use of the website.
-        </p>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>2. Information We Collect</h2>
-        <p>We deliberately keep data collection to a minimum. The information we handle falls into the following categories:</p>
-        <h3>2.1 Information Collected Automatically</h3>
         <p>
-          Like virtually all modern websites, our servers automatically record standard technical information when you visit. This may include your IP address, browser type and version, device type, operating system, referring page, pages visited, and the date and time of each request. This data is used strictly for security monitoring, abuse prevention, debugging, and aggregate traffic analytics.
+          At <strong>FreeSong.in</strong>, we take your privacy seriously. Please read this Privacy Policy to learn how we treat your personal data. By using or accessing our Services in any manner, you acknowledge that you accept the practices and policies outlined below, and you hereby consent that we will collect, use and share your information as described in this Privacy Policy.
         </p>
-        <h3>2.2 Information Stored Locally on Your Device</h3>
         <p>
-          FreeSong.in is privacy-first by design: your musical preferences — including selected genres, followed artists, liked songs, custom playlists, listening history, recently played items, and volume settings — are stored locally in your own browser using <code>localStorage</code>. This data <strong>never leaves your device</strong> unless you voluntarily create an account, and it is never sold, rented, or shared with third parties for their own purposes. For a detailed breakdown of everything stored on your device, please read our <a href="/cookie-policy" style={link}>Cookie & Local Storage Policy</a>.
+          Remember that your use of FreeSong.in's Services is at all times subject to our <Link to="/terms">Terms of Service</Link>, which incorporates this Privacy Policy. Any terms we use in this Policy without defining them have the definitions given to them in the Terms of Service.
         </p>
-        <h3>2.3 Information You Voluntarily Provide</h3>
-        <p>
-          If you choose to create an account, subscribe to updates, or contact us through our contact form or by email, we receive the information you choose to provide — typically your name, email address, and the contents of your message. Providing this information is entirely voluntary; you can browse and stream music without an account.
-        </p>
-        <h3>2.4 Information from Third-Party Services</h3>
-        <p>
-          When you play music, the embedded third-party player (such as YouTube's IFrame Player) may collect technical playback data directly under that provider's own privacy policy. FreeSong.in does not receive, store, or process your Google or YouTube account credentials.
-        </p>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>3. How We Use Your Information</h2>
-        <p>We use the limited information described above only to:</p>
-        <ul>
-          <li>Operate, maintain, and improve the FreeSong.in website and its features.</li>
-          <li>Personalize your experience, such as remembering your playlists, likes, and playback preferences.</li>
-          <li>Monitor for security threats, fraud, spam, and abuse of our infrastructure.</li>
-          <li>Analyze aggregate usage trends so we can improve performance and content discoverability.</li>
-          <li>Respond to your support requests, feedback, and legal inquiries.</li>
-          <li>Comply with applicable legal obligations and enforce our <a href="/terms" style={link}>Terms of Service</a>.</li>
+        <h3>What this Privacy Policy Covers</h3>
+        <p>
+          This Privacy Policy covers how we treat Personal Data that we gather when you access or use our Services. "Personal Data" means any information that identifies or relates to a particular individual and also includes information referred to as "personally identifiable information" or "personal information" under applicable data privacy laws, rules or regulations. This Privacy Policy does not cover the practices of companies we don't own or control or people we don't manage.
+        </p>
+
+        <h3>Personal Data We Collect</h3>
+        <h4>Information You Provide to Us</h4>
+        <ul className="feature-list">
+          <li><strong>Account Information:</strong> When you sign in using Google authentication or create an account, we collect only your email address and name. We do not access, store, or collect any other information from your Google account.</li>
+          <li><strong>User Content:</strong> We collect information you provide when you create playlists, save favorites, leave feedback, or interact with our Services.</li>
+          <li><strong>Usage Data:</strong> We automatically collect information about how you interact with our Services, including songs you listen to, playlists you create, and features you use.</li>
         </ul>
-        <p>
-          <strong>We do not sell your personal information.</strong> We do not use your data for profiling that goes beyond what is necessary to run the service, and we do not share it with third parties except as described in this policy.
-        </p>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>4. Legal Bases for Processing (GDPR)</h2>
-        <p>
-          For users in the European Economic Area (EEA), United Kingdom, and Switzerland, we process personal data only when we have a valid legal basis under the General Data Protection Regulation:
-        </p>
-        <ul>
-          <li><strong>Legitimate interest:</strong> to secure and operate our website, prevent abuse, and understand aggregate usage.</li>
-          <li><strong>Consent:</strong> for non-essential cookies and personalized advertising, where you are given a clear choice to accept or decline.</li>
-          <li><strong>Contract:</strong> to provide the core service you request, such as playback and account features.</li>
-          <li><strong>Legal obligation:</strong> to comply with applicable laws, court orders, and regulatory requirements.</li>
+        <h4>Information Collected Automatically</h4>
+        <ul className="feature-list">
+          <li><strong>Device Information:</strong> We collect information about the device you use to access our Services, including device type, operating system, and browser type.</li>
+          <li><strong>Usage Information:</strong> We collect information about your interactions with our Services, such as pages visited, features used, and time spent on the platform.</li>
+          <li><strong>Log Data:</strong> When you use our Services, we automatically collect and store certain information in our server logs, including your IP address, access times, and pages viewed.</li>
         </ul>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>5. Cookies & Similar Technologies</h2>
+        <h4>Local Storage and Cookies</h4>
+        <p>We use browser local storage to improve your experience and provide browser preference storage. This includes:</p>
+        <ul className="feature-list">
+          <li>Your favorite songs and playlists</li>
+          <li>Your audio quality preferences</li>
+          <li>Your recent listening history</li>
+          <li>Saved preferences and playback context</li>
+          <li>User preferences and settings</li>
+        </ul>
+
+        <h3>How We Use Your Personal Data</h3>
+        <p>We use the Personal Data we collect to:</p>
+        <ul className="feature-list">
+          <li>Provide, maintain, and improve our Services, including personalized music recommendations</li>
+          <li>Authenticate your identity when you sign in using Google or account credentials</li>
+          <li>Save and sync your favorites, playlists, and preferences across devices</li>
+          <li>Enable features like listening queues, local preferences, and custom playlists</li>
+          <li>Respond to your inquiries and provide customer support</li>
+          <li>Send you updates about our Services (you can opt out at any time)</li>
+          <li>Detect, prevent, and address technical issues and security threats</li>
+          <li>Analyze usage patterns to improve our Services and develop new features</li>
+        </ul>
+
+        <h3>Google Sign-In Authentication</h3>
+        <p>When you choose to sign in using Google, we use Google's OAuth 2.0 authentication service. Through this process:</p>
+        <ul className="feature-list">
+          <li>We only request and receive your email address and name from Google</li>
+          <li>We do not access, store, or collect any other information from your Google account</li>
+          <li>We do not have access to your Google account password</li>
+          <li>Google's use of your information is governed by Google's Privacy Policy. We encourage you to review their privacy practices.</li>
+          <li>You can revoke our access to your Google account at any time through your Google account settings</li>
+        </ul>
+
+        <h3>How We Share Your Personal Data</h3>
+        <p>We do not sell your Personal Data. We may share your information in the following circumstances:</p>
+        <ul className="feature-list">
+          <li><strong>Service Providers:</strong> We may share your data with third-party service providers who perform services on our behalf, such as hosting, analytics, and customer support. These providers are bound by contractual obligations to keep your data confidential.</li>
+          <li><strong>Legal Requirements:</strong> We may disclose your information if required by law, regulation, legal process, or governmental request.</li>
+          <li><strong>Protection of Rights:</strong> We may share information to protect our rights, privacy, safety, or property, or that of our users or others.</li>
+          <li><strong>Business Transfers:</strong> If we are involved in a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction.</li>
+          <li><strong>With Your Consent:</strong> We may share your information with your explicit consent or at your direction.</li>
+        </ul>
+
+        <h3>Data Security</h3>
         <p>
-          FreeSong.in uses cookies and browser storage technologies to keep the site functional, remember your preferences, measure aggregate traffic, and support advertising. A full, itemized explanation of every cookie category we use — and simple instructions for controlling them — is available in our dedicated <a href="/cookie-policy" style={link}>Cookie & Local Storage Policy</a>.
+          We implement appropriate technical and organizational measures to protect your Personal Data against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee absolute security.
         </p>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>6. Google AdSense & Advertising</h2>
-        <div className="fs-legal-highlight-box">
-          <p>
-            <strong>Advertising Disclosure:</strong> FreeSong.in may display advertising served through Google AdSense and other reputable advertising partners. Advertising revenue allows us to keep the service free for everyone.
-          </p>
+        <h3>Data Retention</h3>
+        <p>
+          We retain your Personal Data for as long as your account is active or as needed to provide you with our Services. We may retain certain information after you close your account if retention is necessary to comply with legal obligations, resolve disputes, or enforce our agreements.
+        </p>
+
+        <h3>Your Rights and Choices</h3>
+        <h4>Access and Update Your Information</h4>
+        <p>You can access and update your account information through your profile settings on our platform.</p>
+
+        <h4>Delete Your Account</h4>
+        <p>
+          You can request to delete your account at any time by contacting us. When you delete your account, we will delete your Personal Data, subject to certain exceptions where we are required to retain information by law.
+        </p>
+
+        <h4>Local Storage Management</h4>
+        <p>
+          You can clear your local storage data at any time through your browser settings. Note that clearing local storage will remove your cached preferences, and locally stored playlists.
+        </p>
+
+        <h4>Opt-Out of Communications</h4>
+        <p>
+          You can opt-out of receiving promotional communications from us by following the unsubscribe instructions in those communications or by contacting us directly.
+        </p>
+
+        <h3>Children's Privacy</h3>
+        <p>
+          Our Services are not directed to individuals under the age of 13. We do not knowingly collect Personal Data from children under 13. If you believe we have collected information from a child under 13, please contact us immediately at <a href="mailto:support@freesong.in">support@freesong.in</a>, and we will take steps to delete such information.
+        </p>
+
+        <h3>Third-Party Services</h3>
+        <p>
+          Our Services may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to read their privacy policies.
+        </p>
+        <p>
+          We use third-party services to provide our music streaming functionality. These services may have their own privacy policies, and we encourage you to review them.
+        </p>
+
+        <h3>Advertising and Cookies</h3>
+        <p>
+          FreeSong.in may display ads provided by Google AdSense. Google may use cookies (including the DoubleClick cookie) to serve ads based on your prior visits to this and other websites. You can opt out of personalized advertising by visiting Google Ads Settings at <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">https://adssettings.google.com</a>. You can also learn more about how Google uses cookies for ads at <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">https://policies.google.com/technologies/ads</a>.
+        </p>
+        <p>
+          Our <Link to="/cookie-policy">Cookie Policy</Link> explains how you can control cookies and local storage in your browser. Disabling certain cookies may affect ad relevance but should not impact core playback functionality.
+        </p>
+
+        <h3>International Data Transfers</h3>
+        <p>
+          Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that differ from those in your country. By using our Services, you consent to the transfer of your information to these countries.
+        </p>
+
+        <h3>Changes to This Privacy Policy</h3>
+        <p>
+          We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Effective date" at the top of this Privacy Policy. You are advised to review this Privacy Policy periodically for any changes.
+        </p>
+
+        <h3>Contact Us</h3>
+        <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us:</p>
+        <div className="contact-card">
+          <p><strong>Email:</strong> <a href="mailto:support@freesong.in">support@freesong.in</a></p>
+          <p><strong>Website:</strong> <a href="https://freesong.in">https://freesong.in</a></p>
         </div>
-        <p>
-          Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this and other websites. Google's use of advertising cookies (including the DoubleClick cookie) enables it and its partners to serve ads to you based on your visit to our site and/or other sites on the Internet.
-        </p>
-        <p>You have complete control over personalized advertising:</p>
-        <ul>
-          <li>You may opt out of personalized advertising in Google Ads at <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" style={link}>adssettings.google.com</a>.</li>
-          <li>You may opt out of third-party vendor cookies for personalized advertising at <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" style={link}>aboutads.info</a> or <a href="https://optout.networkadvertising.org/" target="_blank" rel="noopener noreferrer" style={link}>optout.networkadvertising.org</a>.</li>
-          <li>Users in the EEA and UK may manage their consent choices at any time through the consent banner shown on first visit, or via their browser settings.</li>
-        </ul>
-        <p>
-          We do not control third-party ad servers and this Privacy Policy does not cover their practices. We encourage you to review the privacy policies of any advertising partners for more detail.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>7. YouTube API Services</h2>
-        <p>
-          FreeSong.in integrates with <strong>YouTube API Services</strong> and the YouTube IFrame Player API to deliver music playback, track metadata, and search functionality. This integration means:
-        </p>
-        <ul>
-          <li>All audio and video content is streamed directly from YouTube's official embedded players.</li>
-          <li>Your use of YouTube content through our site is also governed by the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" style={link}>YouTube Terms of Service</a> and Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={link}>Privacy Policy</a>.</li>
-          <li>FreeSong.in does not collect, store, or modify YouTube authentication credentials, and we never act on your YouTube account without your explicit action.</li>
-          <li>Google may collect data about your interaction with embedded YouTube players. Refer to Google's own policies for details on how that data is used and protected.</li>
-        </ul>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>8. Analytics & Traffic Measurement</h2>
-        <p>
-          We use privacy-conscious, aggregate analytics to understand which pages and features are useful to visitors. Analytics data is used in aggregate form only and is not used to build individual profiles, identify individuals, or track users across other websites.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>9. Data Retention</h2>
-        <p>
-          Locally stored preferences (playlists, likes, history, settings) remain on your device until you clear your browser data or delete them from within the app. Server-side log data is retained only for as long as necessary for security and operational purposes, and is automatically deleted or anonymized thereafter. Messages you send us are retained for as long as needed to resolve your inquiry and to meet legal record-keeping obligations.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>10. Data Security</h2>
-        <p>
-          We apply industry-standard security measures appropriate to the nature of the data we handle, including encrypted connections (HTTPS/TLS) across the site, access controls on our infrastructure, and routine review of our systems. However, no method of transmission over the Internet or electronic storage is 100% secure, and we cannot guarantee absolute security. We do, nonetheless, take the protection of your data seriously and strive to use commercially acceptable means to safeguard it.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>11. Your Privacy Rights</h2>
-        <h3>11.1 GDPR Rights (EEA, UK & Switzerland)</h3>
-        <p>If you are located in the EEA, UK, or Switzerland, you have the following rights regarding your personal data:</p>
-        <ul>
-          <li><strong>Right of access:</strong> request copies of the personal data we hold about you.</li>
-          <li><strong>Right to rectification:</strong> request correction of inaccurate or incomplete data.</li>
-          <li><strong>Right to erasure:</strong> request deletion of your personal data under certain conditions.</li>
-          <li><strong>Right to restrict processing:</strong> request that we limit how your data is used.</li>
-          <li><strong>Right to object:</strong> object to processing based on legitimate interests, including direct marketing.</li>
-          <li><strong>Right to data portability:</strong> receive your data in a structured, commonly used, machine-readable format.</li>
-          <li><strong>Right to withdraw consent:</strong> withdraw consent at any time where processing is based on consent.</li>
-        </ul>
-        <h3>11.2 CCPA/CPRA Rights (California)</h3>
-        <p>If you are a California resident, the California Consumer Privacy Act (as amended by the CPRA) grants you the right to:</p>
-        <ul>
-          <li>Request disclosure of the categories and specific pieces of personal information collected about you.</li>
-          <li>Request deletion of personal information collected from you.</li>
-          <li>Correct inaccurate personal information.</li>
-          <li>Opt out of the "sale" or "sharing" of personal information — <strong>FreeSong.in does not sell personal information for money</strong>, and we do not knowingly share it for cross-context behavioral advertising.</li>
-          <li>Be free from discrimination for exercising any of these rights.</li>
-        </ul>
-        <p>
-          To exercise any of these rights, please contact us using the details in Section 15. We will verify your request and respond within the timeframes required by applicable law.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>12. International Data Transfers</h2>
-        <p>
-          FreeSong.in is operated with infrastructure that may be located outside your country of residence. Where personal data is transferred across borders, we rely on appropriate safeguards such as adequacy decisions, standard contractual clauses, or equivalent legal mechanisms, and we process data only as described in this policy.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>13. Children's Privacy (COPPA)</h2>
-        <p>
-          FreeSong.in is not directed at children under the age of 13 (or the equivalent minimum age in your jurisdiction), and we do not knowingly collect personal information from children. If you are a parent or guardian and believe your child has provided us with personal information, please contact us at <a href="mailto:privacy@freesong.in" style={link}>privacy@freesong.in</a> and we will promptly investigate and delete such information.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>14. Do Not Track Signals</h2>
-        <p>
-          Some browsers offer a "Do Not Track" (DNT) preference. Because there is not yet a common understanding of how to interpret DNT signals, FreeSong.in does not currently respond to them. You can limit tracking through the cookie controls described in our <a href="/cookie-policy" style={link}>Cookie & Local Storage Policy</a> and the advertising opt-outs listed above.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>15. Changes to This Privacy Policy</h2>
-        <p>
-          We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or features. When we make changes, we will revise the "Last Updated" date shown at the top of this page. We encourage you to review this page periodically. Your continued use of FreeSong.in after any update constitutes acceptance of the revised policy.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>16. Contact Our Privacy Team</h2>
-        <p>
-          If you have any questions, concerns, or requests regarding this Privacy Policy or how your data is handled, please contact us:
-        </p>
-        <div className="fs-legal-highlight-box">
-          <p>
-            <strong>FreeSong.in — Privacy & Data Protection</strong><br />
-            Privacy Inquiries: <a href="mailto:privacy@freesong.in" style={link}>privacy@freesong.in</a><br />
-            General Support: <a href="mailto:support@freesong.in" style={link}>support@freesong.in</a><br />
-            Website: <a href="https://freesong.in" style={link}>https://freesong.in</a>
-          </p>
-        </div>
-        <p>
-          We aim to acknowledge and respond to all legitimate privacy requests within 30 days or sooner.
+        <p style={{ marginTop: '16px', fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+          By using FreeSong.in, you acknowledge that you have read and understood this Privacy Policy and agree to the collection and use of your information as described herein.
         </p>
       </div>
     </LegalLayout>

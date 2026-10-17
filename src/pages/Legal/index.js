@@ -5,3 +5,6 @@ export { Disclaimer } from './Disclaimer';
 export { CookiePolicy } from './CookiePolicy';
 export { AboutUs } from './AboutUs';
 export { ContactUs } from './ContactUs';
+export { HowItWorks } from './HowItWorks';
+export { Features } from './Features';
+export { Faq } from './Faq';

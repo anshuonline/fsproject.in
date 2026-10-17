@@ -17,8 +17,6 @@ import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { trackVisit, trackPresence } from '../services/analyticsService';
-import { AdSlot, StickyBottomAd, DesktopFloatingAd, EntrySplashAd, SOCIAL_BAR_SCRIPT, ALL_AD_UNITS_HTML } from '../ads';
-import { injectAdHtml, prewarmAdConnections } from '../services/adsService';
 import './MainLayout.css';
 
 export function MainLayout() {
@@ -84,46 +82,6 @@ export function MainLayout() {
 
   const effectiveCollapsed = isDesktop && isSidebarCollapsed;
 
-  // Ads are hidden on the analytics admin area
-  const isAdminArea = location.pathname.startsWith('/ganalytics');
-
-  // Sidebar sticky rail — desktop >= 1400px only (hardcoded slot always on)
-  const [hasAdRail, setHasAdRail] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 1400 : false
-  );
-  useEffect(() => {
-    if (isAdminArea) {
-      setHasAdRail(false);
-      return undefined;
-    }
-    const onResize = () => setHasAdRail(window.innerWidth >= 1400);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [isAdminArea]);
-
-  // Social Bar — global floating script, injected once on mount (hardcoded)
-  useEffect(() => {
-    if (isAdminArea) return undefined;
-    const host = document.createElement('div');
-    host.id = 'fs-social-bar-host';
-    host.style.display = 'none';
-    document.body.appendChild(host);
-    const cleanup = injectAdHtml(host, SOCIAL_BAR_SCRIPT);
-    return () => {
-      cleanup();
-      document.getElementById('fs-social-bar-host')?.remove();
-    };
-  }, [isAdminArea]);
-
-  // Prewarm ad-network connections (DNS/TLS) after idle — faster ad fill with
-  // zero perf cost (link hints only, no fetches, never blocks the app)
-  useEffect(() => {
-    if (isAdminArea) return undefined;
-    prewarmAdConnections(ALL_AD_UNITS_HTML);
-    return undefined;
-  }, [isAdminArea]);
-
   const handleCloseSidebar = React.useCallback(() => {
     setSidebarOpen(false);
   }, []);
@@ -151,11 +109,8 @@ export function MainLayout() {
       {/* Header */}
       <Header onToggleSidebar={handleToggleSidebar} />
 
-      {/* Header banner strip (hidden on the analytics admin area) */}
-      {!isAdminArea && <AdSlot slotId="header_banner" className="fs-ad-slot--header" />}
-
       {/* Main Body */}
-      <div className={`fs-layout-body ${hasAdRail ? 'has-ad-rail' : ''} ${!isAdminArea ? 'has-header-ad' : ''}`}>
+      <div className={`fs-layout-body`}>
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -168,13 +123,6 @@ export function MainLayout() {
           <Outlet />
           <Footer />
         </main>
-
-        {/* Desktop sticky ad rail (≥1400px, only when enabled) */}
-        {hasAdRail && (
-          <aside className="fs-ad-rail" aria-hidden="true">
-            <AdSlot slotId="sidebar_sticky" className="fs-ad-slot--sidebar" />
-          </aside>
-        )}
       </div>
 
       {/* Global Overlays & Players */}
@@ -183,15 +131,9 @@ export function MainLayout() {
       <FullScreenPlayer />
       <QueueDrawer />
       <MobileNav />
-      {/* Mobile sticky bottom ad — lifts above the player card while playing */}
-      {!isAdminArea && <StickyBottomAd />}
-      {/* Desktop floating pill — mobile strip ka PC equivalent, player ke upar */}
-      {!isAdminArea && <DesktopFloatingAd />}
       <GlobalContextMenu />
       <EditPlaylistModal />
       <InactivityModal />
-      {/* Entry splash ad — once per session, hidden on the analytics admin area */}
-      {!isAdminArea && <EntrySplashAd />}
       <ShortcutIndicator />
       <Toast />
     </div>

@@ -324,6 +324,80 @@
   resize: vertical;
 }
 
+.fs-legal-body a {
+  color: var(--color-primary, #00c853);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 200, 83, 0.4);
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+}
+
+.fs-legal-body a:hover {
+  color: #ffffff;
+  text-decoration-color: #ffffff;
+}
+
+.fs-legal-section h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+ul.feature-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 12px 0 18px;
+}
+
+ul.feature-list li {
+  margin-bottom: 12px;
+  line-height: 1.65;
+  color: var(--color-text-secondary, #afafaf);
+}
+
+ul.feature-list li strong {
+  color: #ffffff;
+}
+
+.contact-card, .faq-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 12px);
+  padding: 20px 24px;
+  margin: 20px 0;
+  transition: border-color 0.2s ease;
+}
+
+.contact-card:hover, .faq-item:hover {
+  border-color: rgba(0, 200, 83, 0.3);
+}
+
+.contact-card h3, .contact-card h4, .faq-item h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+.contact-card p, .faq-item p {
+  margin-bottom: 8px;
+  color: var(--color-text-secondary, #afafaf);
+}
+
+.contact-card a {
+  color: var(--color-primary, #00c853);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(0, 200, 83, 0.6);
+  transition: all 0.2s ease;
+}
+
+.contact-card a:hover {
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .fs-legal-page {
@@ -350,3 +424,4 @@
     padding: 24px 20px;
   }
 }
+

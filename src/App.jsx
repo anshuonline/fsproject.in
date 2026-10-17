@@ -27,7 +27,7 @@ import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
 import { ResetPassword } from './pages/ResetPassword/ResetPassword';
-import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, Disclaimer, CookiePolicy, AboutUs, ContactUs } from './pages/Legal';
+import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, Disclaimer, CookiePolicy, AboutUs, ContactUs, HowItWorks, Features, Faq } from './pages/Legal';
 import { Blog, BlogPost } from './pages/Blog';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
@@ -95,14 +95,23 @@ export default function App() {
 
                     {/* Legal, AdSense & Policy Routes */}
                     <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
                     <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
                     <Route path="/dmca" element={<DmcaDisclaimer />} />
                     <Route path="/copyright" element={<Navigate to="/dmca" replace />} />
                     <Route path="/disclaimer" element={<Disclaimer />} />
                     <Route path="/cookie-policy" element={<CookiePolicy />} />
+                    <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
+                    <Route path="/cookie" element={<Navigate to="/cookie-policy" replace />} />
                     <Route path="/blog" element={<Blog />} />
                     <Route path="/blog/:slug" element={<BlogPost />} />
                     <Route path="/about" element={<AboutUs />} />
+                    <Route path="/about-us" element={<Navigate to="/about" replace />} />
+                    <Route path="/how-it-works" element={<HowItWorks />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/faq" element={<Faq />} />
+                    <Route path="/help" element={<Navigate to="/faq" replace />} />
                     <Route path="/contact" element={<ContactUs />} />
                   </Route>
 

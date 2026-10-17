@@ -1,156 +1,84 @@
 import React from 'react';
 import { LegalLayout } from './LegalLayout';
-import { Music2, Sparkles, Zap, Gauge, Users2, Eye } from 'lucide-react';
-
-const iconStyle = { display: 'flex', alignItems: 'center', gap: 8 };
+import { Link } from 'react-router-dom';
 
 export function AboutUs() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <LegalLayout
       badge="ABOUT FREESONG.IN"
-      title="About FreeSong.in"
-      subtitle="FreeSong.in is a free, web-based music discovery and streaming interface built for people who simply want to press play — no paywalls, no clutter, no compromises."
+      title="About FreeSong.in - Music Discovery Platform"
+      subtitle="FreeSong.in is a music discovery and listening platform designed to make exploring music simple, accessible, and seamless."
     >
       <div className="fs-legal-section">
-        <h2>1. Who We Are</h2>
+        <h2>About FreeSong.in</h2>
         <p>
-          <strong>FreeSong.in</strong> is an independent music platform created by a small team of passionate music lovers and web engineers. Our story began with a familiar frustration: modern music apps have become heavy, subscription-locked, and cluttered with interruptions — while the web itself is more than capable of delivering a beautiful, instant listening experience.
+          FreeSong.in is a music discovery and listening platform designed to make exploring music simple, accessible, and seamless. Our focus is on delivering an intuitive listening experience through efficient music search, convenient playlist management, streamlined playback controls, and a privacy-conscious approach to technology.
         </p>
-        <p>
-          So we built one. FreeSong.in is a fast, true-AMOLED web application that lets anyone search, discover, and play millions of tracks — Bollywood, Punjabi, regional Indian music, international hits, film soundtracks, and indie finds — directly in the browser, on any device, for free.
-        </p>
-      </div>
 
-      <div className="fs-legal-section">
-        <h2>2. Our Mission</h2>
-        <div className="fs-legal-highlight-box">
-          <p>
-            <strong>Our mission is simple:</strong> make music discovery on the web instant, honest, and free — while always respecting the artists, labels, and platforms that make the music possible.
-          </p>
+        <h3>Our Mission</h3>
+        <p>
+          At FreeSong.in, we believe discovering and enjoying music should be straightforward, enjoyable, and free from unnecessary distractions. We prioritize usability, responsive performance, and intuitive navigation to help listeners find the music they love with minimal effort.
+        </p>
+        <p>
+          What began as an initiative to build a fast, browser-based music platform has evolved into a comprehensive music discovery experience. FreeSong.in brings together music search, artist and album exploration, playlist tools, synchronized listening features, and features designed to make music discovery more convenient across desktop and mobile devices.
+        </p>
+
+        <h3>What We Offer</h3>
+        <h4>Music Discovery and Search</h4>
+        <p>
+          Explore a broad selection of music through search and discovery tools designed to help you find songs, artists, albums, and playlists. Discover music across different genres, moods, eras, and listening preferences, along with regularly updated selections of trending tracks and new releases.
+        </p>
+
+        <h4>Playlists and Playback Controls</h4>
+        <p>
+          Organize your listening experience with personalized playlists, saved favorites, and flexible queue management. FreeSong.in provides convenient tools for organizing music and retaining selected preferences across sessions, where supported by your browser and device.
+        </p>
+
+        <h4>Synchronized Listening Features</h4>
+        <p>
+          Enjoy music together through collaborative listening tools and shared queues. Experience coordinated playback with real-time controls, subject to feature availability and playback-source limitations.
+        </p>
+
+        <h4>Music Guides and Editorial Content</h4>
+        <p>
+          Discover original articles, music exploration guides, playlist recommendations, genre introductions, and practical listening tips published by the FreeSong.in team. Our editorial content is designed to help users explore different musical styles, discover artists, and make more informed listening choices.
+        </p>
+
+        <h3>Our Commitment to Privacy</h3>
+        <p>
+          We recognize the importance of protecting user privacy. FreeSong.in aims to limit data collection to information reasonably necessary to provide and maintain its services. Where authentication is available, this may include basic account information, such as your name and email address.
+        </p>
+        <p>
+          We do not sell personal information to third parties or build behavioral profiles for advertising purposes. Where technically feasible, preferences and listening-related settings may be stored locally on your device to improve convenience and reduce unnecessary data transmission.
+        </p>
+        <p>
+          Our data practices are subject to the applicable features, service providers, and technologies used by the platform. For complete information about data collection, usage, and your rights, please review our <Link to="/privacy">Privacy Policy</Link> and <Link to="/terms">Terms of Service</Link>.
+        </p>
+
+        <h3>Technology and Performance</h3>
+        <p>
+          FreeSong.in is developed using modern web technologies, with progressive web application capabilities and service-worker-based caching where supported. Our technical approach emphasizes responsive interfaces, efficient resource loading, and a smooth experience across a range of devices and network conditions.
+        </p>
+        <p>
+          We also work to make our editorial content accessible to search engines through appropriate page rendering and indexing practices. Regional discovery features and bandwidth-conscious loading help support a more accessible experience for listeners with different preferences and connectivity conditions.
+        </p>
+        <p>
+          Playback availability, offline functionality, and supported features may depend on the browser, device, network, and underlying music source.
+        </p>
+
+        <h3>Get in Touch</h3>
+        <p>
+          We value feedback from our users and welcome questions, feature suggestions, bug reports, and partnership inquiries. Your feedback helps us identify opportunities to improve the platform and deliver a more reliable music discovery experience.
+        </p>
+        <div className="contact-card">
+          <p><strong>Email:</strong> <a href="mailto:support@freesong.in">support@freesong.in</a></p>
+          <p>You can also visit our <Link to="/contact">Contact Page</Link> for further assistance.</p>
         </div>
-        <p>
-          We believe access to music should not depend on the device you own or the subscription you can afford. At the same time, we believe creators deserve to be paid — which is exactly why our platform is engineered around official, rights-respecting delivery rather than file distribution.
+        <p style={{ marginTop: '24px', fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+          © {currentYear} FreeSong.in. All rights reserved.
         </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>3. How FreeSong.in Works — Full Transparency</h2>
-        <p>
-          We publish this openly on every page of our site because trust matters:
-        </p>
-        <ul>
-          <li>
-            <strong>Official embedded playback:</strong> all music is streamed through the official <strong>YouTube IFrame Player API</strong> and <strong>YouTube API Services</strong>, exactly as YouTube makes them available to any website. Every play supports artists through YouTube's existing monetization systems.
-          </li>
-          <li>
-            <strong>No media hosting:</strong> FreeSong.in does not host, upload, store, convert, or distribute any audio or video files. Our servers handle search, metadata, and user features — never music files.
-          </li>
-          <li>
-            <strong>Public metadata only:</strong> track titles, artwork, and artist information come from public APIs, refreshed continuously so charts and releases stay current.
-          </li>
-          <li>
-            <strong>On-device personalization:</strong> your playlists, likes, history, and preferences live in your own browser's local storage. Create an account only if you want to sync them across devices.
-          </li>
-        </ul>
-        <p>
-          For the complete picture, read our <a href="/disclaimer" style={{ color: 'var(--color-primary)' }}>Disclaimer</a>, <a href="/dmca" style={{ color: 'var(--color-primary)' }}>DMCA & Copyright Policy</a>, and <a href="/privacy" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>4. What We Offer</h2>
-        <div className="fs-legal-contact-card">
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Zap size={18} color="var(--color-primary)" />
-              100% Free Listening
-            </span>
-            <span className="fs-legal-card-desc">
-              Unlimited music without subscriptions, credit cards, or forced sign-ups. The service is supported by unobtrusive advertising — never by selling your data.
-            </span>
-          </div>
-
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Music2 size={18} color="var(--color-primary)" />
-              Massive, Living Catalog
-            </span>
-            <span className="fs-legal-card-desc">
-              Millions of tracks with live charts, latest releases, artist radio, mood shelves, and single/soundtrack enrichment so a one-song release is never a dead end.
-            </span>
-          </div>
-
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Gauge size={18} color="var(--color-primary)" />
-              Built for Speed
-            </span>
-            <span className="fs-legal-card-desc">
-              A performance-obsessed architecture delivers near-instant search and playback, smooth on 375px phones and 4K desktops alike.
-            </span>
-          </div>
-
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Eye size={18} color="var(--color-primary)" />
-              True AMOLED Dark Mode
-            </span>
-            <span className="fs-legal-card-desc">
-              A hand-crafted pure #000000 interface — maximum battery savings on OLED screens and genuinely comfortable night listening.
-            </span>
-          </div>
-
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Sparkles size={18} color="var(--color-primary)" />
-              Synced Lyrics & Full Player
-            </span>
-            <span className="fs-legal-card-desc">
-              Karaoke-style synchronized lyrics with click-to-seek, a persistent bottom player, queue management, and a full-screen experience on every device.
-            </span>
-          </div>
-
-          <div className="fs-legal-card">
-            <span className="fs-legal-card-title" style={iconStyle}>
-              <Users2 size={18} color="var(--color-primary)" />
-              Personal Library
-            </span>
-            <span className="fs-legal-card-desc">
-              Create custom playlists, follow artists, build favorites, and revisit your listening history — synced across devices with a free account.
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>5. Our Values</h2>
-        <ul>
-          <li><strong>Respect for creators:</strong> playback flows only through official channels where rights holders are compensated and retain full control.</li>
-          <li><strong>Privacy by default:</strong> minimal collection, on-device storage, and clear disclosure of every cookie — see our <a href="/cookie-policy" style={{ color: 'var(--color-primary)' }}>Cookie & Local Storage Policy</a>.</li>
-          <li><strong>Honesty over hype:</strong> we openly describe how the platform works, what we store, and what we don't do.</li>
-          <li><strong>Accessibility:</strong> a free, lightweight experience designed to work on modest hardware and slow networks across India and beyond.</li>
-        </ul>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>6. Our Commitment to Quality</h2>
-        <p>
-          We continuously refine our infrastructure, caching, and recommendation quality to keep playback latency low and discovery genuinely useful. Whether you are here for chart-toppers, film soundtracks, devotional classics, lo-fi study sessions, or regional folk, our goal is the same: an uncompromised listening experience that loads in seconds and never gets in the way of the music.
-        </p>
-      </div>
-
-      <div className="fs-legal-section">
-        <h2>7. Talk to Us</h2>
-        <p>
-          FreeSong.in improves through community feedback. Whether it's a bug report, a feature idea, a partnership proposal, or a rights-holder inquiry, our team reads every message.
-        </p>
-        <div className="fs-legal-highlight-box">
-          <p>
-            General Inquiries: <a href="mailto:contact@freesong.in" style={{ color: 'var(--color-primary)' }}>contact@freesong.in</a><br />
-            Technical Support: <a href="mailto:support@freesong.in" style={{ color: 'var(--color-primary)' }}>support@freesong.in</a><br />
-            Contact Form: <a href="/contact" style={{ color: 'var(--color-primary)' }}>freesong.in/contact</a>
-          </p>
-        </div>
       </div>
     </LegalLayout>
   );

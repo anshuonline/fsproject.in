@@ -104,6 +104,9 @@ export function Footer() {
             <span className="fs-footer-col-title">Company & Legal</span>
             <ul className="fs-footer-links-list">
               <li><Link to="/about" className="fs-footer-link">About FreeSong.in</Link></li>
+              <li><Link to="/how-it-works" className="fs-footer-link">How It Works</Link></li>
+              <li><Link to="/features" className="fs-footer-link">Platform Features</Link></li>
+              <li><Link to="/faq" className="fs-footer-link">FAQ & Help</Link></li>
               <li><Link to="/contact" className="fs-footer-link">Contact Us & Support</Link></li>
               <li><Link to="/privacy" className="fs-footer-link">Privacy Policy</Link></li>
               <li><Link to="/terms" className="fs-footer-link">Terms of Service</Link></li>
