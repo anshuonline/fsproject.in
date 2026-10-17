@@ -27,7 +27,8 @@ import { ConfirmDelete } from './pages/ConfirmDelete/ConfirmDelete';
 import { Login } from './pages/Login/Login';
 import { Register } from './pages/Register/Register';
 import { ResetPassword } from './pages/ResetPassword/ResetPassword';
-import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, AboutUs, ContactUs } from './pages/Legal';
+import { PrivacyPolicy, TermsOfService, DmcaDisclaimer, Disclaimer, CookiePolicy, AboutUs, ContactUs } from './pages/Legal';
+import { Blog, BlogPost } from './pages/Blog';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { SharedSongHandler } from './components/Common/SharedSongHandler';
 import { SeoManager } from './components/Common/SeoManager';
@@ -97,6 +98,10 @@ export default function App() {
                     <Route path="/terms" element={<TermsOfService />} />
                     <Route path="/dmca" element={<DmcaDisclaimer />} />
                     <Route path="/copyright" element={<Navigate to="/dmca" replace />} />
+                    <Route path="/disclaimer" element={<Disclaimer />} />
+                    <Route path="/cookie-policy" element={<CookiePolicy />} />
+                    <Route path="/blog" element={<Blog />} />
+                    <Route path="/blog/:slug" element={<BlogPost />} />
                     <Route path="/about" element={<AboutUs />} />
                     <Route path="/contact" element={<ContactUs />} />
                   </Route>

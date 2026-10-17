@@ -9,6 +9,7 @@ import { buildAlgorithmicFeed, fetchOfficialChart, fetchOfficialNewAlbums, fetch
 import { cleanSearchQuery, rankSearchSongs, rankSearchArtists, rankSearchAlbums, rankSearchPlaylists } from './searchEngine.js';
 import { detectGenreMoodQuery, fetchGenreMoodSongs } from './genreSearch.js';
 import { TOP_100_ARTISTS } from '../src/data/artistsData.js';
+import { ALL_BLOGS } from '../src/pages/Blog/data/index.js';
 import db, { query, testDbConnection } from './database/db.js';
 import crypto from 'crypto';
 import {
@@ -3645,6 +3646,7 @@ Disallow: /seo
 
 # Sitemap discovery
 Sitemap: https://freesong.in/sitemap.xml
+Sitemap: https://freesong.in/blog-sitemap.xml
 `;
 
 const SITEMAP_BASE = [
@@ -3678,8 +3680,11 @@ const SITEMAP_BASE = [
   { loc: 'https://freesong.in/search?q=Heeriye', priority: '0.8', freq: 'daily' },
   { loc: 'https://freesong.in/search?q=O+Maahi', priority: '0.8', freq: 'daily' },
   { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
+  { loc: 'https://freesong.in/blog', priority: '0.8', freq: 'daily' },
   { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
   { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
+  { loc: 'https://freesong.in/disclaimer', priority: '0.5', freq: 'monthly' },
+  { loc: 'https://freesong.in/cookie-policy', priority: '0.5', freq: 'monthly' },
   { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
   { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
 ];
@@ -3920,6 +3925,26 @@ if (fs.existsSync(distPath)) {
     }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0');
+    res.setHeader('X-Robots-Tag', 'noindex');
+    res.send(xml);
+  });
+
+  // ── Dedicated blog sitemap.xml (Spotify-style split sitemap) ───────────────
+  app.get('/blog-sitemap.xml', async (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
+    const urls = ALL_BLOGS.map((blog, i) => ({
+      loc: `https://freesong.in/blog/${blog.slug}`,
+      priority: i < 10 ? '0.8' : '0.7',
+      freq: 'weekly'
+    }));
+    const urlsXml = [
+      { loc: 'https://freesong.in/blog', priority: '0.9', freq: 'daily' },
+      ...urls
+    ].map(u => `  <url>\n    <loc>${escapeXml(u.loc)}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`)
+      .join('\n');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlsXml}\n</urlset>`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
     res.setHeader('X-Robots-Tag', 'noindex');
     res.send(xml);
   });

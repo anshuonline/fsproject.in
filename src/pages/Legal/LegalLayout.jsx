@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { ShieldCheck, ChevronRight, FileText, Lock, AlertTriangle, Users, Mail } from 'lucide-react';
+import { ShieldCheck, ChevronRight, FileText, Lock, AlertTriangle, Users, Mail, Scale, Cookie } from 'lucide-react';
 import './Legal.css';
 
 const LEGAL_TABS = [
   { path: '/privacy', label: 'Privacy Policy', icon: Lock },
   { path: '/terms', label: 'Terms of Service', icon: FileText },
-  { path: '/dmca', label: 'DMCA & Disclaimer', icon: AlertTriangle },
+  { path: '/dmca', label: 'DMCA Policy', icon: AlertTriangle },
+  { path: '/disclaimer', label: 'Disclaimer', icon: Scale },
+  { path: '/cookie-policy', label: 'Cookie Policy', icon: Cookie },
   { path: '/about', label: 'About FreeSong', icon: Users },
   { path: '/contact', label: 'Contact Us', icon: Mail }
 ];

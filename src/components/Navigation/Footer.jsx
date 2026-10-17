@@ -50,6 +50,7 @@ export function Footer() {
               <li><Link to="/favorites" className="fs-footer-link">Liked Tracks</Link></li>
               <li><Link to="/history" className="fs-footer-link">Listening History</Link></li>
               <li><Link to="/settings" className="fs-footer-link">Audio Settings</Link></li>
+              <li><Link to="/blog" className="fs-footer-link">Music Discovery Blog</Link></li>
             </ul>
           </div>
 
@@ -106,7 +107,9 @@ export function Footer() {
               <li><Link to="/contact" className="fs-footer-link">Contact Us & Support</Link></li>
               <li><Link to="/privacy" className="fs-footer-link">Privacy Policy</Link></li>
               <li><Link to="/terms" className="fs-footer-link">Terms of Service</Link></li>
+              <li><Link to="/cookie-policy" className="fs-footer-link">Cookie Policy</Link></li>
               <li><Link to="/dmca" className="fs-footer-link">DMCA & Copyright</Link></li>
+              <li><Link to="/disclaimer" className="fs-footer-link">Disclaimer</Link></li>
               <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="fs-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Google Privacy <ExternalLink size={10} /></a></li>
               <li><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="fs-footer-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>YouTube Terms <ExternalLink size={10} /></a></li>
             </ul>
@@ -255,7 +258,11 @@ export function Footer() {
             <span>•</span>
             <Link to="/terms">Terms</Link>
             <span>•</span>
+            <Link to="/cookie-policy">Cookies</Link>
+            <span>•</span>
             <Link to="/dmca">DMCA</Link>
+            <span>•</span>
+            <Link to="/disclaimer">Disclaimer</Link>
             <span>•</span>
             <Link to="/contact">Contact</Link>
           </div>

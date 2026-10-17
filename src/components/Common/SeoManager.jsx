@@ -189,8 +189,22 @@ const SEO_ROUTES = [
     match: /^\/dmca/,
     path: '/dmca',
     editable: true,
-    title: 'DMCA Disclaimer - Copyright Policy | freesong.in',
-    description: 'FreeSong.in DMCA disclaimer and copyright policy. We host no media files - music streams directly from YouTube Music. Report copyright concerns here.'
+    title: 'DMCA & Copyright Policy | freesong.in',
+    description: 'FreeSong.in DMCA policy. We host no media files - all music plays via official YouTube embedded players. Submit copyright notices and takedown requests here.'
+  },
+  {
+    match: /^\/disclaimer/,
+    path: '/disclaimer',
+    editable: true,
+    title: 'Disclaimer | freesong.in',
+    description: 'FreeSong.in service disclaimer - how our music discovery platform works, third-party embedded playback disclosure, external links, and content accuracy statement.'
+  },
+  {
+    match: /^\/cookie-policy/,
+    path: '/cookie-policy',
+    editable: true,
+    title: 'Cookie & Local Storage Policy | freesong.in',
+    description: 'FreeSong.in cookie policy - every cookie and browser storage category we use, third-party ad cookies, and simple controls to manage your privacy choices.'
   },
   {
     match: /^\/about/,
@@ -205,6 +219,13 @@ const SEO_ROUTES = [
     editable: true,
     title: 'Contact Us | freesong.in',
     description: 'Contact the FreeSong.in team for support, feedback, partnerships or copyright queries regarding our ads free music streaming platform.'
+  },
+  {
+    match: /^\/blog/,
+    path: '/blog',
+    editable: true,
+    title: 'Music Discovery Guides & Blog | freesong.in',
+    description: 'Original FreeSong guides for discovering music, building playlists, exploring genres and planning better listening sessions. 30 practical listening guides.'
   }
 ];
 
