@@ -29,7 +29,7 @@ import { api } from '../../services/api';
 import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { getArtworkFallback, isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
 import { PlayerSearch } from './PlayerSearch';
-import { AdSlot, AffiliateSticker, PLAYER_ROTATION_SECONDS } from '../../ads';
+import { AffiliateSticker } from '../../ads';
 import { ArtistLinks } from '../Common/ArtistLinks';
 import './FullScreenPlayer.css';
 
@@ -323,42 +323,6 @@ export function FullScreenPlayer() {
   const pauseLyricsAutoScroll = () => {
     lyricsScrollPauseUntilRef.current = Date.now() + 4000;
   };
-
-  // ── Cover Rotation Ad: artwork ↔ ad alternate (hardcoded 5s cadence) ──
-  const coverAdEnabled = true;
-  const [showCoverAd, setShowCoverAd] = useState(false);
-
-  // Rotation timer: 5s cover ↔ 5s ad, pauses when tab hidden
-  useEffect(() => {
-    if (!isFullScreen || !coverAdEnabled) return undefined;
-    let cancelled = false;
-    let timeoutId = null;
-    const adDurationMs = Math.max(3, PLAYER_ROTATION_SECONDS) * 1000;
-    const coverDurationMs = 5000;
-
-    const cycle = () => {
-      if (cancelled) return;
-      if (document.visibilityState !== 'visible') {
-        timeoutId = setTimeout(cycle, 2000); // re-check soon, no ad while hidden
-        return;
-      }
-      setShowCoverAd(true);
-      timeoutId = setTimeout(() => {
-        if (cancelled) return;
-        setShowCoverAd(false);
-        timeoutId = setTimeout(cycle, coverDurationMs);
-      }, adDurationMs);
-    };
-
-    // First ad appears after one cover period so the song art lands first
-    timeoutId = setTimeout(cycle, coverDurationMs);
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-      setShowCoverAd(false);
-    };
-  }, [isFullScreen, coverAdEnabled, currentSong?.videoId]);
 
   // Automatically close fullscreen overlay when route/URL changes
   useEffect(() => {
@@ -680,9 +644,7 @@ export function FullScreenPlayer() {
             onTouchEnd={handleArtTouchEnd}
             onTouchCancel={handleArtTouchEnd}
           >
-            <div
-              ref={artWrapperRef}
-              className={`fs-fs-art-wrapper ${showCoverAd ? 'ad-showing' : ''} ${slideAnimClass}`}
+              <div className={`fs-fs-art-wrapper ${slideAnimClass}`}
             >
               <img
                 src={
@@ -699,12 +661,6 @@ export function FullScreenPlayer() {
                   if (isGrayPlaceholder(e.currentTarget)) advanceThumb(e.currentTarget, thumbCandidatesFor(currentSong), getArtworkFallback(currentSong.title));
                 }}
               />
-
-              {/* Cover rotation ad — crossfades over the artwork (lazy, post-idle) */}
-              <div className={`fs-fs-art-ad-layer ${showCoverAd ? 'visible' : ''}`} aria-hidden={!showCoverAd}>
-                <AdSlot slotId="player_cover_rotate" className="fs-ad-slot--art" />
-                <span className="fs-fs-art-ad-badge">Ad</span>
-              </div>
 
               {/* Amazon affiliate sticker (YT-Shorts style, rotates products) */}
               <AffiliateSticker position="bottom-left" />

@@ -1,11 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { AFFILIATE_PRODUCTS } from './config';
 import './AffiliateSticker.css';
+
+const AFFILIATE_PRODUCTS = [
+  {
+    name: 'ZEBRONICS Astra 35 Speaker',
+    imageUrl: 'https://m.media-amazon.com/images/I/319RaAZHSYL._SY300_SX300_QL70_ML2_.jpg',
+    amazonUrl: 'https://www.amazon.in/dp/B0DJ3FFC8R?linkCode=ll2&tag=ganatubexfree-21&linkId=4e2c7d65e0477a3caa89f1f736b0738d&ref_=as_li_ss_tl',
+    priceLabel: '₹699'
+  }
+];
 
 /**
  * YouTube-Shorts-style Amazon product sticker.
- * Products: src/ads/config.js (AFFILIATE_PRODUCTS) — rotates with a soft crossfade.
+ * Products: AFFILIATE_PRODUCTS above — rotates with a soft crossfade.
  */
 export const AffiliateSticker = React.memo(function AffiliateSticker({ position = 'bottom-left', className = '' }) {
   const [index, setIndex] = useState(0);

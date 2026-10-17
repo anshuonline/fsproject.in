@@ -7,7 +7,6 @@ import { usePlayer } from '../../context/PlayerContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
 import { PlaylistCover } from '../../components/Common/PlaylistCover';
 import { SongCard } from '../../components/Cards/SongCard';
-import { AdSlot, PLAYLIST_INFEED_EVERY } from '../../ads';
 import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { useSeo } from '../../services/seo';
 import './PlaylistDetail.css';
@@ -23,7 +22,6 @@ export function PlaylistDetail() {
 
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
-  const infeedEvery = PLAYLIST_INFEED_EVERY;
 
   // Playlists are personalized content: keep them out of search indexes
   useSeo({
@@ -262,10 +260,6 @@ export function PlaylistDetail() {
                     playlistId={isCustom ? playlist.id : null}
                     isUserPlaylist={isCustom}
                   />
-                  {/* In-feed ad row after every N tracks (except after the last) */}
-                  {(idx + 1) % infeedEvery === 0 && idx + 1 < totalCount && (
-                    <AdSlot slotId="playlist_infeed" className="fs-ad-slot--playlist-row" />
-                  )}
                 </React.Fragment>
               ))}
 
@@ -286,9 +280,6 @@ export function PlaylistDetail() {
           )}
         </div>
       </div>
-
-      {/* Detail page rectangle (lazy, post-idle load) */}
-      <AdSlot slotId="detail_rectangle" className="fs-ad-slot--detail" />
     </div>
   );
 }
