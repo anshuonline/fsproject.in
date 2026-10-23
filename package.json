@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "start": "node server/server.js",
     "build": "vite build",
