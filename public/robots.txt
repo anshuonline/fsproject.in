@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /library
+Disallow: /favorites
+Disallow: /followed
+Disallow: /history
+Disallow: /profile
+Disallow: /settings
+Disallow: /playlist/
+Disallow: /confirm-delete
+Disallow: /reset-password
+Disallow: /login
+Disallow: /register
+Disallow: /ganalytics
+Disallow: /seo
+
+Sitemap: https://freesong.in/sitemap.xml
+Sitemap: https://freesong.in/blog-sitemap.xml

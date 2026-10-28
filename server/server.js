@@ -3653,40 +3653,17 @@ const SITEMAP_BASE = [
   { loc: 'https://freesong.in/', priority: '1.0', freq: 'daily' },
   { loc: 'https://freesong.in/explore', priority: '0.9', freq: 'daily' },
   { loc: 'https://freesong.in/search', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=online+songs', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=free+songs', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=ads+free+songs', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=listen+songs', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=listen+to+free+music+unblocked', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=unblocked+music+player', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=free+music+streaming+unblocked', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=free+music+online+unblocked', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=music+player+unblocked', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=free+music+streaming', priority: '0.9', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=bollywood+songs', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=punjabi+songs', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=hindi+songs', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Arijit+Singh', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Diljit+Dosanjh', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Shreya+Ghoshal', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Sidhu+Moose+Wala', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Atif+Aslam', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Anirudh+Ravichander', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Badshah', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Karan+Aujla', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Apna+Bana+Le', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Kesariya', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Chaleya', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=Heeriye', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/search?q=O+Maahi', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/about', priority: '0.7', freq: 'monthly' },
-  { loc: 'https://freesong.in/blog', priority: '0.8', freq: 'daily' },
-  { loc: 'https://freesong.in/contact', priority: '0.7', freq: 'monthly' },
-  { loc: 'https://freesong.in/dmca', priority: '0.6', freq: 'monthly' },
-  { loc: 'https://freesong.in/disclaimer', priority: '0.5', freq: 'monthly' },
-  { loc: 'https://freesong.in/cookie-policy', priority: '0.5', freq: 'monthly' },
-  { loc: 'https://freesong.in/privacy', priority: '0.5', freq: 'monthly' },
-  { loc: 'https://freesong.in/terms', priority: '0.5', freq: 'monthly' }
+  { loc: 'https://freesong.in/blog', priority: '0.9', freq: 'daily' },
+  { loc: 'https://freesong.in/how-it-works', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/features', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/faq', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/about', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/contact', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/privacy', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/terms', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/cookie-policy', priority: '0.7', freq: 'monthly' },
+  { loc: 'https://freesong.in/dmca', priority: '0.8', freq: 'monthly' },
+  { loc: 'https://freesong.in/disclaimer', priority: '0.7', freq: 'monthly' }
 ];
 
 function escapeXml(str) {
@@ -3915,6 +3892,14 @@ if (fs.existsSync(distPath)) {
   });
 
   // ── Dynamic sitemap.xml (noindexed pages excluded automatically) ───────────
+  // ── ads.txt (Official Google AdSense Publisher verification) ───────────────
+  app.get('/ads.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send('google.com, pub-1095504038088672, DIRECT, f08c47fec0942fa0\n');
+  });
+
+  // ── Dynamic sitemap.xml (noindexed pages excluded automatically) ───────────
   app.get('/sitemap.xml', async (req, res) => {
     let xml;
     try {
@@ -3924,8 +3909,7 @@ if (fs.existsSync(distPath)) {
       xml = buildSitemapXml([]);
     }
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0');
-    res.setHeader('X-Robots-Tag', 'noindex');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(xml);
   });
 
@@ -3945,7 +3929,6 @@ if (fs.existsSync(distPath)) {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlsXml}\n</urlset>`;
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.setHeader('X-Robots-Tag', 'noindex');
     res.send(xml);
   });
 
@@ -4028,10 +4011,24 @@ if (fs.existsSync(distPath)) {
     return html;
   };
 
-  // Extensionless paths (/, /explore, /seo...) get the SEO-injected document
+  // Extensionless paths (/, /explore, /seo...) get the prerendered HTML or SEO-injected document
   app.use(async (req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
     if (path.extname(req.path)) return next(); // static files fall through to express.static
+
+    // If a prerendered static HTML file exists for this route (e.g. /blog/slug/index.html or /privacy/index.html), serve it directly
+    const cleanPath = req.path.replace(/^\/+|\/+$/g, '');
+    if (cleanPath) {
+      const prerenderDirIndex = path.join(distPath, cleanPath, 'index.html');
+      const prerenderHtml = path.join(distPath, `${cleanPath}.html`);
+      if (fs.existsSync(prerenderDirIndex)) {
+        return res.sendFile(prerenderDirIndex);
+      }
+      if (fs.existsSync(prerenderHtml)) {
+        return res.sendFile(prerenderHtml);
+      }
+    }
+
     try {
       const html = await getIndexHtmlWithSeo(req.path);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');

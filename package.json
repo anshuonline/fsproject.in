@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server/server.js",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-sitemaps.js && node scripts/prerender.js",
+    "prerender": "node scripts/prerender.js",
+    "sitemaps": "node scripts/generate-sitemaps.js",
     "server": "node --watch --watch-path=server server/server.js",
     "client": "vite",
     "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,CLIENT\" -c \"cyan.bold,green.bold\" \"npm run server\" \"npm run client\"",

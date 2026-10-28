@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine, MoreVertical, History, Users } from 'lucide-react';
+import { Home, Compass, Bookmark, Plus, Heart, Music, ListMusic, X, ArrowDownToLine, MoreVertical, History, Users, BookOpen } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { usePWA } from '../../context/PWAContext';
 import { useContextMenu } from '../../context/ContextMenuContext';
@@ -132,6 +132,16 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose, isCollapse
           >
             <Users size={22} className="fs-nav-icon" />
             <span>{isCollapsed ? 'Followed' : 'Followed artists'}</span>
+          </NavLink>
+
+          <NavLink
+            to="/blog"
+            className={({ isActive }) => `fs-nav-item ${isActive ? 'active' : ''}`}
+            onClick={onClose}
+            title="Articles & Music Guides"
+          >
+            <BookOpen size={22} className="fs-nav-icon" />
+            <span>{isCollapsed ? 'Articles' : 'Articles & Guides'}</span>
           </NavLink>
 
           {!isInstalled && (
