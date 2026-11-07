@@ -217,9 +217,6 @@ export function Home() {
 
   return (
     <div className="fs-home-page">
-      {/* ─── Accessible Semantic H1 (Screen readers & SEO) ─────────────── */}
-      <h1 className="sr-only">FreeSong — Free Music Streaming</h1>
-
       {/* ─── Taste Profile Banner ───────────────────────────────────────── */}
       <div className="fs-home-taste-banner">
         <div className="fs-taste-info">

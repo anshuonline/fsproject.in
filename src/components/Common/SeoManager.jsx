@@ -40,7 +40,7 @@ const SEO_ROUTES = [
     match: /^\/$/,
     path: '/',
     editable: true,
-    title: 'Online Songs - Listen Free Songs & Ads Free Music | FreeSong.in',
+    title: 'Freesong - Free Music Streaming ads free | Free Music Online Without Ads',
     description: 'Listen to online songs free on FreeSong.in — #1 ads free song streaming platform. Stream millions of Hindi, Bollywood, Punjabi & global songs in HD audio with live synced lyrics. Top artists Arijit Singh, Diljit Dosanjh, Shreya Ghoshal & hit tracks like Kesariya, Apna Bana Le with zero ads.'
   },
   {
