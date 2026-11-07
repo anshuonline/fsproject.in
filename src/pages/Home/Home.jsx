@@ -4,7 +4,7 @@ import { useHomeData } from './useHomeData';
 import { CommunityCard } from '../../components/Cards/CommunityCard';
 import { ArtistCard } from '../../components/Cards/ArtistCard';
 import { OnboardingModal } from '../../components/Onboarding/OnboardingModal';
-import { SeoContentSection } from '../../components/Common/SeoContentSection';
+import { GenreChips } from '../../components/Common/GenreChips';
 import { TOP_100_ARTISTS } from '../../data/artistsData';
 import { storage } from '../../services/storage';
 import { isGrayPlaceholder, buildThumbFallbacks, advanceThumb } from '../../utils/imageFallback';
@@ -217,16 +217,8 @@ export function Home() {
 
   return (
     <div className="fs-home-page">
-      {/* ─── Semantic Top SEO H1 ───────────────────────────────────────── */}
-      <div className="fs-home-seo-hero">
-        <h1 className="fs-home-seo-h1">
-          <span className="fs-home-seo-h1-main">Online Songs</span>
-          <span className="fs-home-seo-h1-sub">— Listen Free Songs & Ads-Free Music</span>
-        </h1>
-        <p className="fs-home-seo-subtitle">
-          Stream unlimited free songs online in studio HD audio with live synced lyrics. Featuring top artists Arijit Singh, Diljit Dosanjh, Shreya Ghoshal, Sidhu Moose Wala, Atif Aslam and trending hits like Apna Bana Le, Kesariya with zero ads.
-        </p>
-      </div>
+      {/* ─── Accessible Semantic H1 (Screen readers & SEO) ─────────────── */}
+      <h1 className="sr-only">FreeSong — Free Music Streaming</h1>
 
       {/* ─── Taste Profile Banner ───────────────────────────────────────── */}
       <div className="fs-home-taste-banner">
@@ -280,8 +272,8 @@ export function Home() {
         </React.Fragment>
       ))}
 
-      {/* ─── SEO Discovery & Why FreeSong Section ──────────────────────── */}
-      <SeoContentSection />
+      {/* ─── Clean Music Categories & Genre Chips ────────────────────────── */}
+      <GenreChips />
 
       {/* ─── Onboarding Modal ─────────────────────────────────────────── */}
       <OnboardingModal
