@@ -32,7 +32,202 @@ const distPath = path.join(__dirname, '../dist');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ── Origin allowlist (shared by CORS + rate-limit tiering) ──
+const ALLOWED_ORIGIN_HOSTS = [
+  'freesong.in',
+  'ganatube.in',
+  'localhost',
+  '127.0.0.1',
+  '::1'
+];
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // same-origin / non-browser callers
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    return ALLOWED_ORIGIN_HOSTS.some(allowed =>
+      host === allowed || host.endsWith('.' + allowed)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isDirectLocalRequest(req) {
+  if (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] ||
+      req.headers['x-real-ip'] || req.headers['forwarded']) {
+    return false;
+  }
+  const ip = req.socket?.remoteAddress || '';
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
+
+const corsOptions = {
+  origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400
+};
+app.use(cors(corsOptions));
+app.disable('x-powered-by');
+
+// ── Bot guard & Direct Navigation Guard ──
+const BROWSER_UA_RE = /mozilla|chrome|safari|firefox|edg\/|opr\/|samsungbrowser|android|iphone|ipad/i;
+const BOT_UA_RE = /curl|wget|python-requests|python-urllib|aiohttp|httpx|axios|node-fetch|undici|go-http-client|scrapy|libwww-perl|voxgig/i;
+
+const API_EXEMPT_PREFIXES = [
+  '/api/health',
+  '/api/seo-config',
+  '/api/seo-overrides'
+];
+
+function isExemptApi(pathname) {
+  return API_EXEMPT_PREFIXES.some(p => pathname.startsWith(p));
+}
+
+function isBrowserUA(req) {
+  return BROWSER_UA_RE.test(req.headers['user-agent'] || '');
+}
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+
+  if (isExemptApi(req.path) || isDirectLocalRequest(req)) {
+    return next();
+  }
+
+  // Direct address-bar / browser page navigation to raw JSON is not allowed.
+  // Real app traffic is always XHR/fetch (sec-fetch-mode: cors), never "navigate".
+  const fetchMode = (req.headers['sec-fetch-mode'] || '').toLowerCase();
+  const fetchDest = (req.headers['sec-fetch-dest'] || '').toLowerCase();
+  if (fetchMode === 'navigate' || fetchDest === 'document') {
+    return res.redirect(302, '/');
+  }
+
+  if (BOT_UA_RE.test(req.headers['user-agent'] || '')) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'This API is private and restricted to the official FreeSong web player. Visit https://freesong.in to stream.'
+    });
+  }
+
+  next();
+});
+
+// Helper to identify internal FreeSong web-app traffic vs external API callers
+function isInternalClient(req) {
+  if (isDirectLocalRequest(req)) {
+    return true;
+  }
+
+  const origin = (req.headers.origin || '').toLowerCase();
+  const referer = (req.headers.referer || '').toLowerCase();
+  const secFetchSite = (req.headers['sec-fetch-site'] || '').toLowerCase();
+  const secFetchMode = (req.headers['sec-fetch-mode'] || '').toLowerCase();
+
+  // 1. Browser same-origin metadata
+  if (secFetchSite === 'same-origin' || secFetchSite === 'same-site') {
+    return true;
+  }
+
+  // 2. Origin / Referer belongs to an official property
+  if (origin && isAllowedOrigin(origin)) {
+    return true;
+  }
+  if (referer && isAllowedOrigin(referer)) {
+    return true;
+  }
+
+  // 3. CORS request that carries official metadata
+  if (secFetchMode === 'cors' && (origin || referer) && isAllowedOrigin(origin || referer)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Real web-app XHR/fetch traffic (even when a privacy browser strips Referer).
+function isWebAppClient(req) {
+  if (isInternalClient(req)) return true;
+  const fetchMode = (req.headers['sec-fetch-mode'] || '').toLowerCase();
+  return isBrowserUA(req) && fetchMode === 'cors';
+}
+
+// ── Rate Limiter Config (Internal vs Browser vs Public Safeguards) ──
+const ipRequestWindow = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;         // 1 minute window
+const MAX_INTERNAL_REQUESTS_PER_MINUTE = 300;   // Real listeners, shared Wi-Fi
+const MAX_BROWSER_REQUESTS_PER_MINUTE = 60;     // Webviews / privacy browsers
+const MAX_EXTERNAL_REQUESTS_PER_MINUTE = 10;    // Scripts / bots
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of ipRequestWindow.entries()) {
+    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS) {
+      ipRequestWindow.delete(key);
+    }
+  }
+}, RATE_LIMIT_WINDOW_MS);
+
+function getClientTier(req) {
+  if (isInternalClient(req)) return 'internal';
+  if (isBrowserUA(req)) return 'browser';
+  return 'external';
+}
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  const clientIp = req.headers['cf-connecting-ip'] || 
+                   req.headers['x-real-ip'] || 
+                   (req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : '') || 
+                   req.socket.remoteAddress || 
+                   'unknown';
+
+  const tier = getClientTier(req);
+  const maxAllowed = tier === 'internal'
+    ? MAX_INTERNAL_REQUESTS_PER_MINUTE
+    : tier === 'browser'
+      ? MAX_BROWSER_REQUESTS_PER_MINUTE
+      : MAX_EXTERNAL_REQUESTS_PER_MINUTE;
+  const ipKey = `${clientIp}_${tier}`;
+
+  const now = Date.now();
+  let record = ipRequestWindow.get(ipKey);
+
+  if (!record || (now - record.windowStart) > RATE_LIMIT_WINDOW_MS) {
+    record = { windowStart: now, count: 1 };
+    ipRequestWindow.set(ipKey, record);
+    return next();
+  }
+
+  record.count++;
+
+  if (record.count > maxAllowed) {
+    res.setHeader('Retry-After', '60');
+    res.setHeader('X-RateLimit-Limit', maxAllowed.toString());
+    res.setHeader('X-RateLimit-Remaining', '0');
+    res.setHeader('X-RateLimit-Tier', tier);
+    return res.status(429).json({ 
+      error: 'Too Many Requests', 
+      message: tier === 'internal'
+        ? 'Rate limit exceeded. Please wait a moment.'
+        : `Rate limit exceeded (max ${maxAllowed} requests per minute). Visit https://freesong.in to stream.`,
+      retryAfter: 60
+    });
+  }
+
+  next();
+});
+
 app.use(express.json());
 
 let ytmusicInstance = null;
@@ -155,7 +350,10 @@ app.get('/api/home', async (req, res) => {
 app.get('/api/search', async (req, res) => {
   const query = req.query.q?.trim();
   const type = req.query.type || 'all'; // all | song | album | playlist | artist
-  const limit = parseInt(req.query.limit, 10) || 20;
+  const isInternal = isWebAppClient(req);
+  let limit = parseInt(req.query.limit, 10) || (isInternal ? 20 : 10);
+  if (!isInternal && limit > 10) limit = 10;
+  limit = Math.max(1, Math.min(limit, 50)); // hard safety cap
 
   if (!query) {
     return res.status(400).json({ error: 'Query parameter q is required' });
