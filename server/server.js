@@ -109,7 +109,8 @@ app.use((req, res, next) => {
     return res.redirect(302, '/');
   }
 
-  if (BOT_UA_RE.test(req.headers['user-agent'] || '')) {
+  const userAgent = (req.headers['user-agent'] || '').trim();
+  if (!userAgent || BOT_UA_RE.test(userAgent)) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(403).json({
       error: 'Forbidden',
